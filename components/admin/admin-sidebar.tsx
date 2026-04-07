@@ -1,10 +1,11 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, ShoppingBag, ShoppingCart, Users, Tag, Ticket,
-  Share2, Settings, ChevronRight, Zap, TrendingUp, MessageCircle, Truck,
+  Share2, Settings, ChevronRight, TrendingUp, MessageCircle, Truck,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -53,13 +54,8 @@ export function AdminSidebar() {
     <aside className="w-60 shrink-0 border-r border-border bg-card flex flex-col h-full overflow-y-auto">
       {/* Brand */}
       <div className="flex items-center gap-3 px-5 py-[18px] border-b border-border">
-        <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shrink-0 shadow-sm">
-          <Zap className="w-4.5 h-4.5 text-primary-foreground" />
-        </div>
-        <div>
-          <p className="font-bold text-sm leading-none tracking-tight">ValGadget</p>
-          <p className="text-[10px] text-muted-foreground font-mono uppercase tracking-widest mt-0.5">Admin Panel</p>
-        </div>
+        <Image src="/logo.png" alt="Val Gadgets" width={100} height={40} className="h-9 w-auto object-contain" priority />
+        <p className="text-[10px] text-muted-foreground font-mono uppercase tracking-widest">Admin</p>
       </div>
 
       {/* Navigation */}
