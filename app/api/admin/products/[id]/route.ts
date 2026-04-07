@@ -1,0 +1,56 @@
+import { NextRequest } from 'next/server'
+import { db } from '@/lib/server/db'
+import { products } from '@/lib/server/schema'
+import { requireAuth, apiOk, apiError } from '@/lib/server/auth-helpers'
+import { eq } from 'drizzle-orm'
+
+export async function PUT(req: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const auth = await requireAuth(req, ['admin'])
+  if ('status' in auth) return auth
+
+  const { id } = await context.params
+  try {
+    const body = await req.json()
+    const { name, description, price, comparePrice, cost, categoryId, stock, sku, tags, featured, isNew, isActive, images, shortDescription } = body
+
+    const slug = name
+      ? name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+      : undefined
+
+    const [updated] = await db.update(products).set({
+      ...(name        && { name, slug }),
+      ...(description !== undefined && { description }),
+      ...(shortDescription !== undefined && { shortDescription }),
+      ...(price       !== undefined && { price: String(price) }),
+      ...(comparePrice !== undefined && { comparePrice: comparePrice ? String(comparePrice) : null }),
+      ...(cost        !== undefined && { cost: cost ? String(cost) : null }),
+      ...(categoryId  !== undefined && { categoryId }),
+      ...(stock       !== undefined && { stock }),
+      ...(sku         !== undefined && { sku }),
+      ...(tags        !== undefined && { tags }),
+      ...(featured    !== undefined && { featured }),
+      ...(isNew       !== undefined && { isNew }),
+      ...(isActive    !== undefined && { isActive }),
+      ...(images      !== undefined && { images }),
+      updatedAt: new Date(),
+    }).where(eq(products.id, id)).returning()
+
+    if (!updated) return apiError('Product not found.', 404)
+    return apiOk({ ...updated, price: Number(updated.price), comparePrice: updated.comparePrice ? Number(updated.comparePrice) : undefined })
+  } catch (err) {
+    console.error('[admin update product]', err)
+    return apiError('Failed to update product.', 500)
+  }
+}
+
+export async function DELETE(req: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const auth = await requireAuth(req, ['admin'])
+  if ('status' in auth) return auth
+
+  const { id } = await context.params
+  const [deleted] = await db.update(products).set({ isActive: false, updatedAt: new Date() })
+    .where(eq(products.id, id)).returning({ id: products.id })
+
+  if (!deleted) return apiError('Product not found.', 404)
+  return apiOk({ message: 'Product deactivated.' })
+}
