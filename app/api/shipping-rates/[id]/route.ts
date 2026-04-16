@@ -12,8 +12,8 @@ type Ctx = { params: Promise<{ id: string }> }
 
 export async function PATCH(req: NextRequest, ctx: Ctx) {
   try {
-    const user = await requireAuth(req)
-    if (user.role !== 'admin') return apiError('Forbidden', 403)
+    const auth = await requireAuth(req, ['admin'])
+    if ('status' in auth) return auth
 
     const { id } = await ctx.params
     const body = await req.json()
@@ -35,8 +35,8 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
 
 export async function DELETE(req: NextRequest, ctx: Ctx) {
   try {
-    const user = await requireAuth(req)
-    if (user.role !== 'admin') return apiError('Forbidden', 403)
+    const auth = await requireAuth(req, ['admin'])
+    if ('status' in auth) return auth
 
     const { id } = await ctx.params
     await db.delete(shippingRates).where(eq(shippingRates.id, id))

@@ -11,35 +11,6 @@ import { useAuth } from '@/contexts/auth-context'
 import { affiliateService, type AffiliateStats } from '@/lib/services/affiliate.service'
 import { toast } from 'sonner'
 
-const MOCK_STATS: AffiliateStats = {
-  totalClicks: 1248,
-  totalOrders: 89,
-  totalEarnings: 2670,
-  pendingPayouts: 430,
-  conversionRate: 7.1,
-  earnings: [
-    { period: 'Jul', amount: 310 },
-    { period: 'Aug', amount: 520 },
-    { period: 'Sep', amount: 480 },
-    { period: 'Oct', amount: 390 },
-    { period: 'Nov', amount: 540 },
-    { period: 'Dec', amount: 430 },
-  ],
-  recentReferrals: [
-    { id: 'ref-1', date: '2024-11-25T10:00:00Z', orderId: 'VG-20241125-001', amount: 49, status: 'approved' },
-    { id: 'ref-2', date: '2024-11-20T09:00:00Z', orderId: 'VG-20241120-002', amount: 87, status: 'pending' },
-    { id: 'ref-3', date: '2024-11-15T14:00:00Z', orderId: 'VG-20241115-003', amount: 124, status: 'approved' },
-    { id: 'ref-4', date: '2024-11-10T08:00:00Z', orderId: 'VG-20241110-004', amount: 33, status: 'paid' },
-    { id: 'ref-5', date: '2024-11-05T11:00:00Z', orderId: 'VG-20241105-005', amount: 62, status: 'approved' },
-  ],
-}
-
-const STATUS_STYLES: Record<string, string> = {
-  pending: 'bg-amber-100 text-amber-700 border-amber-200',
-  approved: 'bg-green-100 text-green-700 border-green-200',
-  paid: 'bg-blue-100 text-blue-700 border-blue-200',
-  rejected: 'bg-red-100 text-red-700 border-red-200',
-}
 
 export default function AffiliateDashboard() {
   const { user } = useAuth()
@@ -48,12 +19,16 @@ export default function AffiliateDashboard() {
   const [copied, setCopied] = useState(false)
 
   const affiliateCode = user?.affiliateCode ?? 'YOUR_CODE'
-  const referralLink = `${typeof window !== 'undefined' ? window.location.origin : 'https://valgadget.com'}/?ref=${affiliateCode}`
+  const origin = typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_APP_URL ?? '')
+  const referralLink = `${origin}/?ref=${affiliateCode}`
 
   useEffect(() => {
     affiliateService.getStats()
       .then(setStats)
-      .catch(() => setStats(MOCK_STATS))
+      .catch(() => {
+        setStats(null)
+        toast.error('Failed to load affiliate stats')
+      })
       .finally(() => setLoading(false))
   }, [])
 
@@ -66,15 +41,13 @@ export default function AffiliateDashboard() {
 
   const statCards = [
     { label: 'Total Clicks', value: stats?.totalClicks.toLocaleString() ?? '—', icon: MousePointer, color: 'text-blue-600' },
-    { label: 'Total Orders', value: stats?.totalOrders.toLocaleString() ?? '—', icon: Users, color: 'text-violet-600' },
+    { label: 'Conversions', value: stats?.totalConversions.toLocaleString() ?? '—', icon: Users, color: 'text-violet-600' },
     { label: 'Total Earnings', value: stats ? `₦${stats.totalEarnings.toLocaleString()}` : '—', icon: DollarSign, color: 'text-green-600' },
-    { label: 'Pending Payout', value: stats ? `₦${stats.pendingPayouts.toLocaleString()}` : '—', icon: TrendingUp, color: 'text-primary' },
+    { label: 'Pending Earnings', value: stats ? `₦${stats.pendingEarnings.toLocaleString()}` : '—', icon: TrendingUp, color: 'text-primary' },
   ]
 
-  const maxEarning = Math.max(...(stats?.earnings.map(e => e.amount) ?? [1]))
-
   return (
-    <ProtectedRoute allowedRoles={['affiliate', 'admin']}>
+    <ProtectedRoute requiredRole={['affiliate', 'admin']}>
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 animate-page-reveal">
         <div className="mb-8">
           <h1 className="text-2xl font-bold">Affiliate Dashboard</h1>
@@ -98,7 +71,7 @@ export default function AffiliateDashboard() {
           <div className="flex items-center gap-2 mt-3">
             <span className="text-xs text-muted-foreground">Code:</span>
             <Badge className="font-mono text-xs">{affiliateCode}</Badge>
-            <span className="text-xs text-muted-foreground ml-2">Commission rate: <strong className="text-foreground">10%</strong></span>
+            <span className="text-xs text-muted-foreground ml-2">Commission rate: <strong className="text-foreground">{stats ? `${(stats.commissionRate * 100).toFixed(0)}%` : '—'}</strong></span>
           </div>
         </div>
 
@@ -122,53 +95,64 @@ export default function AffiliateDashboard() {
         )}
 
         <div className="grid lg:grid-cols-2 gap-6">
-          {/* Earnings chart */}
+          {/* This month stats */}
           <div className="bg-card border border-border rounded-xl p-6">
-            <h2 className="font-bold text-sm mb-5">Monthly Earnings</h2>
+            <h2 className="font-bold text-sm mb-5">This Month</h2>
             {stats && (
-              <div className="flex items-end gap-2 h-32">
-                {stats.earnings.map(({ period, amount }) => (
-                  <div key={period} className="flex-1 flex flex-col items-center gap-1">
-                    <div
-                      className="w-full rounded-t-sm bg-primary/80 hover:bg-primary transition-colors cursor-default"
-                      style={{ height: `${(amount / maxEarning) * 100}%` }}
-                      title={`₦${amount}`}
-                    />
-                    <span className="text-[10px] text-muted-foreground font-mono">{period}</span>
-                  </div>
-                ))}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Clicks</span>
+                  <span className="font-bold font-mono">{stats.thisMonthClicks}</span>
+                </div>
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Conversions</span>
+                  <span className="font-bold font-mono">{stats.thisMonthConversions}</span>
+                </div>
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Earnings</span>
+                  <span className="font-bold font-mono">₦{stats.thisMonthEarnings.toLocaleString()}</span>
+                </div>
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Conversion Rate</span>
+                  <span className="font-bold font-mono">{(stats.conversionRate * 100).toFixed(1)}%</span>
+                </div>
               </div>
-            )}
-            {stats && (
-              <p className="text-xs text-muted-foreground mt-3">
-                Conversion rate: <strong className="text-foreground">{stats.conversionRate}%</strong>
-              </p>
             )}
           </div>
 
-          {/* Recent referrals */}
+          {/* Earnings breakdown */}
           <div className="bg-card border border-border rounded-xl p-6">
-            <h2 className="font-bold text-sm mb-4">Recent Referrals</h2>
-            {stats?.recentReferrals.length ? (
-              <div className="flex flex-col gap-1">
-                {stats.recentReferrals.map((ref, i) => (
-                  <div key={ref.id}>
-                    {i > 0 && <Separator className="my-1" />}
-                    <div className="flex items-center justify-between py-1.5">
-                      <div>
-                        <p className="text-xs font-mono text-foreground">{ref.orderId}</p>
-                        <p className="text-[11px] text-muted-foreground">{new Date(ref.date).toLocaleDateString()}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-sm text-foreground">₦{ref.amount}</span>
-                        <Badge className={`text-[10px] border capitalize ${STATUS_STYLES[ref.status] ?? ''}`}>{ref.status}</Badge>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+            <h2 className="font-bold text-sm mb-5">Earnings Breakdown</h2>
+            {stats && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Total Earned</span>
+                  <span className="font-bold font-mono">₦{stats.totalEarnings.toLocaleString()}</span>
+                </div>
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Paid Out</span>
+                  <span className="font-bold font-mono text-green-600">₦{stats.paidEarnings.toLocaleString()}</span>
+                </div>
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Pending</span>
+                  <span className="font-bold font-mono text-amber-600">₦{stats.pendingEarnings.toLocaleString()}</span>
+                </div>
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Commission Rate</span>
+                  <span className="font-bold font-mono">{(stats.commissionRate * 100).toFixed(0)}%</span>
+                </div>
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Lifetime Orders</span>
+                  <span className="font-bold font-mono">{stats.lifetimeOrders}</span>
+                </div>
               </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">No referrals yet. Share your link to get started!</p>
             )}
           </div>
         </div>

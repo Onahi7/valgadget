@@ -7,7 +7,7 @@ import { Package, ChevronRight, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Empty } from '@/components/ui/empty'
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription, EmptyContent } from '@/components/ui/empty'
 import { ProtectedRoute } from '@/components/auth/protected-route'
 import { orderService, type Order } from '@/lib/services/order.service'
 
@@ -58,11 +58,18 @@ export default function OrdersPage() {
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <Empty
-            title={search ? 'No orders match your search' : 'No orders yet'}
-            description={search ? 'Try a different search term.' : 'Start shopping to see your orders here.'}
-            action={!search ? <Button asChild><Link href="/shop"><Package className="w-4 h-4 mr-2" /> Shop Now</Link></Button> : undefined}
-          />
+          <Empty>
+            <EmptyHeader>
+              <EmptyMedia variant="icon"><Package className="size-6" /></EmptyMedia>
+              <EmptyTitle>{search ? 'No orders match your search' : 'No orders yet'}</EmptyTitle>
+              <EmptyDescription>{search ? 'Try a different search term.' : 'Start shopping to see your orders here.'}</EmptyDescription>
+            </EmptyHeader>
+            {!search && (
+              <EmptyContent>
+                <Button asChild><Link href="/shop"><Package className="w-4 h-4 mr-2" /> Shop Now</Link></Button>
+              </EmptyContent>
+            )}
+          </Empty>
         ) : (
           <div className="flex flex-col gap-4">
             {filtered.map(order => (

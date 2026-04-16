@@ -7,7 +7,7 @@ import { Plus, Search, Pencil, Trash2, Star, Package } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Empty } from '@/components/ui/empty'
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from '@/components/ui/empty'
 import { productService, type Product } from '@/lib/services/product.service'
 import { categoryService, type Category } from '@/lib/services/category.service'
 import { cn } from '@/lib/utils'
@@ -81,7 +81,13 @@ export default function AdminProductsPage() {
 
       {/* Table */}
       {filtered.length === 0 ? (
-        <Empty title="No products found" description="Try a different search or filter." />
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon"><Package className="size-6" /></EmptyMedia>
+            <EmptyTitle>No products found</EmptyTitle>
+            <EmptyDescription>Try a different search or filter.</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       ) : (
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <div className="overflow-x-auto">

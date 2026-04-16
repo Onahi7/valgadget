@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/auth-context'
 import type { User } from '@/lib/services/auth.service'
 
@@ -18,18 +18,19 @@ export function ProtectedRoute({
 }: ProtectedRouteProps) {
   const { isAuthenticated, isLoading, isRole } = useAuth()
   const router = useRouter()
+  const pathname = usePathname()
 
   useEffect(() => {
     if (isLoading) return
     if (!isAuthenticated) {
-      const returnUrl = encodeURIComponent(window.location.pathname + window.location.search)
+      const returnUrl = encodeURIComponent(pathname)
       router.replace(`${redirectTo}?returnUrl=${returnUrl}`)
       return
     }
     if (requiredRole && !isRole(requiredRole)) {
       router.replace('/unauthorized')
     }
-  }, [isAuthenticated, isLoading, isRole, requiredRole, redirectTo, router])
+  }, [isAuthenticated, isLoading, isRole, requiredRole, redirectTo, router, pathname])
 
   if (isLoading) {
     return (

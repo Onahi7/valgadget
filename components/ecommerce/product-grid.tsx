@@ -1,6 +1,6 @@
 import { ProductCard } from './product-card'
 import { ProductCardSkeleton } from './product-card-skeleton'
-import { Empty } from '@/components/ui/empty'
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from '@/components/ui/empty'
 import { cn } from '@/lib/utils'
 import type { Product } from '@/lib/services/product.service'
 
@@ -36,11 +36,12 @@ export function ProductGrid({
 
   if (!products || products.length === 0) {
     return (
-      <Empty
-        title={emptyMessage}
-        description="Try adjusting your filters or search terms."
-        className="py-16"
-      />
+      <Empty className="py-16">
+        <EmptyHeader>
+          <EmptyTitle>{emptyMessage}</EmptyTitle>
+          <EmptyDescription>Try adjusting your filters or search terms.</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
     )
   }
 

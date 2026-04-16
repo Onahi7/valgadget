@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { Twitter, Instagram, Youtube } from 'lucide-react'
+import { Twitter } from 'lucide-react'
 
 const FOOTER_LINKS = {
   shop: [
@@ -19,8 +19,6 @@ const FOOTER_LINKS = {
   company: [
     { label: 'About', href: '/about' },
     { label: 'Contact', href: '/contact' },
-    { label: 'FAQ', href: '/faq' },
-    { label: 'Blog', href: '/blog' },
   ],
   legal: [
     { label: 'Privacy Policy', href: '/legal/privacy' },
@@ -40,8 +38,6 @@ const TikTokIcon = () => (
 const SOCIAL = [
   { label: 'X / Twitter', href: 'https://x.com/Val_Gadget', Icon: Twitter },
   { label: 'TikTok', href: 'https://www.tiktok.com/@valgadgets', Icon: TikTokIcon },
-  { label: 'Instagram', href: 'https://instagram.com', Icon: Instagram },
-  { label: 'YouTube', href: 'https://youtube.com', Icon: Youtube },
 ]
 
 export function Footer() {

@@ -5,27 +5,24 @@
 import ImageKit from '@imagekit/nodejs'
 
 const privateKey = process.env.IMAGEKIT_PRIVATE_KEY
-const publicKey  = process.env.NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY
 const urlEndpoint = process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT
 
-let _ik: InstanceType<typeof ImageKit> | null = null
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _ik: any = null
 
-function getIK(): InstanceType<typeof ImageKit> {
+function getIK() {
   if (!_ik) {
-    if (!privateKey || !publicKey || !urlEndpoint) {
-      throw new Error(
-        'ImageKit env vars missing. Set IMAGEKIT_PRIVATE_KEY, ' +
-        'NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY, and NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT.'
-      )
+    if (!privateKey) {
+      throw new Error('ImageKit env var missing. Set IMAGEKIT_PRIVATE_KEY.')
     }
-    _ik = new ImageKit({ privateKey, publicKey, urlEndpoint })
+    _ik = new ImageKit({ privateKey })
   }
   return _ik
 }
 
 /** Generate a short-lived upload authentication signature for the browser SDK */
 export function getUploadAuth(token?: string, expire?: number) {
-  return getIK().getAuthenticationParameters(token, expire)
+  return getIK().helper.getAuthenticationParameters(token, expire)
 }
 
 /**
@@ -33,11 +30,11 @@ export function getUploadAuth(token?: string, expire?: number) {
  * Returns the ImageKit file URL and fileId.
  */
 export async function uploadFile(
-  file: Buffer | string,
+  file: string,
   fileName: string,
   folder = '/valgadget'
 ): Promise<{ url: string; fileId: string }> {
-  const result = await getIK().upload({
+  const result = await getIK().files.upload({
     file,
     fileName,
     folder,
@@ -49,7 +46,7 @@ export async function uploadFile(
 
 /** Delete a file from ImageKit by its fileId */
 export async function deleteFile(fileId: string): Promise<void> {
-  await getIK().deleteFile(fileId)
+  await getIK().files.delete(fileId)
 }
 
 /**
@@ -62,16 +59,12 @@ export function transformUrl(
 ): string {
   if (!urlEndpoint || !url.includes(urlEndpoint)) return url
 
-  const path = url.replace(urlEndpoint, '')
-  const ik = getIK()
+  const tr: string[] = []
+  if (params.width) tr.push(`w-${params.width}`)
+  if (params.height) tr.push(`h-${params.height}`)
+  if (params.quality) tr.push(`q-${params.quality}`)
+  tr.push(`f-${params.format ?? 'auto'}`)
 
-  return ik.url({
-    src: url,
-    transformation: [{
-      width:   params.width?.toString(),
-      height:  params.height?.toString(),
-      quality: params.quality?.toString(),
-      format:  params.format ?? 'auto',
-    }],
-  })
+  const separator = urlEndpoint.endsWith('/') ? '' : '/'
+  return `${urlEndpoint}${separator}tr:${tr.join(',')}${url.replace(urlEndpoint, '')}`
 }

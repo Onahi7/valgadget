@@ -16,7 +16,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
 
   const data = await db.select({
     id: reviews.id, rating: reviews.rating, title: reviews.title,
-    body: reviews.body, createdAt: reviews.createdAt, updatedAt: reviews.updatedAt,
+    body: reviews.body, createdAt: reviews.createdAt,
     user: { id: users.id, name: users.name, avatar: users.avatar },
   }).from(reviews)
     .innerJoin(users, eq(reviews.userId, users.id))

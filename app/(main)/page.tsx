@@ -88,12 +88,12 @@ export default function HomePage() {
                   <Link href="/raffles">View Raffles</Link>
                 </Button>
               </div>
-              <div className="flex items-center gap-6 pt-2 text-sm text-secondary-foreground/50">
-                <span className="font-bold text-secondary-foreground text-2xl">12K+</span>
-                <span>Happy customers</span>
+              <div className="flex items-center gap-4 pt-2 text-sm text-secondary-foreground/50">
+                <span>Nationwide delivery</span>
                 <span className="w-px h-4 bg-secondary-foreground/20" />
-                <span className="font-bold text-secondary-foreground text-2xl">500+</span>
-                <span>Products</span>
+                <span>Secure checkout</span>
+                <span className="w-px h-4 bg-secondary-foreground/20" />
+                <span>30-day returns</span>
               </div>
             </div>
             <div className="hidden md:grid grid-cols-2 gap-4">

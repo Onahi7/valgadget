@@ -19,8 +19,8 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await requireAuth(req)
-    if (user.role !== 'admin') return apiError('Forbidden', 403)
+    const auth = await requireAuth(req, ['admin'])
+    if ('status' in auth) return auth
 
     const body = await req.json()
     const { state, price, estimatedDays } = body as { state: string; price: number; estimatedDays: number }

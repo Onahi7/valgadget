@@ -38,15 +38,15 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     // Allow admin role only for authenticated admins
     let effectiveRole = 'user'
     let effectiveSenderName = senderName ?? 'You'
-    try {
-      const user = await requireAuth(req)
-      if (user.role === 'admin') {
+    const authResult = await requireAuth(req)
+    if (!('status' in authResult)) {
+      if (authResult.user.role === 'admin') {
         effectiveRole = 'admin'
         effectiveSenderName = 'Support'
       } else {
-        effectiveSenderName = user.name ?? senderName ?? 'You'
+        effectiveSenderName = authResult.user.name ?? senderName ?? 'You'
       }
-    } catch { /* guest */ }
+    }
 
     const [msg] = await db.insert(chatMessages).values({
       id: crypto.randomUUID(),

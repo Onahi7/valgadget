@@ -35,23 +35,21 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
     const {
-      title, description, slug, prizeValue, ticketPrice, maxTickets,
-      drawDate, status = 'upcoming', images = [], rules,
+      title, description, prize, image, prizeValue, ticketPrice, maxTickets,
+      drawDate, status = 'upcoming',
     } = body
 
-    if (!title || !prizeValue || !ticketPrice || !maxTickets || !drawDate) {
-      return apiError('title, prizeValue, ticketPrice, maxTickets, and drawDate are required.')
+    if (!title || !prize || !prizeValue || !ticketPrice || !maxTickets || !drawDate) {
+      return apiError('title, prize, prizeValue, ticketPrice, maxTickets, and drawDate are required.')
     }
 
-    const safeSlug = slug ?? title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + Date.now()
-
     const [raffle] = await db.insert(raffles).values({
-      title, description, slug: safeSlug,
+      title, description, prize, image: image ?? null,
       prizeValue:  String(prizeValue),
       ticketPrice: String(ticketPrice),
       maxTickets,
       drawDate: new Date(drawDate),
-      status, images, rules,
+      status,
     }).returning()
 
     return apiOk(numericRaffle(raffle), 201)

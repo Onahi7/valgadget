@@ -44,7 +44,7 @@ export default function NewProductPage() {
         comparePrice: form.comparePrice ? Number(form.comparePrice) : undefined,
         sku: form.sku.trim(),
         stock: Number(form.stock) || 0,
-        categoryId: form.categoryId || undefined,
+        categoryId: form.categoryId || '',
         tags: form.tags.split(',').map(t => t.trim()).filter(Boolean),
         featured: form.featured,
         isNew: form.isNew,

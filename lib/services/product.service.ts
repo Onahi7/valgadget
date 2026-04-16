@@ -103,7 +103,7 @@ export interface CreateProductPayload {
 export const productService = {
   /** Paginated, filtered product list */
   getAll: (filters?: ProductFilters) =>
-    api.get<ProductsResponse>('/products', filters),
+    api.get<ProductsResponse>('/products', filters as Record<string, string | number | boolean | undefined | null>),
 
   /** Single product by ID */
   getById: (id: string) =>

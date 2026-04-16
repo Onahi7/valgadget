@@ -11,7 +11,8 @@ import { eq } from 'drizzle-orm'
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await requireAuth(req)
+    const auth = await requireAuth(req)
+    if ('status' in auth) return auth
     const body = await req.json()
     const { orderId, txHash, coin } = body as { orderId: string; txHash: string; coin: string }
 
@@ -19,7 +20,7 @@ export async function POST(req: NextRequest) {
 
     const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1)
     if (!order) return apiError('Order not found', 404)
-    if (order.userId !== user.id) return apiError('Forbidden', 403)
+    if (order.userId !== auth.user.sub) return apiError('Forbidden', 403)
 
     const validCoins = ['btc', 'eth', 'usdt_erc20', 'usdt_trc20']
     if (!validCoins.includes(coin.toLowerCase())) return apiError('Invalid coin', 400)

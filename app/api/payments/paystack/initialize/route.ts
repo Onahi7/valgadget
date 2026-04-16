@@ -12,7 +12,8 @@ import { eq } from 'drizzle-orm'
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await requireAuth(req)
+    const auth = await requireAuth(req)
+    if ('status' in auth) return auth
     const body = await req.json()
     const { orderId } = body as { orderId: string }
 
@@ -20,7 +21,7 @@ export async function POST(req: NextRequest) {
 
     const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1)
     if (!order) return apiError('Order not found', 404)
-    if (order.userId !== user.id) return apiError('Forbidden', 403)
+    if (order.userId !== auth.user.sub) return apiError('Forbidden', 403)
 
     const secretKey = process.env.PAYSTACK_SECRET_KEY
     if (!secretKey || secretKey.startsWith('sk_test_replace')) {
@@ -37,13 +38,13 @@ export async function POST(req: NextRequest) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        email: user.email,
+        email: auth.user.email,
         amount: amountKobo,
         reference,
         callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/payments/paystack/verify?reference=${reference}&orderId=${orderId}`,
         metadata: {
           orderId,
-          userId: user.id,
+          userId: auth.user.sub,
           custom_fields: [
             { display_name: 'Order Reference', variable_name: 'order_ref', value: reference },
           ],

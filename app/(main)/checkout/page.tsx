@@ -44,10 +44,10 @@ const PAYMENT_METHODS = [
 ]
 
 const CRYPTO_ADDRESSES: Record<string, string> = {
-  bitcoin:    'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
-  ethereum:   '0x742d35Cc6634C0532925a3b8D4C9A3e5b4C6F9f2',
-  usdt_trc20: 'TJYeasTPa6gpFPTgJN3DH3tfu9GzKW3xPQ',
-  usdt_erc20: '0x742d35Cc6634C0532925a3b8D4C9A3e5b4C6F9f2',
+  bitcoin:    process.env.NEXT_PUBLIC_BTC_ADDRESS ?? '',
+  ethereum:   process.env.NEXT_PUBLIC_ETH_ADDRESS ?? '',
+  usdt_trc20: process.env.NEXT_PUBLIC_USDT_TRC20_ADDRESS ?? '',
+  usdt_erc20: process.env.NEXT_PUBLIC_USDT_ERC20_ADDRESS ?? '',
 }
 
 const CRYPTO_LABELS: Record<string, string> = {
@@ -87,6 +87,7 @@ export default function CheckoutPage() {
   const selectedPayment = watch('paymentMethod')
   const watchedState = watch('state')
   const isCrypto = ['bitcoin', 'ethereum', 'usdt_trc20', 'usdt_erc20'].includes(selectedPayment)
+  const step = selectedPayment ? 'payment' : 'address'
 
   // Auto-select shipping rate when state changes
   useEffect(() => {
@@ -99,10 +100,13 @@ export default function CheckoutPage() {
   const shippingCost = selectedRate ? Number(selectedRate.price) : 0
   const orderTotal = total + shippingCost
 
-  if (items.length === 0 && !createdOrderId) {
-    router.replace('/cart')
-    return null
-  }
+  useEffect(() => {
+    if (items.length === 0 && !createdOrderId) {
+      router.replace('/cart')
+    }
+  }, [items.length, createdOrderId, router])
+
+  if (items.length === 0 && !createdOrderId) return null
 
   const onSubmit = async (data: FormValues) => {
     try {

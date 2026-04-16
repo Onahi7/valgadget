@@ -118,7 +118,7 @@ export const orderService = {
 
   /** [Admin] All orders with filters */
   getAll: (params?: OrderFilters) =>
-    api.get<OrdersResponse>('/admin/orders', params),
+    api.get<OrdersResponse>('/admin/orders', params as Record<string, string | number | boolean | undefined | null>),
 
   /** [Admin] Single order */
   getById: (id: string) =>
@@ -152,5 +152,5 @@ export const orderService = {
 
   /** [Admin] Export orders as CSV */
   exportCsv: (params?: OrderFilters) =>
-    api.get<Blob>('/admin/orders/export', params),
+    api.get<Blob>('/admin/orders/export', params as Record<string, string | number | boolean | undefined | null>),
 }

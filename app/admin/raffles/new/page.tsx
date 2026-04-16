@@ -45,7 +45,7 @@ export default function NewRafflePage() {
       image: form.image.trim() || undefined,
     })
     setSaving(false)
-    if (res.success) {
+    if (res) {
       toast.success(`Raffle "${title}" created`)
       router.push('/admin/raffles')
     } else {

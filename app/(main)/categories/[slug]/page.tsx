@@ -17,12 +17,12 @@ export default function CategoryPage({ params }: { params: Promise<{ slug: strin
 
   useEffect(() => {
     Promise.all([
-      categoryService.getBySlug(slug),
-      productService.getAll({ category: slug, limit: 50 }),
-    ]).then(([catRes, prodRes]) => {
-      if (!catRes.success || !catRes.data) { setNotFound(true); return }
-      setCategory(catRes.data)
-      if (prodRes.success && prodRes.data) setProducts(prodRes.data.data)
+      categoryService.getBySlug(slug).catch(() => null),
+      productService.getAll({ category: slug, limit: 50 }).catch(() => []),
+    ]).then(([cat, prods]) => {
+      if (!cat) { setNotFound(true); return }
+      setCategory(cat)
+      if (Array.isArray(prods)) setProducts(prods)
     }).finally(() => setLoading(false))
   }, [slug])
 

@@ -1,11 +1,9 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { Providers } from '@/components/providers'
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <Providers>
-      <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-background">
         <header className="px-6 py-4">
           <Link href="/" className="inline-flex items-center">
             <Image src="/logo.png" alt="Val Gadgets" width={110} height={44} className="h-10 w-auto object-contain" priority />
@@ -18,6 +16,5 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           &copy; {new Date().getFullYear()} Val Gadgets. All rights reserved.
         </footer>
       </div>
-    </Providers>
   )
 }

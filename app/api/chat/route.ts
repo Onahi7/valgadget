@@ -17,10 +17,10 @@ export async function POST(req: NextRequest) {
 
     // Optionally get logged-in user
     let userId: string | undefined
-    try {
-      const user = await requireAuth(req)
-      userId = user.id
-    } catch { /* guest */ }
+    const authResult = await requireAuth(req)
+    if (!('status' in authResult)) {
+      userId = authResult.user.sub
+    }
 
     if (!userId && !guestEmail) return apiError('guestEmail required for guest chat', 400)
 
@@ -42,8 +42,9 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
-    const user = await requireAuth(req)
-    if (user.role !== 'admin') return apiError('Forbidden', 403)
+    const auth = await requireAuth(req)
+    if ('status' in auth) return auth
+    if (auth.user.role !== 'admin') return apiError('Forbidden', 403)
 
     const sessions = await db
       .select()
