@@ -38,7 +38,7 @@ export async function PATCH(
     if (id === auth.user.sub && role && role !== 'admin')
       return apiError('You cannot change your own role.', 400)
 
-    const validRoles = ['user', 'admin', 'affiliate']
+    const validRoles = ['customer', 'admin', 'affiliate']
     if (role && !validRoles.includes(role)) return apiError('Invalid role.', 400)
 
     const [updated] = await db.update(users)

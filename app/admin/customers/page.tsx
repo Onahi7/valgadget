@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { getToken } from '@/lib/api-client'
+import { toast } from 'sonner'
 
 type Customer = {
   id: string; name: string; email: string; role: string;
@@ -49,7 +50,22 @@ export default function AdminCustomersPage() {
           <h1 className="text-xl font-bold">Customers</h1>
           <p className="text-sm text-muted-foreground">{customers.length} registered users</p>
         </div>
-        <Button className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90" size="sm">
+        <Button className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90" size="sm" onClick={async () => {
+          const email = prompt('Enter email address to invite:')
+          if (!email) return
+          try {
+            const res = await fetch('/api/admin/users/invite', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+              body: JSON.stringify({ email }),
+            })
+            const d = await res.json()
+            if (res.ok) toast.success(`Invitation sent to ${email}`)
+            else toast.error(d.error ?? 'Failed to invite user')
+          } catch {
+            toast.error('Failed to send invitation')
+          }
+        }}>
           <UserPlus className="w-4 h-4" /> Invite User
         </Button>
       </div>

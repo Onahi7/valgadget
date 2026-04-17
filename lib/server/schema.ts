@@ -143,13 +143,12 @@ export interface OrderItem {
 }
 
 export interface Address {
-  firstName: string
-  lastName: string
+  fullName: string
   line1: string
   line2?: string
   city: string
   state: string
-  zip: string
+  postalCode: string
   country: string
   phone?: string
 }
@@ -215,6 +214,14 @@ export const shippingRates = pgTable('shipping_rates', {
   estimatedDays: integer('estimated_days').notNull().default(3),
   isActive:    boolean('is_active').notNull().default(true),
   updatedAt:   timestamp('updated_at').notNull().defaultNow(),
+})
+
+// ─── Site Settings ─────────────────────────────────────────────────────────
+
+export const siteSettings = pgTable('site_settings', {
+  key:       varchar('key', { length: 100 }).primaryKey(),
+  value:     text('value').notNull().default(''),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
 })
 
 // ─── Relations ─────────────────────────────────────────────────────────────

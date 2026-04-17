@@ -14,6 +14,7 @@ import { toast } from 'sonner'
 
 const STATUS_COLORS: Record<string, string> = {
   pending:    'bg-amber-100 text-amber-700 border-amber-200',
+  confirmed:  'bg-emerald-100 text-emerald-700 border-emerald-200',
   processing: 'bg-blue-100 text-blue-700 border-blue-200',
   shipped:    'bg-indigo-100 text-indigo-700 border-indigo-200',
   delivered:  'bg-green-100 text-green-700 border-green-200',
@@ -23,6 +24,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 const TIMELINE: { status: OrderStatus; label: string; icon: typeof Clock }[] = [
   { status: 'pending',    label: 'Order Placed',   icon: Clock },
+  { status: 'confirmed',  label: 'Confirmed',      icon: CheckCircle2 },
   { status: 'processing', label: 'Processing',     icon: RefreshCcw },
   { status: 'shipped',    label: 'Shipped',        icon: Truck },
   { status: 'delivered',  label: 'Delivered',      icon: CheckCircle2 },
@@ -192,10 +194,10 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
           <div className="bg-card border border-border rounded-xl p-5">
             <h2 className="font-bold text-sm mb-4">Shipping Address</h2>
             <div className="text-sm text-muted-foreground space-y-0.5">
-              <p className="font-medium text-foreground">{[order.shippingAddress?.firstName, order.shippingAddress?.lastName].filter(Boolean).join(' ')}</p>
+              <p className="font-medium text-foreground">{order.shippingAddress?.fullName ?? '—'}</p>
               <p>{order.shippingAddress?.line1}</p>
               {order.shippingAddress?.line2 && <p>{order.shippingAddress.line2}</p>}
-              <p>{order.shippingAddress?.city}, {order.shippingAddress?.state} {order.shippingAddress?.zip}</p>
+              <p>{order.shippingAddress?.city}, {order.shippingAddress?.state} {order.shippingAddress?.postalCode}</p>
               <p>{order.shippingAddress?.country}</p>
               {order.shippingAddress?.phone && <p className="pt-1">{order.shippingAddress.phone}</p>}
             </div>

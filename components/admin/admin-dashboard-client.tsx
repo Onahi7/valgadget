@@ -7,31 +7,21 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { getToken } from '@/lib/api-client'
 
-type Stats = { users: number; orders: number; revenue: number; products: number; }
-type Order = { id: string; reference: string; total: number; status: string; createdAt: string; customerName?: string; itemCount?: number; }
+type Stats = { users: number; orders: number; revenue: number; products: number; pendingOrders: number; confirmedOrders: number; lowStock: number; affiliates: number; }
+type Order = { id: string; reference: string; total: number; status: string; paymentStatus: string; createdAt: string; shippingAddress?: { fullName?: string }; items?: unknown[]; }
 type Product = { id: string; name: string; price: number; reviewCount: number; images: string[] }
-
-const MONTHLY = [
-  { month: 'Jul', revenue: 5200 },
-  { month: 'Aug', revenue: 7100 },
-  { month: 'Sep', revenue: 6400 },
-  { month: 'Oct', revenue: 8900 },
-  { month: 'Nov', revenue: 9200 },
-  { month: 'Dec', revenue: 11419 },
-]
 
 const STATUS_COLORS: Record<string, string> = {
   pending:    'bg-amber-100 text-amber-700 border-amber-200',
+  confirmed:  'bg-emerald-100 text-emerald-700 border-emerald-200',
   processing: 'bg-blue-100 text-blue-700 border-blue-200',
   shipped:    'bg-indigo-100 text-indigo-700 border-indigo-200',
   delivered:  'bg-green-100 text-green-700 border-green-200',
   cancelled:  'bg-red-100 text-red-700 border-red-200',
 }
 
-const maxRevenue = Math.max(...MONTHLY.map(m => m.revenue))
-
 export function AdminDashboardClient() {
-  const [stats, setStats]         = useState<Stats>({ users: 0, orders: 0, revenue: 0, products: 0 })
+  const [stats, setStats]         = useState<Stats>({ users: 0, orders: 0, revenue: 0, products: 0, pendingOrders: 0, confirmedOrders: 0, lowStock: 0, affiliates: 0 })
   const [recentOrders, setOrders] = useState<Order[]>([])
   const [topProducts, setTopProducts] = useState<Product[]>([])
 
@@ -42,6 +32,10 @@ export function AdminDashboardClient() {
         orders: d.data.orders?.total ?? 0,
         revenue: d.data.orders?.revenue ?? 0,
         products: d.data.products?.total ?? 0,
+        pendingOrders: d.data.orders?.pending ?? 0,
+        confirmedOrders: d.data.orders?.confirmed ?? 0,
+        lowStock: d.data.products?.lowStock ?? 0,
+        affiliates: d.data.users?.affiliates ?? 0,
       })
     })
     fetch('/api/admin/orders?limit=5&page=1', { headers: { Authorization: `Bearer ${getToken()}` } }).then(r => r.json()).then(d => {
@@ -53,51 +47,49 @@ export function AdminDashboardClient() {
   }, [])
 
   const STAT_CARDS = [
-    { label: 'Total Revenue', value: `₦${stats.revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
- delta: '+12.5%', positive: true, icon: DollarSign, color: 'bg-green-50 text-green-600 dark:bg-green-950' },
-    { label: 'Orders',        value: stats.orders.toLocaleString(),   delta: '+8.2%', positive: true, icon: ShoppingCart, color: 'bg-blue-50 text-blue-600 dark:bg-blue-950' },
-    { label: 'Customers',     value: stats.users.toLocaleString(),    delta: '+5.1%', positive: true, icon: Users,        color: 'bg-violet-50 text-violet-600 dark:bg-violet-950' },
-    { label: 'Products',      value: stats.products.toLocaleString(), delta: '+2',    positive: true, icon: ShoppingBag,  color: 'bg-amber-50 text-amber-600 dark:bg-amber-950' },
+    { label: 'Total Revenue', value: `₦${stats.revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, sub: `${stats.confirmedOrders} confirmed`, icon: DollarSign, color: 'bg-green-50 text-green-600 dark:bg-green-950' },
+    { label: 'Orders',        value: stats.orders.toLocaleString(),   sub: `${stats.pendingOrders} pending`, icon: ShoppingCart, color: 'bg-blue-50 text-blue-600 dark:bg-blue-950' },
+    { label: 'Customers',     value: stats.users.toLocaleString(),    sub: `${stats.affiliates} affiliates`, icon: Users,        color: 'bg-violet-50 text-violet-600 dark:bg-violet-950' },
+    { label: 'Products',      value: stats.products.toLocaleString(), sub: `${stats.lowStock} low stock`, icon: ShoppingBag,  color: 'bg-amber-50 text-amber-600 dark:bg-amber-950' },
   ]
 
   return (
     <div className="space-y-6 animate-page-reveal">
       {/* Stat cards */}
       <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        {STAT_CARDS.map(({ label, value, delta, positive, icon: Icon, color }) => (
+        {STAT_CARDS.map(({ label, value, sub, icon: Icon, color }) => (
           <div key={label} className="bg-card border border-border rounded-xl p-5">
             <div className="flex items-start justify-between mb-4">
               <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${color}`}>
                 <Icon className="w-5 h-5" />
               </div>
-              <div className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${positive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                <TrendingUp className="w-3 h-3" />
-                {delta}
-              </div>
             </div>
             <p className="text-2xl font-bold font-mono">{value}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{label} · <span className="text-foreground/70">{sub}</span></p>
           </div>
         ))}
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
-        {/* Revenue chart */}
+        {/* Order status breakdown */}
         <div className="lg:col-span-2 bg-card border border-border rounded-xl p-6">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="font-bold">Revenue Overview</h2>
-            <span className="text-xs text-muted-foreground">Last 6 months</span>
+            <h2 className="font-bold">Order Overview</h2>
+            <span className="text-xs text-muted-foreground">{stats.orders} total orders</span>
           </div>
-          <div className="flex items-end gap-3 h-44">
-            {MONTHLY.map(({ month, revenue }) => (
-              <div key={month} className="flex-1 flex flex-col items-center gap-2">
-                <span className="text-[10px] text-muted-foreground font-mono tabular-nums">₦{(revenue / 1000).toFixed(1)}k</span>
-                <div
-                  className="w-full rounded-t-md bg-primary/80 hover:bg-primary transition-colors cursor-default"
-                  style={{ height: `${(revenue / maxRevenue) * 100}%` }}
-                  title={`₦${revenue.toLocaleString()}`}
-                />
-                <span className="text-[10px] text-muted-foreground">{month}</span>
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+            {[
+              { label: 'Pending', count: stats.pendingOrders, color: 'bg-amber-500' },
+              { label: 'Confirmed', count: stats.confirmedOrders, color: 'bg-emerald-500' },
+              { label: 'Total', count: stats.orders, color: 'bg-primary' },
+              { label: 'Revenue', count: null, value: `₦${stats.revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, color: 'bg-green-500' },
+              { label: 'Low Stock', count: stats.lowStock, color: 'bg-red-500' },
+              { label: 'Affiliates', count: stats.affiliates, color: 'bg-violet-500' },
+            ].map(item => (
+              <div key={item.label} className="bg-muted/40 rounded-lg p-3 text-center">
+                <div className={`w-2 h-2 rounded-full ${item.color} mx-auto mb-2`} />
+                <p className="text-lg font-bold font-mono">{item.value ?? item.count ?? 0}</p>
+                <p className="text-[10px] text-muted-foreground">{item.label}</p>
               </div>
             ))}
           </div>
@@ -156,11 +148,11 @@ export function AdminDashboardClient() {
                       {order.reference}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground">{order.customerName ?? '—'}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{order.shippingAddress?.fullName ?? '—'}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
                       <Package className="w-3.5 h-3.5 text-muted-foreground" />
-                      <span>{order.itemCount ?? '—'}</span>
+                      <span>{order.items?.length ?? 0}</span>
                     </div>
                   </td>
                   <td className="px-4 py-3 font-bold">₦{Number(order.total).toLocaleString()}</td>

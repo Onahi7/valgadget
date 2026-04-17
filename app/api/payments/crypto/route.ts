@@ -21,6 +21,8 @@ export async function POST(req: NextRequest) {
     const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1)
     if (!order) return apiError('Order not found', 404)
     if (order.userId !== auth.user.sub) return apiError('Forbidden', 403)
+    if (order.paymentStatus === 'paid') return apiError('Order already paid', 400)
+    if (order.paymentStatus === 'pending_verification') return apiError('Transaction hash already submitted. Awaiting verification.', 400)
 
     const validCoins = ['btc', 'eth', 'usdt_erc20', 'usdt_trc20']
     if (!validCoins.includes(coin.toLowerCase())) return apiError('Invalid coin', 400)
@@ -30,7 +32,7 @@ export async function POST(req: NextRequest) {
         paymentMethod: `crypto_${coin.toLowerCase()}`,
         paymentStatus: 'pending_verification',
         paymentRef: txHash,
-        notes: `Crypto TX Hash: ${txHash}`,
+        notes: order.notes ? `${order.notes}\nCrypto TX Hash: ${txHash}` : `Crypto TX Hash: ${txHash}`,
         updatedAt: new Date(),
       })
       .where(eq(orders.id, orderId))

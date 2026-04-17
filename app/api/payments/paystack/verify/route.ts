@@ -1,11 +1,39 @@
 /**
  * GET /api/payments/paystack/verify?reference=xxx&orderId=xxx
  * Called by Paystack redirect after payment. Verifies transaction and redirects user.
+ * Uses idempotent confirmPayment — safe if webhook already processed.
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/server/db'
-import { orders } from '@/lib/server/schema'
-import { eq } from 'drizzle-orm'
+import { orders, users } from '@/lib/server/schema'
+import { sendOrderConfirmationEmail } from '@/lib/server/email'
+import { eq, and, sql } from 'drizzle-orm'
+
+async function confirmPayment(reference: string): Promise<{ ok: boolean; alreadyPaid: boolean }> {
+  // Atomic: only updates if paymentStatus is NOT 'paid' — prevents race with webhook
+  const [updated] = await db.update(orders)
+    .set({ paymentStatus: 'paid', status: 'confirmed', paymentRef: reference, updatedAt: new Date() })
+    .where(and(eq(orders.reference, reference), sql`${orders.paymentStatus} != 'paid'`))
+    .returning({ id: orders.id, userId: orders.userId, reference: orders.reference, total: orders.total })
+
+  if (!updated) {
+    const [exists] = await db.select({ id: orders.id })
+      .from(orders).where(eq(orders.reference, reference)).limit(1)
+    return { ok: !!exists, alreadyPaid: !!exists }
+  }
+
+  // Send confirmation email on first payment
+  if (updated.userId) {
+    const [user] = await db.select({ email: users.email, name: users.name })
+      .from(users).where(eq(users.id, updated.userId)).limit(1)
+    if (user) {
+      sendOrderConfirmationEmail(user.email, user.name, updated.reference, `₦${Number(updated.total).toLocaleString()}`)
+        .catch(err => console.error('[verify email]', err))
+    }
+  }
+
+  return { ok: true, alreadyPaid: false }
+}
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -30,10 +58,8 @@ export async function GET(req: NextRequest) {
     const data = await verifyRes.json() as { status: boolean; data: { status: string; reference: string } }
 
     if (data.status && data.data.status === 'success') {
-      // Payment confirmed — update order
-      await db.update(orders)
-        .set({ paymentStatus: 'paid', status: 'confirmed', paymentRef: reference, updatedAt: new Date() })
-        .where(eq(orders.reference, reference))
+      // Idempotent — safe even if webhook already marked as paid
+      await confirmPayment(reference)
 
       const id = orderId ?? ''
       return NextResponse.redirect(`${appUrl}/account/orders/${id}?paid=1`)

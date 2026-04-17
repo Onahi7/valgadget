@@ -43,30 +43,19 @@ export default function AdminAffiliatePage() {
     { affiliates: 0, totalClicks: 0, totalEarnings: 0, pending: 0 }
   )
 
-  useEffect(() => {
-    fetch('/api/admin/users?role=affiliate&limit=100', {
+  const loadAffiliates = () => {
+    setLoading(true)
+    fetch('/api/admin/affiliates?limit=100', {
       headers: { Authorization: `Bearer ${getToken()}` },
     })
       .then(r => r.json())
       .then(d => {
-        if (d.data?.data) {
-          setAffiliates(
-            d.data.data.map((u: { id: string; name: string; email: string; affiliateCode: string; createdAt: string }) => ({
-              id: u.id,
-              name: u.name,
-              email: u.email,
-              affiliateCode: u.affiliateCode ?? '—',
-              totalClicks: 0,
-              totalEarnings: 0,
-              pendingEarnings: 0,
-              paidEarnings: 0,
-              createdAt: u.createdAt,
-            }))
-          )
-        }
+        if (d.data?.data) setAffiliates(d.data.data)
       })
       .finally(() => setLoading(false))
-  }, [])
+  }
+
+  useEffect(() => { loadAffiliates() }, [])
 
   const copyCode = (code: string) => {
     navigator.clipboard.writeText(`${window.location.origin}/shop?ref=${code}`)
@@ -76,8 +65,21 @@ export default function AdminAffiliatePage() {
   }
 
   const markAsPaid = async (affiliateId: string) => {
-    // Update role/affiliate status — implementation depends on backend
-    toast.success('Marked as paid.')
+    try {
+      const res = await fetch(`/api/admin/affiliates/${affiliateId}/payout`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${getToken()}` },
+      })
+      const d = await res.json()
+      if (res.ok) {
+        toast.success(`Paid ₦${d.data?.paid?.toLocaleString() ?? ''} to affiliate.`)
+        loadAffiliates()
+      } else {
+        toast.error(d.error ?? 'Failed to process payout.')
+      }
+    } catch {
+      toast.error('Failed to process payout.')
+    }
   }
 
   const filtered = affiliates.filter(a =>

@@ -2,11 +2,9 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
 import { orders, products } from '@/lib/server/schema'
 import { requireAuth, apiOk, apiError, generateReference } from '@/lib/server/auth-helpers'
-import { sendOrderConfirmationEmail } from '@/lib/server/email'
 import { eq, desc, and, sql } from 'drizzle-orm'
 import type { OrderItem, Address } from '@/lib/server/schema'
-import { db as mainDb } from '@/lib/server/db'
-import { users } from '@/lib/server/schema'
+import { NeonDbError } from '@neondatabase/serverless'
 
 export async function GET(req: NextRequest) {
   const auth = await requireAuth(req)
@@ -66,15 +64,15 @@ export async function POST(req: NextRequest) {
     for (const lineItem of items) {
       const p = found.find(f => f.id === lineItem.productId)
       if (!p) return apiError(`Product ${lineItem.productId} not found.`, 422)
-      if (p.stock < lineItem.qty) return apiError(`Insufficient stock for ${p.name}.`, 422)
+      if (p.stock < lineItem.qty) return apiError(`Insufficient stock for ${p.name}. Only ${p.stock} left.`, 422)
 
       const unitPrice = Number(p.price)
       orderItems.push({ productId: p.id, name: p.name, sku: p.sku, price: unitPrice, qty: lineItem.qty, image: (p.images as string[])[0] })
       subtotal += unitPrice * lineItem.qty
     }
 
-    const shipping = subtotal >= 99 ? 0 : 9.99
-    const tax      = subtotal * 0.08
+    const shipping = subtotal >= 50000 ? 0 : 2500  // Free shipping over ₦50,000; ₦2,500 flat rate
+    const tax      = 0  // No VAT added (prices are tax-inclusive)
     const total    = subtotal + shipping + tax
 
     const reference = generateReference()
@@ -90,10 +88,24 @@ export async function POST(req: NextRequest) {
       couponCode, affiliateCode, shippingAddress, notes,
     }).returning()
 
-    // Send confirmation email (fire-and-forget)
-    const [user] = await mainDb.select({ email: users.email, name: users.name }).from(users).where(eq(users.id, auth.user.sub)).limit(1)
-    if (user) {
-      sendOrderConfirmationEmail(user.email, user.name, reference, `$${total.toFixed(2)}`).catch(console.error)
+    // Atomic stock deduction — only succeeds if stock >= qty (prevents overselling)
+    for (const item of orderItems) {
+      const [updated] = await db.update(products)
+        .set({ stock: sql`${products.stock} - ${item.qty}`, updatedAt: new Date() })
+        .where(and(eq(products.id, item.productId), sql`${products.stock} >= ${item.qty}`))
+        .returning({ id: products.id })
+
+      if (!updated) {
+        // Stock ran out between check and deduction — cancel this order and restore any already-deducted stock
+        for (const prev of orderItems) {
+          if (prev.productId === item.productId) break
+          await db.update(products)
+            .set({ stock: sql`${products.stock} + ${prev.qty}`, updatedAt: new Date() })
+            .where(eq(products.id, prev.productId))
+        }
+        await db.update(orders).set({ status: 'cancelled', notes: 'Auto-cancelled: stock depleted during checkout' }).where(eq(orders.id, order.id))
+        return apiError(`Insufficient stock for ${item.name}. Order cancelled.`, 409)
+      }
     }
 
     return apiOk(numericOrder(order), 201)

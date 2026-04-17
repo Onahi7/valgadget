@@ -12,6 +12,7 @@ import { getToken } from '@/lib/api-client'
 
 const STATUS_COLORS: Record<string, string> = {
   pending:    'bg-amber-100 text-amber-700 border-amber-200',
+  confirmed:  'bg-emerald-100 text-emerald-700 border-emerald-200',
   processing: 'bg-blue-100 text-blue-700 border-blue-200',
   shipped:    'bg-indigo-100 text-indigo-700 border-indigo-200',
   delivered:  'bg-green-100 text-green-700 border-green-200',
@@ -20,18 +21,20 @@ const STATUS_COLORS: Record<string, string> = {
 }
 
 const PAYMENT_COLORS: Record<string, string> = {
-  paid:     'bg-green-100 text-green-700 border-green-200',
-  pending:  'bg-amber-100 text-amber-700 border-amber-200',
-  failed:   'bg-red-100 text-red-700 border-red-200',
-  refunded: 'bg-gray-100 text-gray-700 border-gray-200',
+  paid:                 'bg-green-100 text-green-700 border-green-200',
+  pending:              'bg-amber-100 text-amber-700 border-amber-200',
+  unpaid:               'bg-gray-100 text-gray-600 border-gray-200',
+  pending_verification: 'bg-blue-100 text-blue-700 border-blue-200',
+  failed:               'bg-red-100 text-red-700 border-red-200',
+  refunded:             'bg-gray-100 text-gray-700 border-gray-200',
 }
 
-const STATUS_OPTIONS = ['all', 'pending', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded']
+const STATUS_OPTIONS = ['all', 'pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded']
 
 type Order = {
   id: string; reference: string; total: number; status: string; paymentStatus: string;
   createdAt: string;
-  shippingAddress?: { firstName?: string; lastName?: string };
+  shippingAddress?: { fullName?: string };
   items?: unknown[];
 }
 
@@ -65,7 +68,12 @@ export default function AdminOrdersPage() {
           <h1 className="text-xl font-bold">Orders</h1>
           <p className="text-sm text-muted-foreground">{filtered.length} orders · ₦{revenue.toLocaleString()} revenue</p>
         </div>
-        <Button variant="outline" size="sm" className="gap-2">
+        <Button variant="outline" size="sm" className="gap-2" onClick={() => {
+          const params = new URLSearchParams()
+          if (statusFilter !== 'all') params.set('status', statusFilter)
+          if (search) params.set('search', search)
+          window.open(`/api/admin/orders/export?${params}`, '_blank')
+        }}>
           <Download className="w-4 h-4" /> Export CSV
         </Button>
       </div>
@@ -135,7 +143,7 @@ export default function AdminOrdersPage() {
                     </Link>
                   </td>
                   <td className="px-4 py-3">
-                    <p className="font-medium">{[order.shippingAddress?.firstName, order.shippingAddress?.lastName].filter(Boolean).join(' ') || '—'}</p>
+                    <p className="font-medium">{order.shippingAddress?.fullName || '—'}</p>
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">{order.items?.length ?? 0} item{(order.items?.length ?? 0) !== 1 ? 's' : ''}</td>
                   <td className="px-4 py-3 font-bold">₦{Number(order.total).toLocaleString()}</td>

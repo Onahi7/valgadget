@@ -177,7 +177,7 @@ export default function CheckoutPage() {
           <Bitcoin className="w-12 h-12 text-amber-500 mx-auto" />
           <div>
             <h2 className="text-2xl font-bold mb-1">Send {coinLabel}</h2>
-            <p className="text-muted-foreground text-sm">Order <span className="font-mono">{createdOrderRef}</span> · ${total.toLocaleString()}</p>
+            <p className="text-muted-foreground text-sm">Order <span className="font-mono">{createdOrderRef}</span> · ₦{total.toLocaleString()}</p>
           </div>
           <div className="bg-muted rounded-xl p-4 text-left space-y-2">
             <p className="text-xs text-muted-foreground uppercase font-semibold tracking-wide">Wallet Address</p>

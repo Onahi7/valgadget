@@ -3,12 +3,14 @@
 import { use, useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { ChevronLeft, Package, MapPin, CreditCard, Truck, Download, Printer } from 'lucide-react'
+import { ChevronLeft, Package, MapPin, CreditCard, Truck, Download, Printer, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { ProtectedRoute } from '@/components/auth/protected-route'
 import { orderService, type Order } from '@/lib/services/order.service'
+import { getToken } from '@/lib/api-client'
+import { toast } from 'sonner'
 
 const STATUS_COLORS: Record<string, string> = {
   pending: 'bg-amber-100 text-amber-700 border-amber-200',
@@ -25,6 +27,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   const { id } = use(params)
   const [order, setOrder] = useState<Order | null>(null)
   const [loading, setLoading] = useState(true)
+  const [requerying, setRequerying] = useState(false)
 
   useEffect(() => {
     orderService.getMyOrderById(id)
@@ -150,6 +153,40 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
             <div className="text-sm text-muted-foreground space-y-1">
               <p>Method: <span className="text-foreground font-medium capitalize">{order.paymentMethod.replace('_', ' ')}</span></p>
               <p>Status: <Badge className={`text-xs border font-medium capitalize ml-1 ${order.paymentStatus === 'paid' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-amber-100 text-amber-700 border-amber-200'}`}>{order.paymentStatus}</Badge></p>
+            {order.paymentMethod === 'paystack' && order.paymentStatus !== 'paid' && order.status !== 'cancelled' && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-2 gap-1.5"
+                disabled={requerying}
+                onClick={async () => {
+                  setRequerying(true)
+                  try {
+                    const res = await fetch('/api/payments/paystack/requery', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+                      body: JSON.stringify({ orderId: order.id }),
+                    })
+                    const json = await res.json()
+                    if (res.ok && json.paymentStatus === 'paid') {
+                      toast.success(json.message ?? 'Payment confirmed!')
+                      // Refresh order data
+                      const updated = await orderService.getMyOrderById(id)
+                      setOrder(updated)
+                    } else {
+                      toast.info(json.message ?? 'Payment not yet completed. Please try again shortly.')
+                    }
+                  } catch {
+                    toast.error('Failed to verify payment. Please try again.')
+                  } finally {
+                    setRequerying(false)
+                  }
+                }}
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${requerying ? 'animate-spin' : ''}`} />
+                {requerying ? 'Verifying…' : 'Verify Payment'}
+              </Button>
+            )}
             </div>
           </div>
         </div>

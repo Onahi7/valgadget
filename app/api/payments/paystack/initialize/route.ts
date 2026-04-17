@@ -22,9 +22,11 @@ export async function POST(req: NextRequest) {
     const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1)
     if (!order) return apiError('Order not found', 404)
     if (order.userId !== auth.user.sub) return apiError('Forbidden', 403)
+    if (order.paymentStatus === 'paid') return apiError('Order already paid', 400)
+    if (order.paymentStatus === 'pending') return apiError('Payment already initialized. Please complete the existing payment.', 400)
 
     const secretKey = process.env.PAYSTACK_SECRET_KEY
-    if (!secretKey || secretKey.startsWith('sk_test_replace')) {
+    if (!secretKey || secretKey.includes('replace') || secretKey.includes('placeholder')) {
       return apiError('Paystack is not configured. Set PAYSTACK_SECRET_KEY in env.', 503)
     }
 

@@ -1,8 +1,9 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
-import { orders } from '@/lib/server/schema'
+import { orders, products } from '@/lib/server/schema'
 import { requireAuth, apiOk, apiError } from '@/lib/server/auth-helpers'
-import { eq, and } from 'drizzle-orm'
+import { eq, and, sql } from 'drizzle-orm'
+import type { OrderItem } from '@/lib/server/schema'
 
 export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await requireAuth(req)
@@ -36,6 +37,25 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
   try {
     const body = await req.json()
     const { status, paymentStatus, paymentRef } = body
+
+    const validStatuses = ['pending', 'processing', 'confirmed', 'shipped', 'delivered', 'cancelled', 'refunded']
+    const validPaymentStatuses = ['unpaid', 'pending', 'pending_verification', 'paid', 'failed', 'refunded']
+    if (status && !validStatuses.includes(status)) return apiError('Invalid status value', 400)
+    if (paymentStatus && !validPaymentStatuses.includes(paymentStatus)) return apiError('Invalid paymentStatus value', 400)
+
+    // If cancelling, restore stock first (idempotent — skip if already cancelled)
+    if (status === 'cancelled') {
+      const [order] = await db.select({ items: orders.items, status: orders.status })
+        .from(orders).where(eq(orders.id, id)).limit(1)
+      if (order && order.status !== 'cancelled') {
+        const items = (order.items ?? []) as OrderItem[]
+        for (const item of items) {
+          await db.update(products)
+            .set({ stock: sql`${products.stock} + ${item.qty}`, updatedAt: new Date() })
+            .where(eq(products.id, item.productId))
+        }
+      }
+    }
 
     const [updated] = await db.update(orders)
       .set({ status, paymentStatus, paymentRef, updatedAt: new Date() })

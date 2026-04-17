@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Save, Store, Truck, CreditCard, Mail, Globe, Bell } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { Separator } from '@/components/ui/separator'
+import { getToken } from '@/lib/api-client'
 import { toast } from 'sonner'
 
 const TABS = [
@@ -19,37 +20,46 @@ const TABS = [
   { id: 'notifications', label: 'Notifications', Icon: Bell },
 ]
 
+type S = Record<string, string>
+
 export default function AdminSettingsPage() {
   const [activeTab, setActiveTab] = useState('store')
   const [saving, setSaving] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [s, setS] = useState<S>({})
 
-  // Store settings state
-  const [storeName, setStoreName] = useState('Val Gadgets')
-  const [storeEmail, setStoreEmail] = useState('support@valgadgets.com')
-  const [storePhone, setStorePhone] = useState('+234 703 857 2046')
-  const [storeAddress, setStoreAddress] = useState('')
-  const [storeDescription, setStoreDescription] = useState(
-    'Your number 1 gadget plug. Solution to every gadget need — with nationwide delivery across Nigeria.'
-  )
-  const [maintenanceMode, setMaintenanceMode] = useState(false)
+  // Load settings from backend
+  useEffect(() => {
+    fetch('/api/admin/settings', { headers: { Authorization: `Bearer ${getToken()}` } })
+      .then(r => r.json())
+      .then(d => { if (d.data) setS(d.data) })
+      .finally(() => setLoading(false))
+  }, [])
 
-  // Email settings
-  const [orderConfirmEmail, setOrderConfirmEmail] = useState(true)
-  const [shippingUpdateEmail, setShippingUpdateEmail] = useState(true)
-  const [promoEmail, setPromoEmail] = useState(false)
+  const set = (key: string, value: string | boolean) =>
+    setS(prev => ({ ...prev, [key]: String(value) }))
 
-  // Notification settings
-  const [newOrderAlert, setNewOrderAlert] = useState(true)
-  const [lowStockAlert, setLowStockAlert] = useState(true)
-  const [lowStockThreshold, setLowStockThreshold] = useState('5')
+  const get = (key: string, fallback: string = '') => s[key] ?? fallback
+  const getBool = (key: string, fallback: boolean = true) => s[key] === 'true' || (s[key] === undefined && fallback)
 
   const handleSave = async () => {
     setSaving(true)
-    // Settings are stored here — in a real app POST to /api/admin/settings
-    await new Promise(r => setTimeout(r, 600))
-    setSaving(false)
-    toast.success('Settings saved successfully.')
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+        body: JSON.stringify({ settings: s }),
+      })
+      if (res.ok) toast.success('Settings saved successfully.')
+      else toast.error('Failed to save settings.')
+    } catch {
+      toast.error('Failed to save settings.')
+    } finally {
+      setSaving(false)
+    }
   }
+
+  if (loading) return <div className="p-6 text-center text-muted-foreground text-sm">Loading settings…</div>
 
   return (
     <div className="p-6 max-w-4xl">
@@ -86,24 +96,24 @@ export default function AdminSettingsPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label>Store Name</Label>
-                    <Input value={storeName} onChange={e => setStoreName(e.target.value)} />
+                    <Input value={get('storeName', 'Val Gadgets')} onChange={e => set('storeName', e.target.value)} />
                   </div>
                   <div className="space-y-1.5">
                     <Label>Support Email</Label>
-                    <Input type="email" value={storeEmail} onChange={e => setStoreEmail(e.target.value)} />
+                    <Input type="email" value={get('storeEmail', 'support@valgadgets.com')} onChange={e => set('storeEmail', e.target.value)} />
                   </div>
                   <div className="space-y-1.5">
                     <Label>Phone Number</Label>
-                    <Input value={storePhone} onChange={e => setStorePhone(e.target.value)} />
+                    <Input value={get('storePhone', '+234 703 857 2046')} onChange={e => set('storePhone', e.target.value)} />
                   </div>
                   <div className="space-y-1.5">
                     <Label>Store Address</Label>
-                    <Input value={storeAddress} onChange={e => setStoreAddress(e.target.value)} placeholder="Lagos, Nigeria" />
+                    <Input value={get('storeAddress')} onChange={e => set('storeAddress', e.target.value)} placeholder="Lagos, Nigeria" />
                   </div>
                 </div>
                 <div className="space-y-1.5 mt-4">
                   <Label>Store Description</Label>
-                  <Textarea rows={3} value={storeDescription} onChange={e => setStoreDescription(e.target.value)} />
+                  <Textarea rows={3} value={get('storeDescription', 'Your number 1 gadget plug. Solution to every gadget need — with nationwide delivery across Nigeria.')} onChange={e => set('storeDescription', e.target.value)} />
                 </div>
               </div>
               <Separator />
@@ -112,7 +122,7 @@ export default function AdminSettingsPage() {
                   <p className="font-medium text-sm">Maintenance Mode</p>
                   <p className="text-xs text-muted-foreground">Show a maintenance page to all visitors.</p>
                 </div>
-                <Switch checked={maintenanceMode} onCheckedChange={setMaintenanceMode} />
+                <Switch checked={getBool('maintenanceMode', false)} onCheckedChange={v => set('maintenanceMode', v)} />
               </div>
             </>
           )}
@@ -132,7 +142,7 @@ export default function AdminSettingsPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm">₦</span>
-                    <Input className="w-28 text-right" defaultValue="50000" />
+                    <Input className="w-28 text-right" value={get('freeShippingThreshold', '50000')} onChange={e => set('freeShippingThreshold', e.target.value)} />
                   </div>
                 </div>
                 <div className="flex items-center justify-between p-4 border border-border rounded-lg">
@@ -140,7 +150,7 @@ export default function AdminSettingsPage() {
                     <p className="font-medium text-sm">Cash on Delivery</p>
                     <p className="text-xs text-muted-foreground">Allow customers to pay on delivery.</p>
                   </div>
-                  <Switch defaultChecked />
+                  <Switch checked={getBool('codEnabled', true)} onCheckedChange={v => set('codEnabled', v)} />
                 </div>
               </div>
             </div>
@@ -151,16 +161,16 @@ export default function AdminSettingsPage() {
               <h2 className="text-base font-semibold mb-4">Payment Methods</h2>
               <div className="space-y-3">
                 {[
-                  { label: 'Paystack (Cards, Bank Transfer, USSD)', enabled: true },
-                  { label: 'Bitcoin (BTC)', enabled: true },
-                  { label: 'Ethereum (ETH)', enabled: true },
-                  { label: 'USDT TRC-20', enabled: true },
-                  { label: 'USDT ERC-20', enabled: true },
-                  { label: 'Cash on Delivery', enabled: true },
+                  { key: 'paystackEnabled', label: 'Paystack (Cards, Bank Transfer, USSD)' },
+                  { key: 'btcEnabled', label: 'Bitcoin (BTC)' },
+                  { key: 'ethEnabled', label: 'Ethereum (ETH)' },
+                  { key: 'usdtTrc20Enabled', label: 'USDT TRC-20' },
+                  { key: 'usdtErc20Enabled', label: 'USDT ERC-20' },
+                  { key: 'codEnabled', label: 'Cash on Delivery' },
                 ].map(m => (
-                  <div key={m.label} className="flex items-center justify-between p-4 border border-border rounded-lg">
+                  <div key={m.key} className="flex items-center justify-between p-4 border border-border rounded-lg">
                     <p className="text-sm font-medium">{m.label}</p>
-                    <Switch defaultChecked={m.enabled} />
+                    <Switch checked={getBool(m.key, true)} onCheckedChange={v => set(m.key, v)} />
                   </div>
                 ))}
               </div>
@@ -179,21 +189,21 @@ export default function AdminSettingsPage() {
                     <p className="text-sm font-medium">Order Confirmation</p>
                     <p className="text-xs text-muted-foreground">Send email when order is placed.</p>
                   </div>
-                  <Switch checked={orderConfirmEmail} onCheckedChange={setOrderConfirmEmail} />
+                  <Switch checked={getBool('emailOrderConfirm', true)} onCheckedChange={v => set('emailOrderConfirm', v)} />
                 </div>
                 <div className="flex items-center justify-between p-4 border border-border rounded-lg">
                   <div>
                     <p className="text-sm font-medium">Shipping Updates</p>
                     <p className="text-xs text-muted-foreground">Notify customer when order ships.</p>
                   </div>
-                  <Switch checked={shippingUpdateEmail} onCheckedChange={setShippingUpdateEmail} />
+                  <Switch checked={getBool('emailShippingUpdate', true)} onCheckedChange={v => set('emailShippingUpdate', v)} />
                 </div>
                 <div className="flex items-center justify-between p-4 border border-border rounded-lg">
                   <div>
                     <p className="text-sm font-medium">Promotional Emails</p>
                     <p className="text-xs text-muted-foreground">Send marketing and promotional emails.</p>
                   </div>
-                  <Switch checked={promoEmail} onCheckedChange={setPromoEmail} />
+                  <Switch checked={getBool('emailPromo', false)} onCheckedChange={v => set('emailPromo', v)} />
                 </div>
               </div>
             </div>
@@ -205,15 +215,15 @@ export default function AdminSettingsPage() {
               <div className="space-y-4">
                 <div className="space-y-1.5">
                   <Label>Meta Title</Label>
-                  <Input defaultValue="Val Gadgets — Your #1 Gadget Plug in Nigeria" />
+                  <Input value={get('seoTitle', 'Val Gadgets — Your #1 Gadget Plug in Nigeria')} onChange={e => set('seoTitle', e.target.value)} />
                 </div>
                 <div className="space-y-1.5">
                   <Label>Meta Description</Label>
-                  <Textarea rows={2} defaultValue="Your number 1 gadget plug. Shop phones, laptops, power banks, solar inverters & accessories. Nationwide delivery." />
+                  <Textarea rows={2} value={get('seoDescription', 'Your number 1 gadget plug. Shop phones, laptops, power banks, solar inverters & accessories. Nationwide delivery.')} onChange={e => set('seoDescription', e.target.value)} />
                 </div>
                 <div className="space-y-1.5">
                   <Label>Keywords (comma-separated)</Label>
-                  <Textarea rows={2} defaultValue="gadgets Nigeria, buy phones Nigeria, laptops Nigeria, power bank Nigeria, solar inverter Nigeria" />
+                  <Textarea rows={2} value={get('seoKeywords', 'gadgets Nigeria, buy phones Nigeria, laptops Nigeria, power bank Nigeria, solar inverter Nigeria')} onChange={e => set('seoKeywords', e.target.value)} />
                 </div>
               </div>
             </div>
@@ -228,24 +238,24 @@ export default function AdminSettingsPage() {
                     <p className="text-sm font-medium">New Order Alert</p>
                     <p className="text-xs text-muted-foreground">Get notified when a new order is placed.</p>
                   </div>
-                  <Switch checked={newOrderAlert} onCheckedChange={setNewOrderAlert} />
+                  <Switch checked={getBool('alertNewOrder', true)} onCheckedChange={v => set('alertNewOrder', v)} />
                 </div>
                 <div className="flex items-center justify-between p-4 border border-border rounded-lg">
                   <div>
                     <p className="text-sm font-medium">Low Stock Alert</p>
                     <p className="text-xs text-muted-foreground">Alert when product stock falls below threshold.</p>
                   </div>
-                  <Switch checked={lowStockAlert} onCheckedChange={setLowStockAlert} />
+                  <Switch checked={getBool('alertLowStock', true)} onCheckedChange={v => set('alertLowStock', v)} />
                 </div>
-                {lowStockAlert && (
+                {getBool('alertLowStock', true) && (
                   <div className="flex items-center gap-3 p-4 border border-border rounded-lg">
                     <p className="text-sm font-medium flex-1">Low Stock Threshold</p>
                     <Input
                       className="w-24 text-right"
                       type="number"
                       min={1}
-                      value={lowStockThreshold}
-                      onChange={e => setLowStockThreshold(e.target.value)}
+                      value={get('lowStockThreshold', '5')}
+                      onChange={e => set('lowStockThreshold', e.target.value)}
                     />
                     <span className="text-sm text-muted-foreground">units</span>
                   </div>

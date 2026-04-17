@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
 import { raffles, raffleEntries } from '@/lib/server/schema'
 import { requireAuth, apiOk, apiError } from '@/lib/server/auth-helpers'
-import { eq } from 'drizzle-orm'
+import { eq, sql, and } from 'drizzle-orm'
 
 export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params
@@ -49,11 +49,19 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const available = raffle.maxTickets - raffle.soldTickets
     if (ticketCount > available) return apiError(`Only ${available} tickets remaining.`)
 
+    // Atomic soldTickets increment — only succeeds if enough tickets remain
+    const [updated] = await db.update(raffles)
+      .set({ soldTickets: sql`${raffles.soldTickets} + ${ticketCount}`, updatedAt: new Date() })
+      .where(and(eq(raffles.id, id), sql`${raffles.soldTickets} + ${ticketCount} <= ${raffles.maxTickets}`))
+      .returning({ id: raffles.id, soldTickets: raffles.soldTickets })
+
+    if (!updated) return apiError('Not enough tickets remaining. Please try again.', 409)
+
     const ticketPrice = Number(raffle.ticketPrice)
     const totalPaid   = ticketPrice * ticketCount
 
-    // Assign sequential ticket numbers
-    const start  = raffle.soldTickets + 1
+    // Assign sequential ticket numbers from the new soldTickets count
+    const start  = updated.soldTickets - ticketCount + 1
     const ticketNums = Array.from({ length: ticketCount }, (_, i) => start + i)
 
     const [entry] = await db.insert(raffleEntries).values({
@@ -63,9 +71,6 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       ticketNums,
       totalPaid: String(totalPaid.toFixed(2)),
     }).returning()
-
-    await db.update(raffles).set({ soldTickets: raffle.soldTickets + ticketCount, updatedAt: new Date() })
-      .where(eq(raffles.id, id))
 
     return apiOk({ ...entry, totalPaid: Number(entry.totalPaid) }, 201)
   } catch (err) {

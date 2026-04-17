@@ -4,13 +4,14 @@ import { api } from '@/lib/api-client'
 
 export type OrderStatus =
   | 'pending'
+  | 'confirmed'
   | 'processing'
   | 'shipped'
   | 'delivered'
   | 'cancelled'
   | 'refunded'
 
-export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded'
+export type PaymentStatus = 'unpaid' | 'pending' | 'pending_verification' | 'paid' | 'failed' | 'refunded'
 
 export interface Address {
   fullName: string
