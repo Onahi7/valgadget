@@ -5,7 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import {
   User, Package, Heart, LayoutDashboard, ChevronRight,
-  ShoppingBag, Star, Share2, Settings, Loader2, TrendingUp,
+  ShoppingBag, Star, Share2, Settings, Loader2, TrendingUp, MapPin,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -27,6 +27,7 @@ const STATUS_COLORS: Record<string, string> = {
 const QUICK_LINKS = [
   { href: '/account/profile',   icon: User,        label: 'My Profile',   desc: 'Update name, email & password' },
   { href: '/account/orders',    icon: Package,     label: 'My Orders',    desc: 'View & track all orders' },
+  { href: '/account/addresses', icon: MapPin,      label: 'Addresses',    desc: 'Manage delivery addresses' },
   { href: '/wishlist',          icon: Heart,       label: 'Wishlist',     desc: 'Your saved items' },
   { href: '/affiliate',         icon: Share2,      label: 'Affiliate',    desc: 'Earn by referring friends' },
 ]
@@ -94,7 +95,7 @@ export default function AccountDashboardPage() {
           <h2 className="font-bold text-base mb-3 flex items-center gap-2">
             <LayoutDashboard className="w-4 h-4 text-primary" /> Quick Access
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {QUICK_LINKS.map(({ href, icon: Icon, label, desc }) => (
               <Link key={href} href={href}
                 className="group flex items-center gap-4 bg-card border border-border rounded-2xl p-4 hover:border-primary/40 hover:bg-primary/5 transition-all"

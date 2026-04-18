@@ -5,16 +5,20 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import Link from 'next/link'
 import {
-  CreditCard, Truck, CheckCircle, Bitcoin, Wallet, Copy, Send, Loader2, MapPin,
+  CreditCard, Truck, CheckCircle, Bitcoin, Wallet, Copy, Send, Loader2, MapPin, Plus, BookmarkCheck, Mail,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
 import { CheckoutSummary } from '@/components/ecommerce/checkout-summary'
-import { ProtectedRoute } from '@/components/auth/protected-route'
+import { useAuth } from '@/contexts/auth-context'
 import { useCart } from '@/contexts/cart-context'
 import { orderService } from '@/lib/services/order.service'
+import { addressService, type UserAddress } from '@/lib/services/address.service'
+import { NIGERIA_STATES_LGAS, getLGAsForState } from '@/lib/data/nigeria-locations'
 import { toast } from 'sonner'
 import { getToken } from '@/lib/api-client'
 import type { ApiError } from '@/lib/api-client'
@@ -25,12 +29,15 @@ const addressSchema = z.object({
   fullName: z.string().min(2, 'Required'),
   line1: z.string().min(3, 'Required'),
   line2: z.string().optional(),
-  city: z.string().min(2, 'Required'),
+  city: z.string().min(2, 'Select LGA'),
   state: z.string().min(1, 'Select your state'),
   postalCode: z.string().optional(),
   country: z.string().min(2, 'Required'),
   phone: z.string().min(6, 'Required'),
   paymentMethod: z.string().min(1, 'Select a payment method'),
+  saveAddress: z.boolean().optional(),
+  addressLabel: z.string().optional(),
+  guestEmail: z.string().email('Valid email required').optional(),
 })
 type FormValues = z.infer<typeof addressSchema>
 
@@ -72,17 +79,6 @@ export default function CheckoutPage() {
   )
 }
 
-function CheckoutPageContent() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const affiliateCode = searchParams.get('ref') ?? undefined
-  const { items, total, clearCart } = useCart()
-  const [cryptoTxHash, setCryptoTxHash] = useState('')
-  const [createdOrderId, setCreatedOrderId] = useState<string | null>(null)
-  const [createdOrderRef, setCreatedOrderRef] = useState<string | null>(null)
-  const [shippingRates, setShippingRates] = useState<ShippingRate[]>([])
-  const [selectedRate, setSelectedRate] = useState<ShippingRate | null>(null)
-
   useEffect(() => {
     fetch('/api/shipping-rates').then(r => r.json()).then(j => {
       if (j.data) setShippingRates(j.data)
@@ -91,13 +87,17 @@ function CheckoutPageContent() {
 
   const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(addressSchema),
-    defaultValues: { country: 'NG', paymentMethod: '' },
+    defaultValues: { country: 'Nigeria', paymentMethod: '', saveAddress: false, guestEmail: '' },
   })
 
   const selectedPayment = watch('paymentMethod')
   const watchedState = watch('state')
+  const watchedSaveAddress = watch('saveAddress')
   const isCrypto = ['bitcoin', 'ethereum', 'usdt_trc20', 'usdt_erc20'].includes(selectedPayment)
   const step = selectedPayment ? 'payment' : 'address'
+
+  // Get LGAs for selected state
+  const availableLGAs = watchedState ? getLGAsForState(watchedState) : []
 
   // Auto-select shipping rate when state changes
   useEffect(() => {
@@ -106,6 +106,23 @@ function CheckoutPageContent() {
       setSelectedRate(rate)
     }
   }, [watchedState, shippingRates])
+
+  // Fill form when saved address is selected
+  useEffect(() => {
+    if (selectedAddressId && !showNewAddressForm) {
+      const addr = savedAddresses.find(a => a.id === selectedAddressId)
+      if (addr) {
+        setValue('fullName', addr.fullName)
+        setValue('line1', addr.line1)
+        setValue('line2', addr.line2 || '')
+        setValue('city', addr.city)
+        setValue('state', addr.state)
+        setValue('postalCode', addr.postalCode || '')
+        setValue('country', addr.country)
+        setValue('phone', addr.phone)
+      }
+    }
+  }, [selectedAddressId, savedAddresses, setValue, showNewAddressForm])
 
   const shippingCost = selectedRate ? Number(selectedRate.price) : 0
   const orderTotal = total + shippingCost
@@ -120,6 +137,33 @@ function CheckoutPageContent() {
 
   const onSubmit = async (data: FormValues) => {
     try {
+      // Validate guest email if not logged in
+      if (!user && !data.guestEmail) {
+        toast.error('Please provide your email address')
+        return
+      }
+
+      // Save address if requested (only for logged-in users)
+      if (user && data.saveAddress && showNewAddressForm) {
+        try {
+          await addressService.create({
+            label: data.addressLabel || 'Home',
+            fullName: data.fullName,
+            line1: data.line1,
+            line2: data.line2,
+            city: data.city,
+            state: data.state,
+            postalCode: data.postalCode,
+            country: data.country,
+            phone: data.phone,
+            isDefault: savedAddresses.length === 0, // First address is default
+          })
+          toast.success('Address saved!')
+        } catch (err) {
+          console.error('Failed to save address:', err)
+        }
+      }
+
       const order = await orderService.create({
         items: items.map(i => ({ productId: i.product.id, quantity: i.quantity })),
         shippingAddress: {
@@ -129,6 +173,7 @@ function CheckoutPageContent() {
         },
         paymentMethod: data.paymentMethod,
         affiliateCode,
+        guestEmail: user ? undefined : data.guestEmail,
       })
 
       clearCart()
@@ -153,9 +198,13 @@ function CheckoutPageContent() {
 
       if (data.paymentMethod === 'cod') {
         toast.success('Order placed!', { description: `Ref: ${order.reference}` })
-        router.push(`/account/orders/${order.id}?new=1`)
+        // For guest users, redirect to a guest order confirmation page
+        if (!user) {
+          router.push(`/orders/guest/${order.id}?ref=${order.reference}`)
+        } else {
+          router.push(`/account/orders/${order.id}?new=1`)
+        }
       }
-      // crypto: stays on page to show wallet panel
     } catch (err) {
       const e = err as ApiError
       toast.error(e.message ?? 'Failed to place order')
@@ -178,7 +227,7 @@ function CheckoutPageContent() {
     }
   }
 
-  // Crypto wallet panel (shown after order created)
+  // Crypto wallet panel
   if (createdOrderId && isCrypto) {
     const address = CRYPTO_ADDRESSES[selectedPayment] ?? ''
     const coinLabel = CRYPTO_LABELS[selectedPayment] ?? selectedPayment
@@ -226,74 +275,189 @@ function CheckoutPageContent() {
   }
 
   return (
-    <ProtectedRoute>
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 animate-page-reveal">
-        <h1 className="text-3xl font-bold mb-8">Checkout</h1>
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 animate-page-reveal">
+      <h1 className="text-3xl font-bold mb-8">Checkout</h1>
 
-        {/* Steps */}
-        <div className="flex items-center gap-4 mb-10">
-          {(['address', 'payment'] as const).map((s, i) => (
-            <div key={s} className="flex items-center gap-2">
-              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold font-mono border-2 ${step === s || (s === 'address' && step === 'payment') ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground'}`}>
-                {i + 1}
-              </div>
-              <span className={`text-sm font-medium capitalize ${step === s ? 'text-foreground' : 'text-muted-foreground'}`}>{s}</span>
-              {i < 1 && <div className="w-8 h-px bg-border" />}
+      {/* Steps */}
+      <div className="flex items-center gap-4 mb-10">
+        {(['address', 'payment'] as const).map((s, i) => (
+          <div key={s} className="flex items-center gap-2">
+            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold font-mono border-2 ${step === s || (s === 'address' && step === 'payment') ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground'}`}>
+              {i + 1}
             </div>
-          ))}
-        </div>
+            <span className={`text-sm font-medium capitalize ${step === s ? 'text-foreground' : 'text-muted-foreground'}`}>{s}</span>
+            {i < 1 && <div className="w-8 h-px bg-border" />}
+          </div>
+        ))}
+      </div>
 
-        <div className="grid lg:grid-cols-3 gap-8">
-          <form onSubmit={handleSubmit(onSubmit)} className="lg:col-span-2 flex flex-col gap-6">
-            {/* Shipping */}
+      <div className="grid lg:grid-cols-3 gap-8">
+        <form onSubmit={handleSubmit(onSubmit)} className="lg:col-span-2 flex flex-col gap-6">
+          {/* Guest Email (if not logged in) */}
+          {!user && (
             <div className="bg-card rounded-xl border border-border p-6">
               <h2 className="font-bold text-base flex items-center gap-2 mb-5">
-                <Truck className="w-4 h-4 text-primary" /> Shipping Address
+                <Mail className="w-4 h-4 text-primary" /> Contact Information
               </h2>
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div className="sm:col-span-2">
-                  <FormField label="Full Name" error={errors.fullName?.message}>
-                    <Input {...register('fullName')} placeholder="Alex Johnson" autoComplete="name" />
-                  </FormField>
+              <FormField label="Email Address" error={errors.guestEmail?.message}>
+                <Input 
+                  {...register('guestEmail')} 
+                  type="email"
+                  placeholder="your@email.com" 
+                  autoComplete="email"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  We'll send your order confirmation here
+                </p>
+              </FormField>
+              <div className="mt-4 text-sm text-muted-foreground">
+                Already have an account?{' '}
+                <Link href={`/login?returnUrl=/checkout${affiliateCode ? `?ref=${affiliateCode}` : ''}`} className="text-primary hover:underline">
+                  Sign in
+                </Link>
+              </div>
+            </div>
+          )}
+
+          {/* Saved Addresses */}
+          {user && savedAddresses.length > 0 && !showNewAddressForm && (
+              <div className="bg-card rounded-xl border border-border p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-bold text-base flex items-center gap-2">
+                    <BookmarkCheck className="w-4 h-4 text-primary" /> Saved Addresses
+                  </h2>
+                  <Link href="/account/addresses" className="text-xs text-primary hover:underline">
+                    Manage
+                  </Link>
                 </div>
-                <div className="sm:col-span-2">
-                  <FormField label="Address Line 1" error={errors.line1?.message}>
-                    <Input {...register('line1')} placeholder="123 Main St" autoComplete="address-line1" />
-                  </FormField>
+                <div className="flex flex-col gap-2">
+                  {savedAddresses.map(addr => (
+                    <label
+                      key={addr.id}
+                      className={`flex items-start gap-3 border rounded-lg px-4 py-3 cursor-pointer transition-all ${selectedAddressId === addr.id ? 'border-primary bg-primary/5' : 'border-border hover:bg-accent'}`}
+                    >
+                      <input
+                        type="radio"
+                        name="savedAddress"
+                        value={addr.id}
+                        checked={selectedAddressId === addr.id}
+                        onChange={() => setSelectedAddressId(addr.id)}
+                        className="mt-0.5"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold">{addr.label} {addr.isDefault && <span className="text-xs text-muted-foreground">(Default)</span>}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {addr.fullName} · {addr.line1}, {addr.city}, {addr.state} · {addr.phone}
+                        </p>
+                      </div>
+                    </label>
+                  ))}
                 </div>
-                <div className="sm:col-span-2">
-                  <FormField label="Address Line 2 (optional)" error={errors.line2?.message}>
-                    <Input {...register('line2')} placeholder="Apt 4B" autoComplete="address-line2" />
-                  </FormField>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full mt-3"
+                  onClick={() => { setShowNewAddressForm(true); setSelectedAddressId('') }}
+                >
+                  <Plus className="w-4 h-4 mr-2" /> Use New Address
+                </Button>
+              </div>
+            )}
+
+            {/* Shipping Address Form */}
+            {((!user || savedAddresses.length === 0) || showNewAddressForm) && (
+              <div className="bg-card rounded-xl border border-border p-6">
+                <div className="flex items-center justify-between mb-5">
+                  <h2 className="font-bold text-base flex items-center gap-2">
+                    <Truck className="w-4 h-4 text-primary" /> Shipping Address
+                  </h2>
+                  {showNewAddressForm && savedAddresses.length > 0 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => { setShowNewAddressForm(false); setSelectedAddressId(savedAddresses.find(a => a.isDefault)?.id || savedAddresses[0]?.id || '') }}
+                    >
+                      Use Saved
+                    </Button>
+                  )}
                 </div>
-                <FormField label="City / LGA" error={errors.city?.message}>
-                  <Input {...register('city')} placeholder="Ikeja" autoComplete="address-level2" />
-                </FormField>
-                <FormField label="State" error={errors.state?.message}>
-                  <select
-                    {...register('state')}
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-ring"
-                  >
-                    <option value="">Select state…</option>
-                    {shippingRates.map(r => (
-                      <option key={r.state} value={r.state}>{r.state}</option>
-                    ))}
-                    <option value="Other">Other / International</option>
-                  </select>
-                </FormField>
-                <FormField label="Country" error={errors.country?.message}>
-                  <Input {...register('country')} placeholder="Nigeria" autoComplete="country" />
-                </FormField>
-                <FormField label="Postal Code (optional)" error={errors.postalCode?.message}>
-                  <Input {...register('postalCode')} placeholder="100001" autoComplete="postal-code" />
-                </FormField>
-                <div className="sm:col-span-2">
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="sm:col-span-2">
+                    <FormField label="Full Name" error={errors.fullName?.message}>
+                      <Input {...register('fullName')} placeholder="Alex Johnson" autoComplete="name" />
+                    </FormField>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <FormField label="Address Line 1" error={errors.line1?.message}>
+                      <Input {...register('line1')} placeholder="123 Main Street" autoComplete="address-line1" />
+                    </FormField>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <FormField label="Address Line 2 (optional)" error={errors.line2?.message}>
+                      <Input {...register('line2')} placeholder="Apt 4B, Floor 2" autoComplete="address-line2" />
+                    </FormField>
+                  </div>
+                  <FormField label="State" error={errors.state?.message}>
+                    <select
+                      {...register('state')}
+                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-ring"
+                      onChange={(e) => {
+                        setValue('state', e.target.value)
+                        setValue('city', '') // Reset LGA when state changes
+                      }}
+                    >
+                      <option value="">Select state…</option>
+                      {NIGERIA_STATES_LGAS.map(loc => (
+                        <option key={loc.state} value={loc.state}>{loc.state}</option>
+                      ))}
+                    </select>
+                  </FormField>
+                  <FormField label="LGA (Local Government Area)" error={errors.city?.message}>
+                    <select
+                      {...register('city')}
+                      disabled={!watchedState}
+                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+                    >
+                      <option value="">Select LGA…</option>
+                      {availableLGAs.map(lga => (
+                        <option key={lga} value={lga}>{lga}</option>
+                      ))}
+                    </select>
+                  </FormField>
                   <FormField label="Phone Number" error={errors.phone?.message}>
                     <Input {...register('phone')} placeholder="+234 800 000 0000" autoComplete="tel" type="tel" />
                   </FormField>
+                  <FormField label="Postal Code (optional)" error={errors.postalCode?.message}>
+                    <Input {...register('postalCode')} placeholder="100001" autoComplete="postal-code" />
+                  </FormField>
+                  
+                  {/* Save Address Option (only for logged-in users) */}
+                  {user && showNewAddressForm && (
+                    <>
+                      <div className="sm:col-span-2 flex items-center gap-2 pt-2">
+                        <Checkbox
+                          id="saveAddress"
+                          checked={watchedSaveAddress}
+                          onCheckedChange={(checked) => setValue('saveAddress', !!checked)}
+                        />
+                        <Label htmlFor="saveAddress" className="text-sm cursor-pointer">
+                          Save this address for future orders
+                        </Label>
+                      </div>
+                      {watchedSaveAddress && (
+                        <div className="sm:col-span-2">
+                          <FormField label="Address Label" error={errors.addressLabel?.message}>
+                            <Input {...register('addressLabel')} placeholder="Home, Office, etc." />
+                          </FormField>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Shipping cost display */}
             {selectedRate && (
@@ -304,11 +468,6 @@ function CheckoutPageContent() {
                   <p className="text-xs text-muted-foreground">{selectedRate.estimatedDays} business day{selectedRate.estimatedDays !== 1 ? 's' : ''} estimated</p>
                 </div>
                 <span className="font-bold text-sm">₦{Number(selectedRate.price).toLocaleString()}</span>
-              </div>
-            )}
-            {watchedState === 'Other' && (
-              <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 text-sm text-amber-800 dark:text-amber-300">
-                International shipping — we will contact you with a quote after placing your order.
               </div>
             )}
 
@@ -345,6 +504,52 @@ function CheckoutPageContent() {
               )}
             </div>
 
+            {/* Order Review (shows when payment method selected) */}
+            {selectedPayment && (
+              <div className="bg-card rounded-xl border border-primary/20 p-6">
+                <h2 className="font-bold text-base flex items-center gap-2 mb-5">
+                  <CheckCircle className="w-4 h-4 text-primary" /> Review Your Order
+                </h2>
+                
+                {/* Order Items Summary */}
+                <div className="space-y-3 mb-4">
+                  <p className="text-sm font-semibold text-muted-foreground">Items ({items.length})</p>
+                  {items.slice(0, 3).map((item, i) => (
+                    <div key={i} className="flex justify-between text-sm">
+                      <span className="truncate flex-1">{item.product.name} × {item.quantity}</span>
+                      <span className="font-medium ml-2">₦{(item.product.price * item.quantity).toLocaleString()}</span>
+                    </div>
+                  ))}
+                  {items.length > 3 && (
+                    <p className="text-xs text-muted-foreground">+ {items.length - 3} more item{items.length - 3 !== 1 ? 's' : ''}</p>
+                  )}
+                </div>
+
+                {/* Shipping Address Summary */}
+                {(watchedState || selectedAddressId) && (
+                  <div className="border-t pt-4 mb-4">
+                    <p className="text-sm font-semibold text-muted-foreground mb-2">Shipping To</p>
+                    <p className="text-sm">
+                      {watch('fullName') || savedAddresses.find(a => a.id === selectedAddressId)?.fullName}<br />
+                      {watch('line1') || savedAddresses.find(a => a.id === selectedAddressId)?.line1}<br />
+                      {watch('city') || savedAddresses.find(a => a.id === selectedAddressId)?.city}, {watch('state') || savedAddresses.find(a => a.id === selectedAddressId)?.state}
+                    </p>
+                  </div>
+                )}
+
+                {/* Total */}
+                <div className="border-t pt-4">
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold">Total Amount</span>
+                    <span className="font-bold text-lg text-primary">₦{orderTotal.toLocaleString()}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Including ₦{shippingCost.toLocaleString()} shipping
+                  </p>
+                </div>
+              </div>
+            )}
+
             <Button type="submit" disabled={isSubmitting} size="lg" className="w-full font-semibold">
               {isSubmitting ? (
                 <span className="flex items-center gap-2">
@@ -365,6 +570,6 @@ function CheckoutPageContent() {
           </div>
         </div>
       </div>
-    </ProtectedRoute>
+    </div>
   )
 }

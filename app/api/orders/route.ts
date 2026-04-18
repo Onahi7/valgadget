@@ -1,8 +1,8 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
 import { orders, products, shippingRates, users, affiliateClicks } from '@/lib/server/schema'
-import { requireAuth, apiOk, apiError, generateReference } from '@/lib/server/auth-helpers'
-import { eq, desc, and, sql } from 'drizzle-orm'
+import { requireAuth, getRequestUser, apiOk, apiError, generateReference } from '@/lib/server/auth-helpers'
+import { eq, desc, and, sql, or } from 'drizzle-orm'
 import type { OrderItem, Address } from '@/lib/server/schema'
 import { NeonDbError } from '@neondatabase/serverless'
 
@@ -36,24 +36,35 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await requireAuth(req)
-  if ('status' in auth) return auth
+  // Make auth optional for guest checkout
+  const user = await getRequestUser(req)
 
   try {
     const body = await req.json()
-    const { items: rawItems, shippingAddress, couponCode, affiliateCode, paymentMethod, notes } = body as {
+    const { items: rawItems, shippingAddress, couponCode, affiliateCode, paymentMethod, notes, guestEmail } = body as {
       items: Array<{ productId: string; quantity?: number; qty?: number }>
       shippingAddress: Address
       couponCode?: string
       affiliateCode?: string
       paymentMethod?: string
       notes?: string
+      guestEmail?: string
     }
     // Normalise: frontend sends "quantity", internal schema uses "qty"
     const items = (rawItems ?? []).map(i => ({ productId: i.productId, qty: i.quantity ?? i.qty ?? 1 }))
 
     if (!items?.length) return apiError('Order must contain at least one item.')
     if (!shippingAddress) return apiError('Shipping address is required.')
+    
+    // Require email for guest orders
+    if (!user && !guestEmail) {
+      return apiError('Email is required for guest orders.', 400)
+    }
+    
+    // Validate email format for guest orders
+    if (!user && guestEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guestEmail)) {
+      return apiError('Please provide a valid email address.', 400)
+    }
 
     // Fetch products and build line items
     const productIds = items.map(i => i.productId)
@@ -91,14 +102,22 @@ export async function POST(req: NextRequest) {
     const reference = generateReference()
 
     const [order] = await db.insert(orders).values({
-      reference, userId: auth.user.sub, status: 'pending',
-      paymentStatus: 'unpaid', paymentMethod, items: orderItems,
+      reference, 
+      userId: user?.sub || null, 
+      guestEmail: user ? null : guestEmail,
+      status: 'pending',
+      paymentStatus: 'unpaid', 
+      paymentMethod, 
+      items: orderItems,
       subtotal: String(subtotal.toFixed(2)),
       discount: '0',
       shipping: String(shipping.toFixed(2)),
       tax: String(tax.toFixed(2)),
       total: String(total.toFixed(2)),
-      couponCode, affiliateCode, shippingAddress, notes,
+      couponCode, 
+      affiliateCode, 
+      shippingAddress, 
+      notes,
     }).returning()
 
     // Atomic stock deduction — only succeeds if stock >= qty (prevents overselling)
@@ -134,7 +153,7 @@ export async function POST(req: NextRequest) {
           .where(eq(users.id, affiliate.id))
         // Record the click/conversion
         await db.insert(affiliateClicks).values({
-          code: affiliateCode, orderId: order.id, userId: auth.user.sub,
+          code: affiliateCode, orderId: order.id, userId: user?.sub || null,
           commission: String(commission), convertedAt: new Date(),
         }).catch(() => {}) // ignore if duplicate
       }

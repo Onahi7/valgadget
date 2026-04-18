@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { ChevronRight } from 'lucide-react'
+import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { ProductGrid } from '@/components/ecommerce/product-grid'
 import { ProductCardSkeleton } from '@/components/ecommerce/product-card-skeleton'
 import { categoryService, type Category } from '@/lib/services/category.service'
@@ -43,13 +44,13 @@ export default function CategoryPage({ params }: { params: Promise<{ slug: strin
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-page-reveal">
-      <nav className="flex items-center gap-1.5 text-xs text-muted-foreground mb-8" aria-label="Breadcrumb">
-        <Link href="/" className="hover:text-foreground">Home</Link>
-        <ChevronRight className="w-3 h-3" />
-        <Link href="/categories" className="hover:text-foreground">Categories</Link>
-        <ChevronRight className="w-3 h-3" />
-        <span className="text-foreground font-medium">{category.name}</span>
-      </nav>
+      <Breadcrumbs 
+        className="mb-8"
+        items={[
+          { label: 'Categories', href: '/categories' },
+          { label: category.name }
+        ]}
+      />
       <div className="mb-8">
         <p className="text-xs font-mono uppercase tracking-widest text-primary mb-1">{products.length} products</p>
         <h1 className="text-3xl font-bold">{category.name}</h1>

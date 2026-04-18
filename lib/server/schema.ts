@@ -39,6 +39,28 @@ export const users = pgTable('users', {
   index('users_role_idx').on(t.role),
 ])
 
+// ─── User Addresses ────────────────────────────────────────────────────────
+
+export const userAddresses = pgTable('user_addresses', {
+  id:          text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId:      text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  label:       varchar('label', { length: 50 }).notNull(), // e.g., "Home", "Office", "Default"
+  fullName:    varchar('full_name', { length: 200 }).notNull(),
+  line1:       varchar('line1', { length: 300 }).notNull(),
+  line2:       varchar('line2', { length: 300 }),
+  city:        varchar('city', { length: 100 }).notNull(), // LGA
+  state:       varchar('state', { length: 100 }).notNull(),
+  postalCode:  varchar('postal_code', { length: 20 }),
+  country:     varchar('country', { length: 2 }).notNull().default('NG'),
+  phone:       varchar('phone', { length: 30 }).notNull(),
+  isDefault:   boolean('is_default').notNull().default(false),
+  createdAt:   timestamp('created_at').notNull().defaultNow(),
+  updatedAt:   timestamp('updated_at').notNull().defaultNow(),
+}, t => [
+  index('user_addresses_user_idx').on(t.userId),
+  index('user_addresses_default_idx').on(t.userId, t.isDefault),
+])
+
 // ─── Categories ────────────────────────────────────────────────────────────
 
 export const categories = pgTable('categories', {
@@ -90,6 +112,26 @@ export const products = pgTable('products', {
   index('products_active_idx').on(t.isActive),
 ])
 
+// ─── Product Variants ──────────────────────────────────────────────────────
+
+export const productVariants = pgTable('product_variants', {
+  id:          text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  productId:   text('product_id').notNull().references(() => products.id, { onDelete: 'cascade' }),
+  name:        varchar('name', { length: 200 }).notNull(), // e.g., "Black / Large"
+  sku:         varchar('sku', { length: 100 }).notNull().unique(),
+  price:       numeric('price', { precision: 10, scale: 2 }), // null = use product price
+  stock:       integer('stock').notNull().default(0),
+  attributes:  json('attributes').$type<Record<string, string>>().notNull().default({}), // { color: "Black", size: "Large" }
+  image:       text('image'), // Optional variant-specific image
+  isActive:    boolean('is_active').notNull().default(true),
+  sortOrder:   integer('sort_order').default(0),
+  createdAt:   timestamp('created_at').notNull().defaultNow(),
+  updatedAt:   timestamp('updated_at').notNull().defaultNow(),
+}, t => [
+  index('product_variants_product_idx').on(t.productId),
+  index('product_variants_sku_idx').on(t.sku),
+])
+
 // ─── Reviews ───────────────────────────────────────────────────────────────
 
 export const reviews = pgTable('reviews', {
@@ -100,9 +142,11 @@ export const reviews = pgTable('reviews', {
   title:      varchar('title', { length: 200 }),
   body:       text('body').notNull(),
   verified:   boolean('verified').notNull().default(false),
+  isActive:   boolean('is_active').notNull().default(true),
   createdAt:  timestamp('created_at').notNull().defaultNow(),
 }, t => [
   index('reviews_product_idx').on(t.productId),
+  index('reviews_user_idx').on(t.userId),
 ])
 
 // ─── Orders ────────────────────────────────────────────────────────────────
@@ -111,6 +155,7 @@ export const orders = pgTable('orders', {
   id:              text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   reference:       varchar('reference', { length: 30 }).notNull().unique(),
   userId:          text('user_id').references(() => users.id),
+  guestEmail:      varchar('guest_email', { length: 255 }),
   status:          varchar('status', { length: 30 }).notNull().default('pending'),
   paymentStatus:   varchar('payment_status', { length: 30 }).notNull().default('unpaid'),
   paymentMethod:   varchar('payment_method', { length: 50 }),
@@ -129,6 +174,7 @@ export const orders = pgTable('orders', {
   updatedAt:       timestamp('updated_at').notNull().defaultNow(),
 }, t => [
   index('orders_user_idx').on(t.userId),
+  index('orders_guest_email_idx').on(t.guestEmail),
   index('orders_status_idx').on(t.status),
   index('orders_reference_idx').on(t.reference),
 ])
@@ -205,6 +251,26 @@ export const affiliateClicks = pgTable('affiliate_clicks', {
   index('aff_clicks_code_idx').on(t.code),
 ])
 
+// ─── Coupons ───────────────────────────────────────────────────────────────
+
+export const coupons = pgTable('coupons', {
+  id:           text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  code:         varchar('code', { length: 50 }).notNull().unique(),
+  type:         varchar('type', { length: 20 }).notNull(), // 'percentage' | 'fixed' | 'free_shipping'
+  value:        numeric('value', { precision: 10, scale: 2 }).notNull(),
+  minPurchase:  numeric('min_purchase', { precision: 10, scale: 2 }),
+  maxDiscount:  numeric('max_discount', { precision: 10, scale: 2 }),
+  usageLimit:   integer('usage_limit'),
+  usageCount:   integer('usage_count').notNull().default(0),
+  expiresAt:    timestamp('expires_at'),
+  isActive:     boolean('is_active').notNull().default(true),
+  createdAt:    timestamp('created_at').notNull().defaultNow(),
+  updatedAt:    timestamp('updated_at').notNull().defaultNow(),
+}, t => [
+  index('coupons_code_idx').on(t.code),
+  index('coupons_active_idx').on(t.isActive),
+])
+
 // ─── Shipping Rates (Nigerian States) ─────────────────────────────────────
 
 export const shippingRates = pgTable('shipping_rates', {
@@ -227,9 +293,15 @@ export const siteSettings = pgTable('site_settings', {
 // ─── Relations ─────────────────────────────────────────────────────────────
 
 export const usersRelations = relations(users, ({ many }) => ({
+  addresses: many(userAddresses),
   orders:   many(orders),
   reviews:  many(reviews),
   entries:  many(raffleEntries),
+}))
+
+export const reviewsRelations = relations(reviews, ({ one }) => ({
+  product: one(products, { fields: [reviews.productId], references: [products.id] }),
+  user: one(users, { fields: [reviews.userId], references: [users.id] }),
 }))
 
 export const categoriesRelations = relations(categories, ({ many }) => ({
@@ -239,10 +311,19 @@ export const categoriesRelations = relations(categories, ({ many }) => ({
 export const productsRelations = relations(products, ({ one, many }) => ({
   category: one(categories, { fields: [products.categoryId], references: [categories.id] }),
   reviews:  many(reviews),
+  variants: many(productVariants),
+}))
+
+export const productVariantsRelations = relations(productVariants, ({ one }) => ({
+  product: one(products, { fields: [productVariants.productId], references: [products.id] }),
 }))
 
 export const ordersRelations = relations(orders, ({ one }) => ({
   user: one(users, { fields: [orders.userId], references: [users.id] }),
+}))
+
+export const userAddressesRelations = relations(userAddresses, ({ one }) => ({
+  user: one(users, { fields: [userAddresses.userId], references: [users.id] }),
 }))
 
 export const rafflesRelations = relations(raffles, ({ many }) => ({

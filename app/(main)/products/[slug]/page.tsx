@@ -3,15 +3,21 @@
 import { useEffect, use, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { ChevronRight, Heart, Minus, Plus, ShoppingCart, Star, Truck, RotateCcw, Shield, Share2 } from 'lucide-react'
+import { ChevronRight, Heart, Minus, Plus, ShoppingCart, Star, Truck, RotateCcw, Shield, Share2, MessageSquare } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { PriceTag } from '@/components/ecommerce/price-tag'
 import { ProductGrid } from '@/components/ecommerce/product-grid'
+import { VariantSelector, type ProductVariant } from '@/components/ecommerce/variant-selector'
+import { ReviewForm } from '@/components/ecommerce/review-form'
+import { ReviewList, StarRating, type Review } from '@/components/ecommerce/review-list'
 import { useCart } from '@/contexts/cart-context'
 import { useWishlist } from '@/contexts/wishlist-context'
+import { useAuth } from '@/contexts/auth-context'
 import { productService, type Product } from '@/lib/services/product.service'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -20,11 +26,16 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
   const { slug } = use(params)
   const [product, setProduct] = useState<Product | null>(null)
   const [related, setRelated] = useState<Product[]>([])
+  const [variants, setVariants] = useState<ProductVariant[]>([])
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null)
+  const [reviews, setReviews] = useState<Review[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [showReviewForm, setShowReviewForm] = useState(false)
 
   const { addToCart } = useCart()
   const { toggle, has } = useWishlist()
+  const { user } = useAuth()
   const [qty, setQty] = useState(1)
   const [activeImg, setActiveImg] = useState(0)
 
@@ -41,6 +52,29 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
 
         setProduct(found)
 
+        // Load variants
+        try {
+          const res = await fetch(`/api/products/${found.id}/variants`)
+          const data = await res.json()
+          if (data.data && mounted) {
+            setVariants(data.data)
+          }
+        } catch {
+          setVariants([])
+        }
+
+        // Load reviews
+        try {
+          const res = await fetch(`/api/reviews?productId=${found.id}`)
+          const data = await res.json()
+          if (data.data && mounted) {
+            setReviews(data.data)
+          }
+        } catch {
+          setReviews([])
+        }
+
+        // Load related products
         try {
           const rel = await productService.getRelated(found.id, 4)
           if (!mounted) return
@@ -106,18 +140,14 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
       )}
 
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-1.5 text-xs text-muted-foreground mb-8" aria-label="Breadcrumb">
-        <Link href="/" className="hover:text-foreground transition-colors">Home</Link>
-        <ChevronRight className="w-3 h-3" />
-        <Link href="/shop" className="hover:text-foreground transition-colors">Shop</Link>
-        {product.category && (
-          <>
-            <ChevronRight className="w-3 h-3" />
-            <Link href={`/categories/${product.category.slug}`} className="hover:text-foreground transition-colors">
-              {product.category.name}
-            </Link>
-          </>
-        )}
+      <Breadcrumbs 
+        className="mb-8"
+        items={[
+          { label: 'Shop', href: '/shop' },
+          ...(product.category ? [{ label: product.category.name, href: `/categories/${product.category.slug}` }] : []),
+          { label: product.name }
+        ]}
+      />
         <ChevronRight className="w-3 h-3" />
         <span className="text-foreground font-medium truncate max-w-[200px]">{product.name}</span>
       </nav>
@@ -180,11 +210,24 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
             </div>
           </div>
 
-          <PriceTag price={product.price} comparePrice={product.comparePrice} size="lg" />
+          <PriceTag price={selectedVariant?.price || product.price} comparePrice={product.comparePrice} size="lg" />
 
           <p className="text-muted-foreground leading-relaxed">{product.description}</p>
 
           <Separator />
+
+          {/* Variants */}
+          {variants.length > 0 && (
+            <>
+              <VariantSelector
+                variants={variants}
+                selectedVariant={selectedVariant}
+                onSelect={setSelectedVariant}
+                basePrice={product.price}
+              />
+              <Separator />
+            </>
+          )}
 
           {/* Quantity + Add to cart */}
           <div className="flex flex-col gap-3">
@@ -201,26 +244,33 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
                 </button>
                 <span className="px-4 py-2 text-sm font-medium tabular-nums min-w-12 text-center">{qty}</span>
                 <button
-                  onClick={() => setQty(q => Math.min(product.stock, q + 1))}
-                  disabled={qty >= product.stock}
+                  onClick={() => setQty(q => Math.min((selectedVariant?.stock || product.stock), q + 1))}
+                  disabled={qty >= (selectedVariant?.stock || product.stock)}
                   className="px-3 py-2.5 hover:bg-accent transition-colors disabled:opacity-40"
                   aria-label="Increase quantity"
                 >
                   <Plus className="w-3.5 h-3.5" />
                 </button>
               </div>
-              <span className="text-xs text-muted-foreground">{product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}</span>
+              <span className="text-xs text-muted-foreground">
+                {selectedVariant 
+                  ? `${selectedVariant.stock} in stock` 
+                  : product.stock > 0 
+                    ? `${product.stock} in stock` 
+                    : 'Out of stock'
+                }
+              </span>
             </div>
 
             <div className="flex gap-3">
               <Button
                 size="lg"
-                disabled={product.stock === 0}
+                disabled={(selectedVariant ? selectedVariant.stock : product.stock) === 0}
                 onClick={handleAddToCart}
                 className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
               >
                 <ShoppingCart className="w-4 h-4 mr-2" />
-                Add to Cart
+                {(selectedVariant ? selectedVariant.stock : product.stock) === 0 ? 'Out of Stock' : 'Add to Cart'}
               </Button>
               <Button
                 size="lg"
@@ -286,9 +336,57 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
             </div>
           </TabsContent>
           <TabsContent value="reviews">
-            <div className="text-center py-8 text-muted-foreground">
-              <p>Reviews are loaded from the backend.</p>
-              <p className="text-sm mt-1">Backend integration required for review listing and submission.</p>
+            <div className="space-y-8">
+              {/* Rating Summary */}
+              <div className="flex items-center gap-8 bg-card border rounded-xl p-6">
+                <div className="text-center">
+                  <div className="text-4xl font-bold mb-2">{product.rating.toFixed(1)}</div>
+                  <StarRating rating={product.rating} showCount count={product.reviewCount} />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Based on {product.reviewCount} review{product.reviewCount !== 1 ? 's' : ''}
+                  </p>
+                  {user ? (
+                    <Dialog open={showReviewForm} onOpenChange={setShowReviewForm}>
+                      <DialogTrigger asChild>
+                        <Button>
+                          <MessageSquare className="w-4 h-4 mr-2" />
+                          Write a Review
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-2xl">
+                        <DialogHeader>
+                          <DialogTitle>Write a Review</DialogTitle>
+                        </DialogHeader>
+                        <ReviewForm
+                          productId={product.id}
+                          onSuccess={() => {
+                            setShowReviewForm(false)
+                            // Reload reviews
+                            fetch(`/api/reviews?productId=${product.id}`)
+                              .then(res => res.json())
+                              .then(data => {
+                                if (data.data) setReviews(data.data)
+                              })
+                          }}
+                          onCancel={() => setShowReviewForm(false)}
+                        />
+                      </DialogContent>
+                    </Dialog>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      <Link href={`/login?returnUrl=/products/${slug}`} className="text-primary hover:underline">
+                        Sign in
+                      </Link>{' '}
+                      to write a review
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Reviews List */}
+              <ReviewList reviews={reviews} emptyMessage="No reviews yet. Be the first to review this product!" />
             </div>
           </TabsContent>
         </Tabs>

@@ -81,6 +81,7 @@ export interface CreateOrderPayload {
   couponCode?: string
   affiliateCode?: string
   notes?: string
+  guestEmail?: string
 }
 
 export interface OrderFilters {

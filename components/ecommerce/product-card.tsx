@@ -66,6 +66,11 @@ export function ProductCard({ product, className }: ProductCardProps) {
             -{discount}%
           </Badge>
         )}
+        {product.stock > 0 && product.stock <= 5 && (
+          <Badge variant="destructive" className="text-[10px] font-mono uppercase tracking-wider border-0 animate-pulse">
+            Only {product.stock} left!
+          </Badge>
+        )}
         {product.stock === 0 && (
           <Badge variant="outline" className="text-[10px] font-mono uppercase tracking-wider">
             Sold Out

@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ShoppingBag, ArrowRight, Trash2 } from 'lucide-react'
+import { ShoppingBag, ArrowRight, Trash2, ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription, EmptyContent } from '@/components/ui/empty'
@@ -12,17 +12,34 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 
 export default function CartPage() {
-  const { items, itemCount, clearCart, applyCoupon, couponCode, removeCoupon } = useCart()
+  const { items, itemCount, total, clearCart, applyCoupon, couponCode, removeCoupon } = useCart()
   const [couponInput, setCouponInput] = useState('')
+  const [validating, setValidating] = useState(false)
 
-  const handleApplyCoupon = () => {
+  const handleApplyCoupon = async () => {
     if (!couponInput.trim()) return
-    // Mock coupon validation — replace with API call
-    if (couponInput.toUpperCase() === 'WELCOME10') {
-      applyCoupon('WELCOME10', 10)
-      toast.success('Coupon applied: WELCOME10 — $10 off!')
-    } else {
-      toast.error('Invalid coupon code')
+    
+    setValidating(true)
+    try {
+      const res = await fetch('/api/coupons/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: couponInput.toUpperCase(), cartTotal: total }),
+      })
+      
+      const data = await res.json()
+      
+      if (res.ok) {
+        applyCoupon(data.code, data.discount)
+        toast.success(data.message)
+        setCouponInput('')
+      } else {
+        toast.error(data.message || 'Invalid coupon code')
+      }
+    } catch (err) {
+      toast.error('Failed to validate coupon')
+    } finally {
+      setValidating(false)
     }
   }
 
@@ -74,13 +91,16 @@ export default function CartPage() {
             ) : (
               <>
                 <Input
-                  placeholder="Coupon code (try WELCOME10)"
+                  placeholder="Enter coupon code"
                   value={couponInput}
                   onChange={e => setCouponInput(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleApplyCoupon()}
                   className="max-w-xs"
+                  disabled={validating}
                 />
-                <Button variant="outline" onClick={handleApplyCoupon}>Apply</Button>
+                <Button variant="outline" onClick={handleApplyCoupon} disabled={validating}>
+                  {validating ? 'Validating...' : 'Apply'}
+                </Button>
               </>
             )}
           </div>
@@ -96,6 +116,16 @@ export default function CartPage() {
           >
             <Link href="/checkout">
               Proceed to Checkout <ArrowRight className="w-4 h-4 ml-2" />
+            </Link>
+          </Button>
+          <Button
+            size="lg"
+            variant="outline"
+            className="w-full"
+            asChild
+          >
+            <Link href="/shop">
+              <ArrowLeft className="w-4 h-4 mr-2" /> Continue Shopping
             </Link>
           </Button>
           <Button variant="ghost" size="sm" className="w-full text-muted-foreground" asChild>
