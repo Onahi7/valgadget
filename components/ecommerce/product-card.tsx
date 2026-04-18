@@ -89,7 +89,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
       {/* Image */}
       <Link href={`/products/${product.slug}`} className="block aspect-square overflow-hidden bg-surface">
         <Image
-          src={product.images[0] ?? '/placeholder-product.jpg'}
+          src={product.images[0] ?? '/placeholder-product.svg'}
           alt={product.name}
           width={400}
           height={400}

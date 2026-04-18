@@ -98,8 +98,8 @@ export const authService = {
     api.post<{ message: string }>('/auth/verify-email', { token }),
 
   /** Resend verification email */
-  resendVerification: () =>
-    api.post<{ message: string }>('/auth/resend-verification'),
+  resendVerification: (email?: string) =>
+    api.post<{ message: string }>('/auth/resend-verification', email ? { email } : {}),
 
   // ── Admin user management ──────────────────────────────────────────────────
 

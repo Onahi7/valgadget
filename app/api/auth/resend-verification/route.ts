@@ -1,14 +1,27 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
 import { users } from '@/lib/server/schema'
-import { apiOk, apiError } from '@/lib/server/auth-helpers'
+import { apiOk, apiError, getRequestUser } from '@/lib/server/auth-helpers'
 import { eq } from 'drizzle-orm'
 import { sendVerificationEmail } from '@/lib/server/email'
 import crypto from 'crypto'
 
 export async function POST(request: NextRequest) {
   try {
-    const { email } = await request.json().catch(() => ({}))
+    // Try to get authenticated user first
+    const authUser = await getRequestUser(request)
+    
+    let email: string | undefined
+    
+    if (authUser) {
+      // If authenticated, use their email
+      email = authUser.email
+    } else {
+      // If not authenticated, require email in body
+      const body = await request.json().catch(() => ({}))
+      email = body.email
+    }
+    
     if (!email) return apiError('Email is required.')
 
     const [user] = await db

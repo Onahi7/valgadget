@@ -17,7 +17,7 @@ export function CartItem({ item }: CartItemProps) {
     <div className="flex gap-4 py-4 border-b border-border last:border-0">
       <Link href={`/products/${item.product.slug}`} className="shrink-0">
         <Image
-          src={item.product.images[0] ?? '/placeholder-product.jpg'}
+          src={item.product.images[0] ?? '/placeholder-product.svg'}
           alt={item.product.name}
           width={80}
           height={80}

@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     if (!user) return apiError('User not found.', 404)
 
     const valid = await comparePassword(currentPassword, user.passwordHash)
-    if (!valid) return apiError('Current password is incorrect.', 400)
+    if (!valid) return apiError('Current password is incorrect.', 401)
 
     const passwordHash = await hashPassword(newPassword)
     await db.update(users).set({ passwordHash, updatedAt: new Date() }).where(eq(users.id, user.id))

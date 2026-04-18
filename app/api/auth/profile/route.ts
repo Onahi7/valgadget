@@ -10,10 +10,33 @@ export async function PATCH(request: NextRequest) {
   if ('status' in auth) return auth
 
   try {
-    const { name, phone, avatar } = await request.json().catch(() => ({}))
+    const { name, email, phone, avatar } = await request.json().catch(() => ({}))
+    
+    // If email is being changed, check if it's already taken
+    if (email && email.toLowerCase() !== auth.user.email.toLowerCase()) {
+      const existing = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.email, email.toLowerCase()))
+        .limit(1)
+      
+      if (existing.length > 0) {
+        return apiError('This email address is already in use.', 409)
+      }
+    }
+    
+    const updateData: any = { name, phone, avatar, updatedAt: new Date() }
+    
+    // If email changed, reset verification status
+    if (email && email.toLowerCase() !== auth.user.email.toLowerCase()) {
+      updateData.email = email.toLowerCase()
+      updateData.isVerified = false
+      // Optionally generate new verification token here
+    }
+    
     const [updated] = await db
       .update(users)
-      .set({ name, phone, avatar, updatedAt: new Date() })
+      .set(updateData)
       .where(eq(users.id, auth.user.sub))
       .returning({
         id: users.id, name: users.name, email: users.email, role: users.role,

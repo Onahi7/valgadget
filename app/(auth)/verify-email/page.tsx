@@ -76,7 +76,7 @@ function VerifyEmailContent() {
         </p>
         <div className="space-y-3">
           <Button asChild className="w-full">
-            <Link href="/login">
+            <Link href="/resend-verification">
               <Mail className="w-4 h-4 mr-2" />
               Resend Verification Email
             </Link>
