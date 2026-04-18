@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -65,7 +65,17 @@ function FormField({ label, error, children }: { label: string; error?: string; 
 }
 
 export default function CheckoutPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-[400px]"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
+      <CheckoutPageContent />
+    </Suspense>
+  )
+}
+
+function CheckoutPageContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const affiliateCode = searchParams.get('ref') ?? undefined
   const { items, total, clearCart } = useCart()
   const [cryptoTxHash, setCryptoTxHash] = useState('')
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(null)
@@ -118,6 +128,7 @@ export default function CheckoutPage() {
           country: data.country, phone: data.phone,
         },
         paymentMethod: data.paymentMethod,
+        affiliateCode,
       })
 
       clearCart()
@@ -192,9 +203,9 @@ export default function CheckoutPage() {
             </div>
           </div>
           <p className="text-sm text-muted-foreground">
-            Send <strong className="text-foreground">₦{total.toLocaleString()} worth of {coinLabel}</strong> to the address above, then paste your transaction hash below.
+            Send <strong className="text-foreground">₦{orderTotal.toLocaleString()} worth of {coinLabel}</strong> to the address above, then paste your transaction hash below.
             <span className="block mt-1 text-xs text-amber-600 dark:text-amber-400 font-medium">
-              ≈ ${(total / 1600).toFixed(2)} USD at ₦1,600/$1 rate
+              ≈ ${(orderTotal / 1600).toFixed(2)} USD at ₦1,600/$1 rate
             </span>
           </p>
           <div className="space-y-3 text-left">
@@ -350,7 +361,7 @@ export default function CheckoutPage() {
           </form>
 
           <div>
-            <CheckoutSummary />
+            <CheckoutSummary shipping={shippingCost} />
           </div>
         </div>
       </div>

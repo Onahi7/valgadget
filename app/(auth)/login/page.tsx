@@ -17,7 +17,7 @@ import type { ApiError } from '@/lib/api-client'
 
 const schema = z.object({
   email: z.string().email('Enter a valid email'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
 })
 type FormValues = z.infer<typeof schema>
 
@@ -131,7 +131,7 @@ function LoginPageContent() {
 
         <p className="text-center text-sm text-muted-foreground mt-6">
           Don&apos;t have an account?{' '}
-          <Link href="/register" className="text-primary font-medium hover:underline">Register</Link>
+          <Link href={`/register${returnUrl !== '/' ? `?returnUrl=${encodeURIComponent(returnUrl)}` : ''}`} className="text-primary font-medium hover:underline">Register</Link>
         </p>
       </div>
     </div>

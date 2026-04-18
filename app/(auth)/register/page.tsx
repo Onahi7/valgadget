@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -29,8 +29,18 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>
 
 export default function RegisterPage() {
+  return (
+    <Suspense fallback={<RegisterPageFallback />}>
+      <RegisterPageContent />
+    </Suspense>
+  )
+}
+
+function RegisterPageContent() {
   const { register: authRegister } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const returnUrl = searchParams.get('returnUrl') ?? '/'
   const [showPw, setShowPw] = useState(false)
   const [apiError, setApiError] = useState<string | null>(null)
 
@@ -44,7 +54,7 @@ export default function RegisterPage() {
     try {
       await authRegister(data.name, data.email, data.password)
       toast.success('Account created!', { description: 'Welcome to ValGadget.' })
-      router.replace('/')
+      router.replace(decodeURIComponent(returnUrl))
     } catch (err) {
       const e = err as ApiError
       setApiError(e.message ?? 'Registration failed. Please try again.')
@@ -147,8 +157,28 @@ export default function RegisterPage() {
 
         <p className="text-center text-sm text-muted-foreground mt-6">
           Already have an account?{' '}
-          <Link href="/login" className="text-primary font-medium hover:underline">Sign in</Link>
+          <Link href={`/login${returnUrl !== '/' ? `?returnUrl=${returnUrl}` : ''}`} className="text-primary font-medium hover:underline">Sign in</Link>
         </p>
+      </div>
+    </div>
+  )
+}
+
+function RegisterPageFallback() {
+  return (
+    <div className="w-full max-w-md animate-scale-in">
+      <div className="bg-card border border-border rounded-2xl p-8 shadow-sm">
+        <div className="mb-8 space-y-2">
+          <div className="h-8 w-32 rounded bg-muted animate-pulse" />
+          <div className="h-4 w-56 rounded bg-muted animate-pulse" />
+        </div>
+        <div className="space-y-5">
+          <div className="h-11 w-full rounded bg-muted animate-pulse" />
+          <div className="h-11 w-full rounded bg-muted animate-pulse" />
+          <div className="h-11 w-full rounded bg-muted animate-pulse" />
+          <div className="h-11 w-full rounded bg-muted animate-pulse" />
+          <div className="h-11 w-full rounded bg-muted animate-pulse" />
+        </div>
       </div>
     </div>
   )

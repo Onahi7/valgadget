@@ -9,11 +9,14 @@ export async function POST(request: NextRequest) {
   if ('status' in auth) return auth
 
   try {
-    const { currentPassword, newPassword, confirmPassword } = await request.json().catch(() => ({}))
+    const body = await request.json().catch(() => ({}))
+    const currentPassword = body.currentPassword
+    const newPassword = body.newPassword
+    const confirm = body.confirmPassword ?? body.newPasswordConfirmation
 
-    if (!currentPassword || !newPassword || !confirmPassword)
+    if (!currentPassword || !newPassword || !confirm)
       return apiError('All password fields are required.')
-    if (newPassword !== confirmPassword)
+    if (newPassword !== confirm)
       return apiError('New passwords do not match.')
     if (newPassword.length < 8)
       return apiError('New password must be at least 8 characters.')

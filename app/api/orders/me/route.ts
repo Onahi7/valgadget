@@ -33,10 +33,21 @@ export async function GET(req: NextRequest) {
     .offset((page - 1) * limit)
 
   return apiOk({
-    data,
+    data: data.map(numericOrder),
     total: count,
     page,
     limit,
     totalPages: Math.max(1, Math.ceil(count / limit)),
   })
+}
+
+function numericOrder(o: typeof orders.$inferSelect) {
+  return {
+    ...o,
+    subtotal:  Number(o.subtotal),
+    discount:  Number(o.discount),
+    shipping:  Number(o.shipping),
+    tax:       Number(o.tax),
+    total:     Number(o.total),
+  }
 }

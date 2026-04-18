@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
-import { orders, products } from '@/lib/server/schema'
+import { orders, products, shippingRates, users, affiliateClicks } from '@/lib/server/schema'
 import { requireAuth, apiOk, apiError, generateReference } from '@/lib/server/auth-helpers'
 import { eq, desc, and, sql } from 'drizzle-orm'
 import type { OrderItem, Address } from '@/lib/server/schema'
@@ -41,14 +41,16 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json()
-    const { items, shippingAddress, couponCode, affiliateCode, paymentMethod, notes } = body as {
-      items: Array<{ productId: string; qty: number }>
+    const { items: rawItems, shippingAddress, couponCode, affiliateCode, paymentMethod, notes } = body as {
+      items: Array<{ productId: string; quantity?: number; qty?: number }>
       shippingAddress: Address
       couponCode?: string
       affiliateCode?: string
       paymentMethod?: string
       notes?: string
     }
+    // Normalise: frontend sends "quantity", internal schema uses "qty"
+    const items = (rawItems ?? []).map(i => ({ productId: i.productId, qty: i.quantity ?? i.qty ?? 1 }))
 
     if (!items?.length) return apiError('Order must contain at least one item.')
     if (!shippingAddress) return apiError('Shipping address is required.')
@@ -71,7 +73,18 @@ export async function POST(req: NextRequest) {
       subtotal += unitPrice * lineItem.qty
     }
 
-    const shipping = subtotal >= 50000 ? 0 : 2500  // Free shipping over ₦50,000; ₦2,500 flat rate
+    // Look up shipping rate from DB based on state
+    let shipping = 0
+    const addrState = (shippingAddress as unknown as Record<string, unknown>)?.state as string | undefined
+    if (addrState && addrState !== 'Other' && subtotal < 50000) {
+      const [rate] = await db.select({ price: shippingRates.price })
+        .from(shippingRates)
+        .where(and(eq(shippingRates.state, addrState), eq(shippingRates.isActive, true)))
+        .limit(1)
+      shipping = rate ? Number(rate.price) : 2500
+    } else if (addrState !== 'Other' && subtotal < 50000) {
+      shipping = 2500 // fallback flat rate
+    }
     const tax      = 0  // No VAT added (prices are tax-inclusive)
     const total    = subtotal + shipping + tax
 
@@ -105,6 +118,25 @@ export async function POST(req: NextRequest) {
         }
         await db.update(orders).set({ status: 'cancelled', notes: 'Auto-cancelled: stock depleted during checkout' }).where(eq(orders.id, order.id))
         return apiError(`Insufficient stock for ${item.name}. Order cancelled.`, 409)
+      }
+    }
+
+    // Credit affiliate commission if affiliate code was used
+    if (affiliateCode) {
+      const [affiliate] = await db.select({ id: users.id, affiliateCode: users.affiliateCode })
+        .from(users).where(eq(users.affiliateCode, affiliateCode)).limit(1)
+      if (affiliate) {
+        const commissionRate = 0.05 // 5% commission
+        const commission = Math.round(subtotal * commissionRate)
+        // Credit affiliate balance
+        await db.update(users)
+          .set({ affiliateBalance: sql`${users.affiliateBalance} + ${commission}`, updatedAt: new Date() })
+          .where(eq(users.id, affiliate.id))
+        // Record the click/conversion
+        await db.insert(affiliateClicks).values({
+          code: affiliateCode, orderId: order.id, userId: auth.user.sub,
+          commission: String(commission), convertedAt: new Date(),
+        }).catch(() => {}) // ignore if duplicate
       }
     }
 

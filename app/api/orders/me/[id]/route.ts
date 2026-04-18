@@ -21,7 +21,14 @@ export async function GET(
     .limit(1)
 
   if (!order) return apiError('Order not found.', 404)
-  return apiOk(order)
+  return apiOk({
+    ...order,
+    subtotal: Number(order.subtotal),
+    discount: Number(order.discount),
+    shipping: Number(order.shipping),
+    tax:      Number(order.tax),
+    total:    Number(order.total),
+  })
 }
 
 export async function PATCH(
