@@ -148,9 +148,6 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
           { label: product.name }
         ]}
       />
-        <ChevronRight className="w-3 h-3" />
-        <span className="text-foreground font-medium truncate max-w-[200px]">{product.name}</span>
-      </nav>
 
       {/* Main grid */}
       <div className="grid md:grid-cols-2 gap-10 lg:gap-16">

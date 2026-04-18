@@ -79,6 +79,36 @@ export default function CheckoutPage() {
   )
 }
 
+function CheckoutPageContent() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const affiliateCode = searchParams.get('ref') ?? undefined
+  const { items, total, clearCart } = useCart()
+  const { user } = useAuth()
+  const [cryptoTxHash, setCryptoTxHash] = useState('')
+  const [createdOrderId, setCreatedOrderId] = useState<string | null>(null)
+  const [createdOrderRef, setCreatedOrderRef] = useState<string | null>(null)
+  const [shippingRates, setShippingRates] = useState<ShippingRate[]>([])
+  const [selectedRate, setSelectedRate] = useState<ShippingRate | null>(null)
+  const [savedAddresses, setSavedAddresses] = useState<UserAddress[]>([])
+  const [selectedAddressId, setSelectedAddressId] = useState<string>('')
+  const [showNewAddressForm, setShowNewAddressForm] = useState(false)
+
+  // Load saved addresses (only for logged-in users)
+  useEffect(() => {
+    if (!user) return
+    addressService.getAll()
+      .then(res => {
+        setSavedAddresses(res.data)
+        // Auto-select default address
+        const defaultAddr = res.data.find(a => a.isDefault)
+        if (defaultAddr && !showNewAddressForm) {
+          setSelectedAddressId(defaultAddr.id)
+        }
+      })
+      .catch(() => {})
+  }, [showNewAddressForm, user])
+
   useEffect(() => {
     fetch('/api/shipping-rates').then(r => r.json()).then(j => {
       if (j.data) setShippingRates(j.data)
@@ -254,7 +284,7 @@ export default function CheckoutPage() {
           <p className="text-sm text-muted-foreground">
             Send <strong className="text-foreground">₦{orderTotal.toLocaleString()} worth of {coinLabel}</strong> to the address above, then paste your transaction hash below.
             <span className="block mt-1 text-xs text-amber-600 dark:text-amber-400 font-medium">
-              ≈ ${(orderTotal / 1600).toFixed(2)} USD at ₦1,600/$1 rate
+              ≈ ${(orderTotal / 1600).toFixed(2)} USD at ₦1,600 per $1 rate
             </span>
           </p>
           <div className="space-y-3 text-left">
@@ -570,6 +600,5 @@ export default function CheckoutPage() {
           </div>
         </div>
       </div>
-    </div>
-  )
-}
+    )
+  }
