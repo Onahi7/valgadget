@@ -17,12 +17,16 @@ export function getToken(): string | null {
 export function setToken(token: string): void {
   if (typeof window === 'undefined') return
   localStorage.setItem('vg_token', token)
+  // Also set as cookie for middleware access
+  document.cookie = `vg_token=${token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`
 }
 
 export function clearToken(): void {
   if (typeof window === 'undefined') return
   localStorage.removeItem('vg_token')
   localStorage.removeItem('vg_user')
+  // Clear cookie
+  document.cookie = 'vg_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
 }
 
 // ─── Typed error ──────────────────────────────────────────────────────────────

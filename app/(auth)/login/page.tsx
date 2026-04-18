@@ -46,7 +46,12 @@ function LoginPageContent() {
     try {
       await login(data.email, data.password)
       toast.success('Welcome back!')
-      router.replace(decodeURIComponent(returnUrl))
+      
+      // Small delay to ensure cookie is set before navigation
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
+      // Use push instead of replace to ensure middleware sees the cookie
+      router.push(decodeURIComponent(returnUrl))
     } catch (err) {
       const e = err as ApiError
       setApiError(e.message ?? 'Login failed. Please try again.')

@@ -7,9 +7,7 @@ const SECRET = new TextEncoder().encode(JWT_SECRET_RAW)
 // Routes that require authentication
 const protectedRoutes = [
   '/account',
-  '/cart',
   '/checkout',
-  '/wishlist',
   '/admin',
   '/affiliate',
 ]
@@ -32,9 +30,11 @@ async function verifyToken(token: string) {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   
-  // Get token from Authorization header or cookie
+  // Get token from cookie (preferred) or Authorization header
+  const cookieToken = request.cookies.get('vg_token')?.value
   const authHeader = request.headers.get('authorization')
-  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
+  const headerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
+  const token = cookieToken || headerToken
   
   // Verify token if present
   const user = token ? await verifyToken(token) : null

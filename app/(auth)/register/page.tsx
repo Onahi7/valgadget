@@ -54,7 +54,11 @@ function RegisterPageContent() {
     try {
       await authRegister(data.name, data.email, data.password)
       toast.success('Account created!', { description: 'Welcome to ValGadget.' })
-      router.replace(decodeURIComponent(returnUrl))
+      
+      // Small delay to ensure cookie is set before navigation
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
+      router.push(decodeURIComponent(returnUrl))
     } catch (err) {
       const e = err as ApiError
       setApiError(e.message ?? 'Registration failed. Please try again.')
