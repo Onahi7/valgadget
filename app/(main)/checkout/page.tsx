@@ -37,7 +37,10 @@ const addressSchema = z.object({
   paymentMethod: z.string().min(1, 'Select a payment method'),
   saveAddress: z.boolean().optional(),
   addressLabel: z.string().optional(),
-  guestEmail: z.string().email('Valid email required').optional(),
+  guestEmail: z.preprocess(
+    (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+    z.string().email('Valid email required').optional(),
+  ),
 })
 type FormValues = z.infer<typeof addressSchema>
 
@@ -98,8 +101,12 @@ function CheckoutPageContent() {
         setSavedAddresses(res.data)
         // Auto-select default address
         const defaultAddr = res.data.find(a => a.isDefault)
-        if (defaultAddr && !showNewAddressForm) {
-          setSelectedAddressId(defaultAddr.id)
+        if (!showNewAddressForm) {
+          if (defaultAddr) {
+            setSelectedAddressId(defaultAddr.id)
+          } else if (res.data[0]) {
+            setSelectedAddressId(res.data[0].id)
+          }
         }
       })
       .catch(() => {})
@@ -163,6 +170,11 @@ function CheckoutPageContent() {
 
   const onSubmit = async (data: FormValues) => {
     try {
+      if (user && savedAddresses.length > 0 && !showNewAddressForm && !selectedAddressId) {
+        toast.error('Please select a saved address or choose "Use New Address".')
+        return
+      }
+
       // Validate guest email if not logged in
       if (!user && !data.guestEmail) {
         toast.error('Please provide your email address')
@@ -237,8 +249,9 @@ function CheckoutPageContent() {
     }
   }
 
-  const onInvalid = () => {
-    toast.error('Please complete the required checkout fields.')
+  const onInvalid = (errors: Record<string, { message?: string }>) => {
+    const firstMessage = Object.values(errors).find((e) => e?.message)?.message
+    toast.error(firstMessage ?? 'Please complete the required checkout fields.')
   }
 
   const submitCryptoHash = async () => {
