@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Search, UserPlus, Eye, Shield } from 'lucide-react'
+import { Search, UserPlus, Eye, Shield, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -21,34 +21,53 @@ const ROLE_COLORS: Record<string, string> = {
   admin:     'bg-purple-100 text-purple-700 border-purple-200',
 }
 
+type CustomersResponse = {
+  data: Customer[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 export default function AdminCustomersPage() {
   const [search, setSearch]   = useState('')
   const [roleFilter, setRole] = useState('all')
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
+  const [page, setPage]         = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [total, setTotal]         = useState(0)
 
-  useEffect(() => {
-    fetch('/api/admin/users?page=1&limit=100', {
+  const PAGE_SIZE = 20
+
+  const fetchCustomers = (p: number) => {
+    setLoading(true)
+    const params = new URLSearchParams({ page: String(p), limit: String(PAGE_SIZE) })
+    if (roleFilter !== 'all') params.set('role', roleFilter)
+    if (search) params.set('search', search)
+    fetch(`/api/admin/users?${params}`, {
       headers: { Authorization: `Bearer ${getToken()}` },
     })
       .then(r => r.json())
-      .then(res => { if (res.data?.data) setCustomers(res.data.data) })
+      .then((res: CustomersResponse) => {
+        if (res.data) setCustomers(res.data)
+        if (res.totalPages) setTotalPages(res.totalPages)
+        if (res.total) setTotal(res.total)
+        setPage(p)
+      })
       .finally(() => setLoading(false))
-  }, [])
+  }
 
-  const filtered = customers.filter(c => {
-    const q = search.toLowerCase()
-    const matchesSearch = !search || c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q)
-    const matchesRole = roleFilter === 'all' || c.role === roleFilter
-    return matchesSearch && matchesRole
-  })
+  useEffect(() => {
+    fetchCustomers(1)
+  }, [search, roleFilter])
 
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold">Customers</h1>
-          <p className="text-sm text-muted-foreground">{customers.length} registered users</p>
+          <p className="text-sm text-muted-foreground">{total} registered users</p>
         </div>
         <Button className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90" size="sm" onClick={async () => {
           const email = prompt('Enter email address to invite:')
@@ -119,10 +138,10 @@ export default function AdminCustomersPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} className="py-12 text-center text-muted-foreground text-sm">Loading...</td></tr>
-              ) : filtered.length === 0 ? (
-                <tr><td colSpan={7} className="py-12 text-center text-muted-foreground text-sm">No customers found</td></tr>
-              ) : filtered.map(customer => (
+                <tr><td colSpan={7} className="py-12 text-center text-sm text-muted-foreground">Loading...</td></tr>
+              ) : customers.length === 0 ? (
+                <tr><td colSpan={7} className="py-12 text-center text-sm text-muted-foreground">No customers found</td></tr>
+              ) : customers.map(customer => (
                 <tr key={customer.id} className="border-b border-border/50 hover:bg-accent/20 transition-colors">
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-3">
@@ -160,8 +179,35 @@ export default function AdminCustomersPage() {
             </tbody>
           </table>
         </div>
-        {filtered.length === 0 && (
+        {!loading && customers.length === 0 && (
           <div className="py-12 text-center text-sm text-muted-foreground">No customers match your search.</div>
+        )}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-5 py-3 border-t border-border">
+            <p className="text-xs text-muted-foreground">
+              Page {page} of {totalPages} ({total} total)
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fetchCustomers(page - 1)}
+                disabled={page <= 1}
+              >
+                <ChevronLeft className="w-3.5 h-3.5 mr-1" /> Previous
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fetchCustomers(page + 1)}
+                disabled={page >= totalPages}
+              >
+                Next <ChevronRight className="w-3.5 h-3.5 ml-1" />
+              </Button>
+            </div>
+          </div>
         )}
       </div>
     </div>

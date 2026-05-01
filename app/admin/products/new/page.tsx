@@ -36,7 +36,7 @@ export default function NewProductPage() {
     }
     setSaving(true)
     try {
-      await productService.create({
+      const res = await productService.create({
         name: form.name.trim(),
         description: form.description.trim(),
         shortDescription: form.shortDescription.trim() || undefined,
@@ -50,8 +50,8 @@ export default function NewProductPage() {
         isNew: form.isNew,
         isActive: form.isActive,
       })
-      toast.success(`"${form.name}" created`)
-      router.push('/admin/products')
+      toast.success(`"${form.name}" created. You can now upload images.`)
+      router.push(`/admin/products/${res.id}/edit`)
     } catch {
       toast.error('Failed to create product')
     } finally {
@@ -130,14 +130,14 @@ export default function NewProductPage() {
               <div className="space-y-1.5">
                 <Label htmlFor="price">Price *</Label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">₦</span>
                   <Input id="price" type="number" min="0" step="0.01" value={form.price} onChange={e => set('price', e.target.value)} className="pl-7" required />
                 </div>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="comparePrice">Compare Price</Label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">₦</span>
                   <Input id="comparePrice" type="number" min="0" step="0.01" value={form.comparePrice} onChange={e => set('comparePrice', e.target.value)} className="pl-7" />
                 </div>
               </div>

@@ -7,7 +7,7 @@ import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { ProductGrid } from '@/components/ecommerce/product-grid'
 import { ProductCardSkeleton } from '@/components/ecommerce/product-card-skeleton'
 import { categoryService, type Category } from '@/lib/services/category.service'
-import { productService, type Product } from '@/lib/services/product.service'
+import { productService, type Product, type ProductsResponse } from '@/lib/services/product.service'
 
 export default function CategoryPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params)
@@ -19,11 +19,12 @@ export default function CategoryPage({ params }: { params: Promise<{ slug: strin
   useEffect(() => {
     Promise.all([
       categoryService.getBySlug(slug).catch(() => null),
-      productService.getAll({ category: slug, limit: 50 }).catch(() => []),
+      productService.getAll({ category: slug, limit: 50 }).catch(() => null),
     ]).then(([cat, prods]) => {
       if (!cat) { setNotFound(true); return }
       setCategory(cat)
-      if (Array.isArray(prods)) setProducts(prods)
+      const response = prods as ProductsResponse | null
+      if (response?.data) setProducts(response.data)
     }).finally(() => setLoading(false))
   }, [slug])
 

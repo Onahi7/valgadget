@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Save, Loader2 } from 'lucide-react'
+import { ArrowLeft, Save, Loader2, Upload, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -19,6 +19,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
   const [categories, setCategories] = useState<Category[]>([])
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [uploading, setUploading] = useState(false)
 
   const [form, setForm] = useState({
     name: '', description: '', shortDescription: '', price: '', comparePrice: '',
@@ -84,6 +85,40 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
       toast.error('Failed to update product')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files?.length) return
+
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      Array.from(files).forEach(file => formData.append('images', file))
+      const res = await productService.uploadImages(id, formData)
+      if (res?.images) {
+        setProduct((prev: any) => prev ? { ...prev, images: res.images } : prev)
+        toast.success(`${files.length} image(s) uploaded`)
+      }
+    } catch {
+      toast.error('Failed to upload images')
+    } finally {
+      setUploading(false)
+      e.target.value = ''
+    }
+  }
+
+  const handleDeleteImage = async (imageUrl: string) => {
+    try {
+      await productService.deleteImage(id, imageUrl)
+      setProduct((prev: any) => prev ? {
+        ...prev,
+        images: (prev.images ?? []).filter((url: string) => url !== imageUrl)
+      } : prev)
+      toast.success('Image deleted')
+    } catch {
+      toast.error('Failed to delete image')
     }
   }
 
@@ -163,14 +198,14 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
               <div className="space-y-1.5">
                 <Label htmlFor="price">Price *</Label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">₦</span>
                   <Input id="price" type="number" min="0" step="0.01" value={form.price} onChange={e => set('price', e.target.value)} className="pl-7" required />
                 </div>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="comparePrice">Compare Price</Label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">₦</span>
                   <Input id="comparePrice" type="number" min="0" step="0.01" value={form.comparePrice} onChange={e => set('comparePrice', e.target.value)} className="pl-7" />
                 </div>
               </div>
@@ -206,6 +241,50 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
               </select>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Images Section */}
+      <div className="bg-card border border-border rounded-lg p-5 space-y-4">
+        <h2 className="font-semibold text-sm">Product Images</h2>
+
+        {/* Existing Images */}
+        {(product.images ?? []).length > 0 && (
+          <div className="grid grid-cols-4 gap-3">
+            {(product.images as string[]).map((url: string, idx: number) => (
+              <div key={idx} className="relative group rounded-lg overflow-hidden border border-border">
+                <img src={url} alt={`Product ${idx + 1}`} className="w-full h-24 object-cover" />
+                <button
+                  type="button"
+                  onClick={() => handleDeleteImage(url)}
+                  className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Upload */}
+        <div className="flex items-center gap-3">
+          <label className="cursor-pointer">
+            <Input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleImageUpload}
+              className="hidden"
+              id="image-upload"
+            />
+            <Button type="button" variant="outline" size="sm" asChild className={cn(uploading && 'opacity-50')}>
+              <label htmlFor="image-upload" className="cursor-pointer flex items-center gap-2">
+                <Upload className="w-3.5 h-3.5" />
+                {uploading ? 'Uploading...' : 'Upload Images'}
+              </label>
+            </Button>
+          </label>
+          <p className="text-xs text-muted-foreground">Max 5MB per image. Supports JPG, PNG, WebP.</p>
         </div>
       </div>
     </form>

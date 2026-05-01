@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
 import { products, categories } from '@/lib/server/schema'
 import { ok } from '@/lib/server/http'
-import { eq, ilike, gte, lte, and, asc, desc, sql, type SQL } from 'drizzle-orm'
+import { eq, ilike, gte, lte, and, asc, desc, sql, type SQL, inArray } from 'drizzle-orm'
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
@@ -24,7 +24,15 @@ export async function GET(request: NextRequest) {
       .from(categories)
       .where(eq(categories.slug, category))
       .limit(1)
-    conditions.push(eq(products.categoryId, cat?.id ?? category))
+    if (cat?.id) {
+      const children = await db.select({ id: categories.id })
+        .from(categories)
+        .where(eq(categories.parentId, cat.id))
+      const categoryIds = [cat.id, ...children.map(c => c.id)]
+      conditions.push(inArray(products.categoryId, categoryIds))
+    } else {
+      conditions.push(eq(products.categoryId, category))
+    }
   }
   if (search) {
     conditions.push(ilike(products.name, `%${search}%`))

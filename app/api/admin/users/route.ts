@@ -1,8 +1,8 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
-import { users } from '@/lib/server/schema'
+import { users, orders } from '@/lib/server/schema'
 import { requireAuth, apiOk, apiError } from '@/lib/server/auth-helpers'
-import { desc, ilike, eq, sql, and, type SQL } from 'drizzle-orm'
+import { desc, ilike, eq, sql, and, type SQL, count, sum } from 'drizzle-orm'
 
 export async function GET(req: NextRequest) {
   const auth = await requireAuth(req, ['admin'])
@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
 
   const where = conditions.length ? and(...conditions) : undefined
 
-  const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(users).where(where)
+  const [{ count: totalCount }] = await db.select({ count: sql<number>`count(*)::int` }).from(users).where(where)
 
   const data = await db.select({
     id: users.id, name: users.name, email: users.email, role: users.role,
@@ -28,5 +28,28 @@ export async function GET(req: NextRequest) {
     affiliateCode: users.affiliateCode, createdAt: users.createdAt, updatedAt: users.updatedAt,
   }).from(users).where(where).orderBy(desc(users.createdAt)).limit(limit).offset((page - 1) * limit)
 
-  return apiOk({ data, total: count, page, limit, totalPages: Math.max(1, Math.ceil(count / limit)) })
+  // Fetch orders count and total spent for each user
+  const userIds = data.map(u => u.id)
+  let ordersData: { userId: string; orders: number; spent: number }[] = []
+  if (userIds.length > 0) {
+    const result = await db.select({
+      userId: orders.userId,
+      orders: count(orders.id).as('orders'),
+      spent: sql<number>`COALESCE(SUM(${orders.total})::int, 0)`.as('spent'),
+    })
+    .from(orders)
+    .where(sql`${orders.userId} IN (${userIds.join(',')})`)
+    .groupBy(orders.userId)
+
+    ordersData = result as any
+  }
+
+  const userMap = new Map(ordersData.map(o => [o.userId, o]))
+  const enriched = data.map(u => ({
+    ...u,
+    orders: userMap.get(u.id)?.orders ?? 0,
+    spent: userMap.get(u.id)?.spent ?? 0,
+  }))
+
+  return apiOk({ data: enriched, total: totalCount, page, limit, totalPages: Math.max(1, Math.ceil(totalCount / limit)) })
 }

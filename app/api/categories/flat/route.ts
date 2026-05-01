@@ -15,7 +15,13 @@ export async function GET() {
     isActive: categories.isActive,
     sortOrder: categories.sortOrder,
     productCount: sql<number>`(
-      SELECT count(*) FROM products WHERE category_id = ${categories.id} AND is_active = true
+      SELECT count(*)
+      FROM products p
+      WHERE p.is_active = true
+        AND (
+          p.category_id = ${categories.id}
+          OR p.category_id IN (SELECT c2.id FROM categories c2 WHERE c2.parent_id = ${categories.id})
+        )
     )::int`,
   }).from(categories).where(eq(categories.isActive, true)).orderBy(asc(categories.sortOrder))
 

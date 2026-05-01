@@ -65,6 +65,9 @@ export async function POST(req: NextRequest) {
     if (items.some(i => !i.productId || !Number.isInteger(i.qty) || i.qty < 1)) {
       return apiError('Each order item must include a product and a quantity of at least 1.', 422)
     }
+    if ((paymentMethod ?? 'paystack') !== 'paystack') {
+      return apiError('Only Paystack payment is currently enabled.', 400)
+    }
     if (!shippingAddress) return apiError('Shipping address is required.')
 
     // Require email for guest orders
@@ -146,7 +149,7 @@ export async function POST(req: NextRequest) {
         guestEmail: user ? null : guestEmail,
         status: 'pending',
         paymentStatus: 'unpaid',
-        paymentMethod,
+        paymentMethod: 'paystack',
         items: orderItems,
         subtotal: String(subtotal.toFixed(2)),
         discount: '0',

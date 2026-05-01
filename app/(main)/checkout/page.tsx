@@ -43,11 +43,6 @@ type FormValues = z.infer<typeof addressSchema>
 
 const PAYMENT_METHODS = [
   { id: 'paystack',   label: 'Pay with Paystack',        icon: CreditCard, desc: 'Cards, bank transfer, USSD & more' },
-  { id: 'bitcoin',    label: 'Bitcoin (BTC)',             icon: Bitcoin,    desc: 'Pay directly to our BTC wallet' },
-  { id: 'ethereum',   label: 'Ethereum (ETH)',            icon: Wallet,     desc: 'Pay directly to our ETH wallet' },
-  { id: 'usdt_trc20', label: 'USDT (TRC-20 / TRON)',     icon: Wallet,     desc: 'Tether on Tron network — low fees' },
-  { id: 'usdt_erc20', label: 'USDT (ERC-20 / Ethereum)', icon: Wallet,     desc: 'Tether on Ethereum network' },
-  { id: 'cod',        label: 'Cash on Delivery',          icon: Truck,      desc: 'Pay when your order arrives' },
 ]
 
 const CRYPTO_ADDRESSES: Record<string, string> = {
@@ -117,13 +112,13 @@ function CheckoutPageContent() {
 
   const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(addressSchema),
-    defaultValues: { country: 'Nigeria', paymentMethod: '', saveAddress: false, guestEmail: '' },
+    defaultValues: { country: 'Nigeria', paymentMethod: 'paystack', saveAddress: false, guestEmail: '' },
   })
 
   const selectedPayment = watch('paymentMethod')
   const watchedState = watch('state')
   const watchedSaveAddress = watch('saveAddress')
-  const isCrypto = ['bitcoin', 'ethereum', 'usdt_trc20', 'usdt_erc20'].includes(selectedPayment)
+  const isCrypto = false
   const step = selectedPayment ? 'payment' : 'address'
 
   // Get LGAs for selected state
@@ -201,7 +196,7 @@ function CheckoutPageContent() {
           city: data.city, state: data.state, postalCode: data.postalCode ?? '',
           country: data.country, phone: data.phone,
         },
-        paymentMethod: data.paymentMethod,
+        paymentMethod: 'paystack',
         affiliateCode,
         guestEmail: user ? undefined : data.guestEmail,
       })
@@ -211,10 +206,13 @@ function CheckoutPageContent() {
       setCreatedOrderRef(order.reference)
 
       if (data.paymentMethod === 'paystack') {
+        const token = getToken()
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+        if (token) headers.Authorization = `Bearer ${token}`
         const res = await fetch('/api/payments/paystack/initialize', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-          body: JSON.stringify({ orderId: order.id }),
+          headers,
+          body: JSON.stringify({ orderId: order.id, guestEmail: user ? undefined : data.guestEmail }),
         })
         const json = await res.json()
         if (json.data?.authorization_url) {
@@ -226,15 +224,7 @@ function CheckoutPageContent() {
         return
       }
 
-      if (data.paymentMethod === 'cod') {
-        toast.success('Order placed!', { description: `Ref: ${order.reference}` })
-        // For guest users, redirect to a guest order confirmation page
-        if (!user) {
-          router.push(`/orders/guest/${order.id}?ref=${order.reference}`)
-        } else {
-          router.push(`/account/orders/${order.id}?new=1`)
-        }
-      }
+      toast.error('Only Paystack checkout is currently available.')
     } catch (err) {
       const e = err as ApiError
       toast.error(e.message ?? 'Failed to place order')
@@ -281,12 +271,9 @@ function CheckoutPageContent() {
               </button>
             </div>
           </div>
-          <p className="text-sm text-muted-foreground">
-            Send <strong className="text-foreground">₦{orderTotal.toLocaleString()} worth of {coinLabel}</strong> to the address above, then paste your transaction hash below.
-            <span className="block mt-1 text-xs text-amber-600 dark:text-amber-400 font-medium">
-              ≈ ${(orderTotal / 1600).toFixed(2)} USD at ₦1,600 per $1 rate
-            </span>
-          </p>
+            <p className="text-sm text-muted-foreground">
+              Send <strong className="text-foreground">₦{orderTotal.toLocaleString()}</strong> to the address above, then paste your transaction hash below.
+            </p>
           <div className="space-y-3 text-left">
             <Label>Transaction Hash (TX ID)</Label>
             <Input

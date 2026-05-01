@@ -7,21 +7,25 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
 import { orders } from '@/lib/server/schema'
-import { requireAuth, apiOk, apiError } from '@/lib/server/auth-helpers'
+import { getRequestUser, apiOk, apiError } from '@/lib/server/auth-helpers'
 import { and, eq } from 'drizzle-orm'
 
 export async function POST(req: NextRequest) {
   try {
-    const auth = await requireAuth(req)
-    if ('status' in auth) return auth
+    const user = await getRequestUser(req)
     const body = await req.json()
-    const { orderId } = body as { orderId: string }
+    const { orderId, guestEmail } = body as { orderId: string; guestEmail?: string }
 
     if (!orderId) return apiError('orderId is required', 400)
 
     const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1)
     if (!order) return apiError('Order not found', 404)
-    if (order.userId !== auth.user.sub) return apiError('Forbidden', 403)
+    if (user) {
+      if (order.userId !== user.sub) return apiError('Forbidden', 403)
+    } else {
+      if (!order.guestEmail || !guestEmail) return apiError('Guest email is required', 400)
+      if (order.guestEmail.toLowerCase() !== guestEmail.trim().toLowerCase()) return apiError('Forbidden', 403)
+    }
     if (order.paymentStatus === 'paid') return apiError('Order already paid', 400)
     if (order.paymentStatus === 'pending') return apiError('Payment already initialized. Please complete the existing payment.', 400)
 
@@ -29,6 +33,9 @@ export async function POST(req: NextRequest) {
     if (!secretKey || secretKey.includes('replace') || secretKey.includes('placeholder')) {
       return apiError('Paystack is not configured. Set PAYSTACK_SECRET_KEY in env.', 503)
     }
+
+    const payerEmail = user?.email ?? guestEmail?.trim().toLowerCase()
+    if (!payerEmail) return apiError('Unable to determine payer email.', 400)
 
     const [reservedOrder] = await db.update(orders)
       .set({ paymentMethod: 'paystack', paymentStatus: 'pending', updatedAt: new Date() })
@@ -55,13 +62,13 @@ export async function POST(req: NextRequest) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        email: auth.user.email,
+        email: payerEmail,
         amount: amountKobo,
         reference,
         callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/payments/paystack/verify?reference=${reference}&orderId=${orderId}`,
         metadata: {
           orderId,
-          userId: auth.user.sub,
+          userId: user?.sub ?? 'guest',
           custom_fields: [
             { display_name: 'Order Reference', variable_name: 'order_ref', value: reference },
           ],

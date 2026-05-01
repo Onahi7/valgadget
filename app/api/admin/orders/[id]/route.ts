@@ -31,7 +31,7 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
 
   const { id } = await context.params
   try {
-    const { status, paymentStatus, paymentRef, notes } = await req.json()
+    const { status, paymentStatus, paymentRef, notes, trackingNumber } = await req.json()
 
     // Validate status values
     const validStatuses = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded']
@@ -53,12 +53,27 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
       }
     }
 
+    // If refunding, also restore stock
+    if (status === 'refunded') {
+      const [order] = await db.select({ items: orders.items, status: orders.status })
+        .from(orders).where(eq(orders.id, id)).limit(1)
+      if (order && order.status !== 'refunded') {
+        const items = (order.items ?? []) as OrderItem[]
+        for (const item of items) {
+          await db.update(products)
+            .set({ stock: sql`${products.stock} + ${item.qty}`, updatedAt: new Date() })
+            .where(eq(products.id, item.productId))
+        }
+      }
+    }
+
     const [updated] = await db.update(orders)
       .set({
         ...(status        !== undefined && { status }),
         ...(paymentStatus !== undefined && { paymentStatus }),
         ...(paymentRef    !== undefined && { paymentRef }),
         ...(notes         !== undefined && { notes }),
+        ...(trackingNumber !== undefined && { trackingNumber }),
         updatedAt: new Date(),
       })
       .where(eq(orders.id, id))

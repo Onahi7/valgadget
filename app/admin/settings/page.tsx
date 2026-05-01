@@ -46,7 +46,7 @@ export default function AdminSettingsPage() {
     setSaving(true)
     try {
       const res = await fetch('/api/admin/settings', {
-        method: 'PUT',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
         body: JSON.stringify({ settings: s }),
       })

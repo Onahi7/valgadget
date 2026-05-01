@@ -246,6 +246,19 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
               >
                 <XCircle className="w-3.5 h-3.5 mr-2" /> Cancel Order
               </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={order.status === 'refunded'}
+                onClick={() => {
+                  if (confirm('Are you sure you want to refund this order? Stock will be restored.')) {
+                    updateStatus('refunded')
+                  }
+                }}
+                className="justify-start text-orange-600 border-orange-300 hover:bg-orange-50"
+              >
+                <RefreshCcw className="w-3.5 h-3.5 mr-2" /> Refund Order
+              </Button>
             </div>
           </div>
         </div>

@@ -12,7 +12,15 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ sl
     description: categories.description, image: categories.image, icon: categories.icon,
     parentId: categories.parentId, isActive: categories.isActive,
     sortOrder: categories.sortOrder, createdAt: categories.createdAt, updatedAt: categories.updatedAt,
-    productCount: sql<number>`(select count(*) from products where products.category_id = categories.id and products.is_active = true)::int`,
+    productCount: sql<number>`(
+      select count(*)
+      from products p
+      where p.is_active = true
+        and (
+          p.category_id = categories.id
+          or p.category_id in (select c2.id from categories c2 where c2.parent_id = categories.id)
+        )
+    )::int`,
   }).from(categories).where(eq(categories.slug, slug)).limit(1)
 
   if (!category) return fail('Category not found.', 404)

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Search, ChevronDown, Download, Eye } from 'lucide-react'
+import { Search, ChevronDown, Download, Eye, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -38,27 +38,48 @@ type Order = {
   items?: unknown[];
 }
 
+type OrdersResponse = {
+  data: Order[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 export default function AdminOrdersPage() {
   const [search, setSearch]       = useState('')
   const [statusFilter, setStatus] = useState('all')
   const [orders, setOrders]       = useState<Order[]>([])
   const [loading, setLoading]     = useState(true)
+  const [page, setPage]           = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [total, setTotal]         = useState(0)
 
-  useEffect(() => {
+  const PAGE_SIZE = 20
+
+  const fetchOrders = (p: number) => {
     setLoading(true)
-    const params = new URLSearchParams({ page: '1', limit: '100' })
+    const params = new URLSearchParams({ page: String(p), limit: String(PAGE_SIZE) })
     if (statusFilter !== 'all') params.set('status', statusFilter)
     if (search) params.set('search', search)
     fetch(`/api/admin/orders?${params}`, {
       headers: { Authorization: `Bearer ${getToken()}` },
     })
       .then(r => r.json())
-      .then(d => { if (d.data?.data) setOrders(d.data.data) })
+      .then((d: OrdersResponse) => {
+        if (d.data) setOrders(d.data)
+        if (d.totalPages) setTotalPages(d.totalPages)
+        if (d.total) setTotal(d.total)
+        setPage(p)
+      })
       .finally(() => setLoading(false))
+  }
+
+  useEffect(() => {
+    fetchOrders(1)
   }, [search, statusFilter])
 
-  const filtered = orders
-  const revenue = filtered.reduce((s, o) => s + Number(o.total), 0)
+  const revenue = orders.reduce((s, o) => s + Number(o.total), 0)
 
   const formatNaira = (value: number) => `₦${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
 
@@ -68,7 +89,7 @@ export default function AdminOrdersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Orders</h1>
-          <p className="text-sm text-muted-foreground">{filtered.length} orders · {formatNaira(revenue)} revenue</p>
+          <p className="text-sm text-muted-foreground">{total} orders · {formatNaira(revenue)} revenue</p>
         </div>
         <Button variant="outline" size="sm" className="gap-2" onClick={() => {
           const params = new URLSearchParams()
@@ -137,7 +158,7 @@ export default function AdminOrdersPage() {
             <tbody>
               {loading ? (
                 <tr><td colSpan={8} className="py-12 text-center text-sm text-muted-foreground">Loading...</td></tr>
-              ) : filtered.map(order => (
+              ) : orders.map(order => (
                 <tr key={order.id} className="border-b border-border/50 hover:bg-accent/20 transition-colors">
                   <td className="px-5 py-3">
                     <Link href={`/admin/orders/${order.id}`} className="font-mono text-xs text-primary hover:underline font-bold">
@@ -168,8 +189,35 @@ export default function AdminOrdersPage() {
             </tbody>
           </table>
         </div>
-        {!loading && filtered.length === 0 && (
-          <div className="py-12 text-center text-muted-foreground text-sm">No orders match your filters.</div>
+        {!loading && orders.length === 0 && (
+          <div className="py-12 text-center text-sm text-muted-foreground">No orders match your filters.</div>
+        )}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-5 py-3 border-t border-border">
+            <p className="text-xs text-muted-foreground">
+              Page {page} of {totalPages} ({total} total)
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fetchOrders(page - 1)}
+                disabled={page <= 1}
+              >
+                <ChevronLeft className="w-3.5 h-3.5 mr-1" /> Previous
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fetchOrders(page + 1)}
+                disabled={page >= totalPages}
+              >
+                Next <ChevronRight className="w-3.5 h-3.5 ml-1" />
+              </Button>
+            </div>
+          </div>
         )}
       </div>
     </div>

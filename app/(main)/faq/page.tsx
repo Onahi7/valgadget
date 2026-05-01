@@ -39,7 +39,7 @@ const faqs: FAQ[] = [
   {
     category: 'Orders & Checkout',
     question: 'What payment methods do you accept?',
-    answer: 'We accept Paystack (cards, bank transfer, USSD), cryptocurrency (Bitcoin, Ethereum, USDT), and Cash on Delivery for eligible locations.',
+    answer: 'We currently accept Paystack (cards, bank transfer, and USSD).',
   },
 
   // Shipping & Delivery

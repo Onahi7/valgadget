@@ -29,7 +29,7 @@ export default function TermsOfServicePage() {
         <section>
           <h2 className="text-lg font-semibold">3. Orders & Payment</h2>
           <p className="text-muted-foreground text-sm leading-relaxed">
-            By placing an order, you agree to provide accurate and complete information. We accept Paystack, cryptocurrency, and cash on delivery. Payment must be completed before order fulfillment unless paying on delivery.
+            By placing an order, you agree to provide accurate and complete information. We currently accept Paystack (cards, bank transfer, and USSD). Payment must be completed before order fulfillment.
           </p>
         </section>
 

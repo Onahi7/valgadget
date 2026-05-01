@@ -26,24 +26,33 @@ export function AdminDashboardClient() {
   const [topProducts, setTopProducts] = useState<Product[]>([])
 
   useEffect(() => {
-    fetch('/api/admin/stats', { headers: { Authorization: `Bearer ${getToken()}` } }).then(r => r.json()).then(d => {
-      if (d.data) setStats({
-        users: d.data.users?.total ?? 0,
-        orders: d.data.orders?.total ?? 0,
-        revenue: d.data.orders?.revenue ?? 0,
-        products: d.data.products?.total ?? 0,
-        pendingOrders: d.data.orders?.pending ?? 0,
-        confirmedOrders: d.data.orders?.confirmed ?? 0,
-        lowStock: d.data.products?.lowStock ?? 0,
-        affiliates: d.data.users?.affiliates ?? 0,
+    fetch('/api/admin/stats', { headers: { Authorization: `Bearer ${getToken()}` } })
+      .then(r => r.json())
+      .then(d => {
+        if (d.data) setStats({
+          users: d.data.users?.total ?? 0,
+          orders: d.data.orders?.total ?? 0,
+          revenue: d.data.orders?.revenue ?? 0,
+          products: d.data.products?.total ?? 0,
+          pendingOrders: d.data.orders?.pending ?? 0,
+          confirmedOrders: d.data.orders?.confirmed ?? 0,
+          lowStock: d.data.products?.lowStock ?? 0,
+          affiliates: d.data.users?.affiliates ?? 0,
+        })
       })
-    })
-    fetch('/api/admin/orders?limit=5&page=1', { headers: { Authorization: `Bearer ${getToken()}` } }).then(r => r.json()).then(d => {
-      if (d.data?.data) setOrders(d.data.data)
-    })
-    fetch('/api/products?limit=5&sort=rating').then(r => r.json()).then(d => {
-      if (d.data?.data) setTopProducts(d.data.data)
-    })
+      .catch(() => console.error('Failed to fetch dashboard stats'))
+    fetch('/api/admin/orders?limit=5&page=1', { headers: { Authorization: `Bearer ${getToken()}` } })
+      .then(r => r.json())
+      .then(d => {
+        if (d.data?.data) setOrders(d.data.data)
+      })
+      .catch(() => console.error('Failed to fetch recent orders'))
+    fetch('/api/products?limit=5&sort=rating')
+      .then(r => r.json())
+      .then(d => {
+        if (d.data?.data) setTopProducts(d.data.data)
+      })
+      .catch(() => console.error('Failed to fetch top products'))
   }, [])
 
   const formatNaira = (value: number) => `₦${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`

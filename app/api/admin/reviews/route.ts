@@ -5,12 +5,8 @@ import { requireAuth, apiOk, apiError } from '@/lib/server/auth-helpers'
 import { desc, eq } from 'drizzle-orm'
 
 export async function GET(req: NextRequest) {
-  const auth = await requireAuth(req)
+  const auth = await requireAuth(req, ['admin'])
   if ('status' in auth) return auth
-
-  if (auth.user.role !== 'admin') {
-    return apiError('Unauthorized', 403)
-  }
 
   try {
     const allReviews = await db

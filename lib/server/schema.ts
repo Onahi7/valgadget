@@ -249,8 +249,26 @@ export const affiliateClicks = pgTable('affiliate_clicks', {
   orderId:     text('order_id').references(() => orders.id),
   commission:  numeric('commission', { precision: 10, scale: 2 }),
   createdAt:   timestamp('created_at').notNull().defaultNow(),
-}, t => [
+  }, t => [
   index('aff_clicks_code_idx').on(t.code),
+])
+
+// ─── Affiliate Payouts ───────────────────────────────────────────────
+
+export const affiliatePayouts = pgTable('affiliate_payouts', {
+  id:          text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId:      text('user_id').notNull().references(() => users.id),
+  amount:      numeric('amount', { precision: 10, scale: 2 }).notNull(),
+  method:      varchar('method', { length: 50 }).notNull(), // bank_transfer | crypto | paystack
+  reference:   text('reference'),
+  status:      varchar('status', { length: 20 }).notNull().default('completed'),
+  adminId:    text('admin_id').references(() => users.id),
+  notes:       text('notes'),
+  createdAt:   timestamp('created_at').notNull().defaultNow(),
+  updatedAt:   timestamp('updated_at').notNull().defaultNow(),
+}, t => [
+  index('aff_payouts_user_idx').on(t.userId),
+  index('aff_payouts_status_idx').on(t.status),
 ])
 
 // ─── Coupons ───────────────────────────────────────────────────────────────

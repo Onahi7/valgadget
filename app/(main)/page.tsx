@@ -13,7 +13,7 @@ import { raffleService, type Raffle } from '@/lib/services/raffle.service'
 import { cn } from '@/lib/utils'
 
 const TRUST_BADGES = [
-  { icon: Truck, label: 'Free shipping', desc: 'On orders over $99' },
+  { icon: Truck, label: 'Free shipping', desc: 'On orders over ₦99' },
   { icon: Shield, label: 'Secure payments', desc: 'SSL encrypted checkout' },
   { icon: RotateCcw, label: '30-day returns', desc: 'Hassle-free policy' },
   { icon: Zap, label: 'Fast dispatch', desc: 'Ships within 24 hours' },
@@ -42,14 +42,28 @@ export default function HomePage() {
   const [heroProducts, setHeroProducts]         = useState<Product[]>([])
 
   useEffect(() => {
-    productService.getFeatured().then(r => { if (Array.isArray(r)) setFeaturedProducts((r as any[]).slice(0, 4)) })
-    productService.getNewArrivals().then(r => { if (Array.isArray(r)) setNewArrivals((r as any[]).slice(0, 4)) })
-    productService.getAll({ limit: 4 }).then(r => { if ((r as any)?.data) setHeroProducts((r as any).data.slice(0, 4)) })
-    categoryService.getFlat().then(r => { if (Array.isArray(r)) setCategories(r as any[]) })
-    raffleService.getAll().then(r => {
-      const list: Raffle[] = Array.isArray(r) ? (r as any[]) : []
-      setActiveRaffles(list.filter(x => x.status === 'active').slice(0, 2))
-    })
+    async function loadData() {
+      try {
+        const [featured, arrivals, allProducts, cats, raffles] = await Promise.all([
+          productService.getFeatured(),
+          productService.getNewArrivals(),
+          productService.getAll({ limit: 4 }),
+          categoryService.getFlat(),
+          raffleService.getAll(),
+        ])
+        
+        if (featured.status === 'fulfilled') setFeaturedProducts(featured.value.slice(0, 4))
+        if (arrivals.status === 'fulfilled') setNewArrivals(arrivals.value.slice(0, 4))
+        if (allProducts.status === 'fulfilled') setHeroProducts(allProducts.data.slice(0, 4))
+        if (Array.isArray(cats)) setCategories(cats)
+        if (Array.isArray(raffles)) setActiveRaffles(raffles.filter(x => x.status === 'active').slice(0, 2))
+      } catch (err) {
+        console.error('[home page load]', err)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    loadData()
   }, [])
 
   return (

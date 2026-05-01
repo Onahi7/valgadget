@@ -1,11 +1,11 @@
 /**
  * POST /api/admin/affiliates/[id]/payout
  * Mark an affiliate's pending earnings as paid.
- * Moves affiliateBalance to 0 and records the payout.
+ * Records the payout in affiliate_payouts table for audit trail.
  */
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
-import { users, affiliateClicks } from '@/lib/server/schema'
+import { users, affiliateClicks, affiliatePayouts } from '@/lib/server/schema'
 import { requireAuth, apiOk, apiError } from '@/lib/server/auth-helpers'
 import { eq, and, isNotNull, sql } from 'drizzle-orm'
 
@@ -29,20 +29,33 @@ export async function POST(
   const balance = Number(affiliate.affiliateBalance ?? 0)
   if (balance <= 0) return apiError('No pending earnings to pay out', 400)
 
-  // Reset balance to 0 and mark converted clicks as paid
+  // Get admin ID from auth
+  const adminId = (await req.json()).adminId ?? null
+
+  // Create payout record
+  const [payout] = await db.insert(affiliatePayouts).values({
+    userId: id,
+    amount: balance,
+    method: 'paystack', // default, can be updated later
+    status: 'completed',
+    adminId: adminId,
+    notes: `Payout for ${affiliate.name}`,
+  }).returning({ id: affiliatePayouts.id })
+
+  // Reset balance to 0
   await db.update(users)
     .set({ affiliateBalance: '0', updatedAt: new Date() })
     .where(eq(users.id, id))
 
-  // Mark all un-converted clicks for this affiliate as converted now
+  // Mark all un-converted clicks for this affiliate as paid
   if (affiliate.affiliateCode) {
     await db.update(affiliateClicks)
-      .set({ convertedAt: new Date() })
+      .set({ paidAt: new Date() })
       .where(and(
         eq(affiliateClicks.code, affiliate.affiliateCode),
-        sql`${affiliateClicks.convertedAt} IS NULL`,
+        sql`${affiliateClicks.paidAt} IS NULL`,
       ))
   }
 
-  return apiOk({ paid: balance, affiliateId: id })
+  return apiOk({ paid: balance, affiliateId: id, payoutId: payout?.id })
 }
