@@ -20,7 +20,11 @@ export async function GET(request: NextRequest) {
   const conditions: SQL[] = [eq(products.isActive, true)]
 
   if (category) {
-    conditions.push(eq(products.categoryId, category))
+    const [cat] = await db.select({ id: categories.id })
+      .from(categories)
+      .where(eq(categories.slug, category))
+      .limit(1)
+    conditions.push(eq(products.categoryId, cat?.id ?? category))
   }
   if (search) {
     conditions.push(ilike(products.name, `%${search}%`))
