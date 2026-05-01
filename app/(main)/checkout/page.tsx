@@ -88,6 +88,7 @@ function CheckoutPageContent() {
   const [savedAddresses, setSavedAddresses] = useState<UserAddress[]>([])
   const [selectedAddressId, setSelectedAddressId] = useState<string>('')
   const [showNewAddressForm, setShowNewAddressForm] = useState(false)
+  const [initializingPayment, setInitializingPayment] = useState(false)
 
   // Load saved addresses (only for logged-in users)
   useEffect(() => {
@@ -206,6 +207,7 @@ function CheckoutPageContent() {
       setCreatedOrderRef(order.reference)
 
       if (data.paymentMethod === 'paystack') {
+        setInitializingPayment(true)
         const token = getToken()
         const headers: Record<string, string> = { 'Content-Type': 'application/json' }
         if (token) headers.Authorization = `Bearer ${token}`
@@ -221,15 +223,22 @@ function CheckoutPageContent() {
           window.location.href = authorizationUrl
           return
         }
+        setInitializingPayment(false)
         toast.error(json.message ?? 'Paystack init failed')
         return
       }
 
+      setInitializingPayment(false)
       toast.error('Only Paystack checkout is currently available.')
     } catch (err) {
+      setInitializingPayment(false)
       const e = err as ApiError
       toast.error(e.message ?? 'Failed to place order')
     }
+  }
+
+  const onInvalid = () => {
+    toast.error('Please complete the required checkout fields.')
   }
 
   const submitCryptoHash = async () => {
@@ -310,7 +319,7 @@ function CheckoutPageContent() {
       </div>
 
       <div className="grid lg:grid-cols-3 gap-8">
-        <form onSubmit={handleSubmit(onSubmit)} className="lg:col-span-2 flex flex-col gap-6">
+        <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="lg:col-span-2 flex flex-col gap-6">
           {/* Guest Email (if not logged in) */}
           {!user && (
             <div className="bg-card rounded-xl border border-border p-6">
@@ -568,8 +577,12 @@ function CheckoutPageContent() {
               </div>
             )}
 
-            <Button type="submit" disabled={isSubmitting} size="lg" className="w-full font-semibold">
-              {isSubmitting ? (
+            <Button type="submit" disabled={isSubmitting || initializingPayment} size="lg" className="w-full font-semibold">
+              {initializingPayment ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" /> Initializing Paystack…
+                </span>
+              ) : isSubmitting ? (
                 <span className="flex items-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin" /> Processing…
                 </span>
