@@ -83,7 +83,7 @@ export default function AdminChatPage() {
   }
 
   return (
-    <div className="h-[calc(100vh-7rem)] flex rounded-xl border border-border overflow-hidden bg-card">
+    <div className="h-[calc(100vh-7rem)] flex rounded-lg border border-border overflow-hidden bg-card">
       {/* Session list */}
       <div className="w-72 shrink-0 border-r border-border flex flex-col">
         <div className="px-4 py-3 border-b border-border">

@@ -109,7 +109,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
       <div className="grid md:grid-cols-2 gap-6">
         {/* Left column */}
         <div className="space-y-4">
-          <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+          <div className="bg-card border border-border rounded-lg p-5 space-y-4">
             <h2 className="font-semibold text-sm">Basic Info</h2>
             <div className="space-y-1.5">
               <Label htmlFor="name">Product Name *</Label>
@@ -135,7 +135,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
             </div>
           </div>
 
-          <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+          <div className="bg-card border border-border rounded-lg p-5 space-y-4">
             <h2 className="font-semibold text-sm">Flags</h2>
             {([
               { key: 'featured', label: 'Featured product' },
@@ -157,7 +157,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
 
         {/* Right column */}
         <div className="space-y-4">
-          <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+          <div className="bg-card border border-border rounded-lg p-5 space-y-4">
             <h2 className="font-semibold text-sm">Pricing</h2>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
@@ -177,7 +177,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
             </div>
           </div>
 
-          <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+          <div className="bg-card border border-border rounded-lg p-5 space-y-4">
             <h2 className="font-semibold text-sm">Inventory</h2>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
@@ -191,7 +191,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
             </div>
           </div>
 
-          <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+          <div className="bg-card border border-border rounded-lg p-5 space-y-4">
             <h2 className="font-semibold text-sm">Organization</h2>
             <div className="space-y-1.5">
               <Label htmlFor="categoryId">Category</Label>

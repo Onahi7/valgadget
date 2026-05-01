@@ -154,17 +154,17 @@ export default function AdminReviewsPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
-        <div className="bg-card border rounded-xl p-4">
+        <div className="bg-card border rounded-lg p-4">
           <p className="text-sm text-muted-foreground">Total Reviews</p>
           <p className="text-2xl font-bold">{reviews.length}</p>
         </div>
-        <div className="bg-card border rounded-xl p-4">
+        <div className="bg-card border rounded-lg p-4">
           <p className="text-sm text-muted-foreground">Active</p>
           <p className="text-2xl font-bold text-green-600">
             {reviews.filter(r => r.isActive).length}
           </p>
         </div>
-        <div className="bg-card border rounded-xl p-4">
+        <div className="bg-card border rounded-lg p-4">
           <p className="text-sm text-muted-foreground">Hidden</p>
           <p className="text-2xl font-bold text-amber-600">
             {reviews.filter(r => !r.isActive).length}
@@ -174,13 +174,13 @@ export default function AdminReviewsPage() {
 
       {/* Reviews List */}
       {filteredReviews.length === 0 ? (
-        <div className="text-center py-12 bg-card border rounded-xl">
+        <div className="text-center py-12 bg-card border rounded-lg">
           <p className="text-muted-foreground">No reviews found</p>
         </div>
       ) : (
         <div className="space-y-4">
           {filteredReviews.map(review => (
-            <div key={review.id} className="bg-card border rounded-xl p-6">
+            <div key={review.id} className="bg-card border rounded-lg p-6">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">

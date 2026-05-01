@@ -85,7 +85,7 @@ export default function AdminRafflesPage() {
           { label: 'Completed', value: raffles.filter(r => r.status === 'completed').length },
           { label: 'Revenue',   value: `₦${totalRevenue.toLocaleString()}` },
         ].map(({ label, value }) => (
-          <div key={label} className="bg-card border border-border rounded-xl px-4 py-3 text-center">
+          <div key={label} className="bg-card border border-border rounded-lg px-4 py-3 text-center">
             <p className="text-xl font-bold font-mono">{value}</p>
             <p className="text-xs text-muted-foreground">{label}</p>
           </div>
@@ -98,7 +98,7 @@ export default function AdminRafflesPage() {
           const pct = Math.round((raffle.soldTickets / raffle.maxTickets) * 100)
           const revenue = raffle.soldTickets * raffle.ticketPrice
           return (
-            <div key={raffle.id} className="bg-card border border-border rounded-xl overflow-hidden">
+            <div key={raffle.id} className="bg-card border border-border rounded-lg overflow-hidden">
               <div className="relative h-36 bg-surface">
                 <Image src={raffle.image} alt={raffle.title} fill className="object-cover" unoptimized />
                 <div className="absolute top-3 left-3">

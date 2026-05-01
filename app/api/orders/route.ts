@@ -1,17 +1,23 @@
 import { NextRequest } from 'next/server'
+import crypto from 'node:crypto'
 import { db } from '@/lib/server/db'
 import { orders, products, shippingRates, users, affiliateClicks } from '@/lib/server/schema'
 import { requireAuth, getRequestUser, apiOk, apiError, generateReference } from '@/lib/server/auth-helpers'
-import { eq, desc, and, sql, or } from 'drizzle-orm'
+import { eq, desc, and, sql, inArray } from 'drizzle-orm'
 import type { OrderItem, Address } from '@/lib/server/schema'
-import { NeonDbError } from '@neondatabase/serverless'
+
+class ApiFailure extends Error {
+  constructor(message: string, public status = 400) {
+    super(message)
+  }
+}
 
 export async function GET(req: NextRequest) {
   const auth = await requireAuth(req)
   if ('status' in auth) return auth
 
   const { searchParams } = new URL(req.url)
-  const page  = Math.max(1, Number(searchParams.get('page') ?? '1'))
+  const page = Math.max(1, Number(searchParams.get('page') ?? '1'))
   const limit = Math.min(50, Math.max(1, Number(searchParams.get('limit') ?? '10')))
   const status = searchParams.get('status') ?? undefined
 
@@ -38,10 +44,11 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   // Make auth optional for guest checkout
   const user = await getRequestUser(req)
+  let scopedIdempotencyKey: string | undefined
 
   try {
     const body = await req.json()
-    const { items: rawItems, shippingAddress, couponCode, affiliateCode, paymentMethod, notes, guestEmail } = body as {
+    const { items: rawItems, shippingAddress, couponCode, affiliateCode, paymentMethod, notes, guestEmail, idempotencyKey: bodyIdempotencyKey } = body as {
       items: Array<{ productId: string; quantity?: number; qty?: number }>
       shippingAddress: Address
       couponCode?: string
@@ -49,118 +56,139 @@ export async function POST(req: NextRequest) {
       paymentMethod?: string
       notes?: string
       guestEmail?: string
+      idempotencyKey?: string
     }
     // Normalise: frontend sends "quantity", internal schema uses "qty"
     const items = (rawItems ?? []).map(i => ({ productId: i.productId, qty: i.quantity ?? i.qty ?? 1 }))
 
     if (!items?.length) return apiError('Order must contain at least one item.')
+    if (items.some(i => !i.productId || !Number.isInteger(i.qty) || i.qty < 1)) {
+      return apiError('Each order item must include a product and a quantity of at least 1.', 422)
+    }
     if (!shippingAddress) return apiError('Shipping address is required.')
-    
+
     // Require email for guest orders
     if (!user && !guestEmail) {
       return apiError('Email is required for guest orders.', 400)
     }
-    
+
     // Validate email format for guest orders
     if (!user && guestEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guestEmail)) {
       return apiError('Please provide a valid email address.', 400)
     }
 
-    // Fetch products and build line items
-    const productIds = items.map(i => i.productId)
-    const found = await db.select({ id: products.id, name: products.name, sku: products.sku, price: products.price, stock: products.stock, images: products.images })
-      .from(products).where(sql`id = any(${productIds})`)
+    const rawIdempotencyKey = req.headers.get('idempotency-key') ?? req.headers.get('x-idempotency-key') ?? bodyIdempotencyKey
+    const shopperKey = user?.sub ?? guestEmail?.trim().toLowerCase() ?? 'guest'
+    scopedIdempotencyKey = rawIdempotencyKey
+      ? crypto.createHash('sha256').update(`${shopperKey}:${rawIdempotencyKey.trim()}`).digest('hex')
+      : undefined
 
-    const orderItems: OrderItem[] = []
-    let subtotal = 0
-
-    for (const lineItem of items) {
-      const p = found.find(f => f.id === lineItem.productId)
-      if (!p) return apiError(`Product ${lineItem.productId} not found.`, 422)
-      if (p.stock < lineItem.qty) return apiError(`Insufficient stock for ${p.name}. Only ${p.stock} left.`, 422)
-
-      const unitPrice = Number(p.price)
-      orderItems.push({ productId: p.id, name: p.name, sku: p.sku, price: unitPrice, qty: lineItem.qty, image: (p.images as string[])[0] })
-      subtotal += unitPrice * lineItem.qty
+    if (scopedIdempotencyKey) {
+      const [existing] = await db.select().from(orders).where(eq(orders.idempotencyKey, scopedIdempotencyKey)).limit(1)
+      if (existing) return apiOk(numericOrder(existing))
     }
 
-    // Look up shipping rate from DB based on state
-    let shipping = 0
-    const addrState = (shippingAddress as unknown as Record<string, unknown>)?.state as string | undefined
-    if (addrState && addrState !== 'Other' && subtotal < 50000) {
-      const [rate] = await db.select({ price: shippingRates.price })
-        .from(shippingRates)
-        .where(and(eq(shippingRates.state, addrState), eq(shippingRates.isActive, true)))
-        .limit(1)
-      shipping = rate ? Number(rate.price) : 2500
-    } else if (addrState !== 'Other' && subtotal < 50000) {
-      shipping = 2500 // fallback flat rate
-    }
-    const tax      = 0  // No VAT added (prices are tax-inclusive)
-    const total    = subtotal + shipping + tax
+    const order = await db.transaction(async (tx) => {
+      if (scopedIdempotencyKey) {
+        const [existing] = await tx.select().from(orders).where(eq(orders.idempotencyKey, scopedIdempotencyKey)).limit(1)
+        if (existing) return existing
+      }
 
-    const reference = generateReference()
+      // Fetch products and build line items.
+      const productIds = items.map(i => i.productId)
+      const found = await tx.select({ id: products.id, name: products.name, sku: products.sku, price: products.price, stock: products.stock, images: products.images })
+        .from(products).where(inArray(products.id, productIds))
 
-    const [order] = await db.insert(orders).values({
-      reference, 
-      userId: user?.sub || null, 
-      guestEmail: user ? null : guestEmail,
-      status: 'pending',
-      paymentStatus: 'unpaid', 
-      paymentMethod, 
-      items: orderItems,
-      subtotal: String(subtotal.toFixed(2)),
-      discount: '0',
-      shipping: String(shipping.toFixed(2)),
-      tax: String(tax.toFixed(2)),
-      total: String(total.toFixed(2)),
-      couponCode, 
-      affiliateCode, 
-      shippingAddress, 
-      notes,
-    }).returning()
+      const orderItems: OrderItem[] = []
+      let subtotal = 0
 
-    // Atomic stock deduction — only succeeds if stock >= qty (prevents overselling)
-    for (const item of orderItems) {
-      const [updated] = await db.update(products)
-        .set({ stock: sql`${products.stock} - ${item.qty}`, updatedAt: new Date() })
-        .where(and(eq(products.id, item.productId), sql`${products.stock} >= ${item.qty}`))
-        .returning({ id: products.id })
+      for (const lineItem of items) {
+        const p = found.find(f => f.id === lineItem.productId)
+        if (!p) throw new ApiFailure(`Product ${lineItem.productId} not found.`, 422)
+        if (p.stock < lineItem.qty) throw new ApiFailure(`Insufficient stock for ${p.name}. Only ${p.stock} left.`, 422)
 
-      if (!updated) {
-        // Stock ran out between check and deduction — cancel this order and restore any already-deducted stock
-        for (const prev of orderItems) {
-          if (prev.productId === item.productId) break
-          await db.update(products)
-            .set({ stock: sql`${products.stock} + ${prev.qty}`, updatedAt: new Date() })
-            .where(eq(products.id, prev.productId))
+        const unitPrice = Number(p.price)
+        orderItems.push({ productId: p.id, name: p.name, sku: p.sku, price: unitPrice, qty: lineItem.qty, image: (p.images as string[])[0] })
+        subtotal += unitPrice * lineItem.qty
+      }
+
+      // Look up shipping rate from DB based on state.
+      let shipping = 0
+      const addrState = (shippingAddress as unknown as Record<string, unknown>)?.state as string | undefined
+      if (addrState && addrState !== 'Other' && subtotal < 50000) {
+        const [rate] = await tx.select({ price: shippingRates.price })
+          .from(shippingRates)
+          .where(and(eq(shippingRates.state, addrState), eq(shippingRates.isActive, true)))
+          .limit(1)
+        shipping = rate ? Number(rate.price) : 2500
+      } else if (addrState !== 'Other' && subtotal < 50000) {
+        shipping = 2500 // fallback flat rate
+      }
+      const tax = 0 // No VAT added (prices are tax-inclusive)
+      const total = subtotal + shipping + tax
+
+      // Atomic stock deduction only succeeds if stock is still available.
+      for (const item of orderItems) {
+        const [updated] = await tx.update(products)
+          .set({ stock: sql`${products.stock} - ${item.qty}`, updatedAt: new Date() })
+          .where(and(eq(products.id, item.productId), sql`${products.stock} >= ${item.qty}`))
+          .returning({ id: products.id })
+
+        if (!updated) {
+          throw new ApiFailure(`Insufficient stock for ${item.name}. Please refresh your cart.`, 409)
         }
-        await db.update(orders).set({ status: 'cancelled', notes: 'Auto-cancelled: stock depleted during checkout' }).where(eq(orders.id, order.id))
-        return apiError(`Insufficient stock for ${item.name}. Order cancelled.`, 409)
       }
-    }
 
-    // Credit affiliate commission if affiliate code was used
-    if (affiliateCode) {
-      const [affiliate] = await db.select({ id: users.id, affiliateCode: users.affiliateCode })
-        .from(users).where(eq(users.affiliateCode, affiliateCode)).limit(1)
-      if (affiliate) {
-        const commissionRate = 0.05 // 5% commission
-        const commission = Math.round(subtotal * commissionRate)
-        // Credit affiliate balance
-        await db.update(users)
-          .set({ affiliateBalance: sql`${users.affiliateBalance} + ${commission}`, updatedAt: new Date() })
-          .where(eq(users.id, affiliate.id))
-        // Record the click/conversion
-        await db.insert(affiliateClicks).values({
-          code: affiliateCode, orderId: order.id, userId: user?.sub || null,
-          commission: String(commission), convertedAt: new Date(),
-        }).catch(() => {}) // ignore if duplicate
+      const [createdOrder] = await tx.insert(orders).values({
+        reference: generateReference(),
+        idempotencyKey: scopedIdempotencyKey,
+        userId: user?.sub || null,
+        guestEmail: user ? null : guestEmail,
+        status: 'pending',
+        paymentStatus: 'unpaid',
+        paymentMethod,
+        items: orderItems,
+        subtotal: String(subtotal.toFixed(2)),
+        discount: '0',
+        shipping: String(shipping.toFixed(2)),
+        tax: String(tax.toFixed(2)),
+        total: String(total.toFixed(2)),
+        couponCode,
+        affiliateCode,
+        shippingAddress,
+        notes,
+      }).returning()
+
+      // Credit affiliate commission if affiliate code was used.
+      if (affiliateCode) {
+        const [affiliate] = await tx.select({ id: users.id, affiliateCode: users.affiliateCode })
+          .from(users).where(eq(users.affiliateCode, affiliateCode)).limit(1)
+        if (affiliate) {
+          const commissionRate = 0.05 // 5% commission
+          const commission = Math.round(subtotal * commissionRate)
+          await tx.update(users)
+            .set({ affiliateBalance: sql`${users.affiliateBalance} + ${commission}`, updatedAt: new Date() })
+            .where(eq(users.id, affiliate.id))
+          await tx.insert(affiliateClicks).values({
+            code: affiliateCode, orderId: createdOrder.id, userId: user?.sub || null,
+            commission: String(commission), convertedAt: new Date(),
+          }).catch(() => {}) // ignore if duplicate
+        }
       }
-    }
+
+      return createdOrder
+    })
 
     return apiOk(numericOrder(order), 201)
   } catch (err) {
+    if (err instanceof ApiFailure) {
+      return apiError(err.message, err.status)
+    }
+    if (isUniqueConstraintError(err) && scopedIdempotencyKey) {
+      const [existing] = await db.select().from(orders).where(eq(orders.idempotencyKey, scopedIdempotencyKey)).limit(1)
+      if (existing) return apiOk(numericOrder(existing))
+      return apiError('A matching checkout request is already being processed. Please retry with the same idempotency key.', 409)
+    }
     console.error('[create order]', err)
     return apiError('Failed to create order. Please try again.', 500)
   }
@@ -169,10 +197,14 @@ export async function POST(req: NextRequest) {
 function numericOrder(o: typeof orders.$inferSelect) {
   return {
     ...o,
-    subtotal:  Number(o.subtotal),
-    discount:  Number(o.discount),
-    shipping:  Number(o.shipping),
-    tax:       Number(o.tax),
-    total:     Number(o.total),
+    subtotal: Number(o.subtotal),
+    discount: Number(o.discount),
+    shipping: Number(o.shipping),
+    tax: Number(o.tax),
+    total: Number(o.total),
   }
+}
+
+function isUniqueConstraintError(err: unknown) {
+  return typeof err === 'object' && err !== null && 'code' in err && err.code === '23505'
 }

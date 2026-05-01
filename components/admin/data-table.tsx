@@ -26,7 +26,7 @@ export function DataTable<T extends Record<string, unknown>>({
   isLoading,
 }: DataTableProps<T>) {
   return (
-    <div className={cn('rounded-lg border border-border overflow-hidden', className)}>
+    <div className={cn('rounded-lg border border-border bg-card overflow-hidden', className)}>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -35,7 +35,7 @@ export function DataTable<T extends Record<string, unknown>>({
                 <th
                   key={String(col.key)}
                   className={cn(
-                    'px-4 py-3 text-left text-xs font-semibold font-mono uppercase tracking-wider text-muted-foreground',
+                    'px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground',
                     col.headerClassName
                   )}
                 >
@@ -73,7 +73,7 @@ export function DataTable<T extends Record<string, unknown>>({
                       : row[col.key as keyof T]
                     return (
                       <td key={String(col.key)} className={cn('px-4 py-3', col.className)}>
-                        {col.render ? col.render(value, row) : String(value ?? '—')}
+                        {col.render ? col.render(value, row) : String(value ?? '-')}
                       </td>
                     )
                   })}

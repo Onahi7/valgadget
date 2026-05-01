@@ -92,14 +92,14 @@ export default function AdminShippingPage() {
           { label: 'Active States', value: totalActive },
           { label: 'Avg. Price', value: `₦${avgPrice.toLocaleString('en-NG', { maximumFractionDigits: 0 })}` },
         ].map(s => (
-          <div key={s.label} className="bg-card border border-border rounded-xl p-4 text-center">
+          <div key={s.label} className="bg-card border border-border rounded-lg p-4 text-center">
             <p className="text-2xl font-bold">{s.value}</p>
             <p className="text-xs text-muted-foreground mt-0.5">{s.label}</p>
           </div>
         ))}
       </div>
 
-      <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <div className="bg-card border border-border rounded-lg overflow-hidden">
         <div className="px-5 py-4 border-b border-border flex items-center gap-3">
           <MapPin className="w-4 h-4 text-primary shrink-0" />
           <Input
@@ -112,7 +112,7 @@ export default function AdminShippingPage() {
         </div>
 
         {loading ? (
-          <div className="p-8 text-center text-muted-foreground text-sm">Loading…</div>
+          <div className="p-8 text-center text-muted-foreground text-sm">Loading...</div>
         ) : (
           <div className="divide-y divide-border">
             {filtered.map(r => (

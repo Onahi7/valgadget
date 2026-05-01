@@ -9,7 +9,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-const NAV_GROUPS = [
+export const NAV_GROUPS = [
   {
     label: 'Overview',
     items: [
@@ -51,7 +51,7 @@ export function AdminSidebar() {
   }
 
   return (
-    <aside className="w-60 shrink-0 border-r border-border bg-card flex flex-col h-full overflow-y-auto">
+    <aside className="hidden md:flex w-60 shrink-0 border-r border-border bg-card flex-col h-full overflow-y-auto">
       {/* Brand */}
       <div className="flex items-center gap-3 px-5 py-[18px] border-b border-border">
         <Image src="/logo.png" alt="Val Gadgets" width={100} height={40} className="h-9 w-auto object-contain" priority />
@@ -73,7 +73,7 @@ export function AdminSidebar() {
                     key={item.href}
                     href={item.href}
                     className={cn(
-                      'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all group relative',
+                      'flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all group relative',
                       active
                         ? 'bg-primary text-primary-foreground shadow-sm'
                         : 'text-muted-foreground hover:bg-accent hover:text-foreground'
@@ -94,7 +94,7 @@ export function AdminSidebar() {
       <div className="px-3 py-4 border-t border-border space-y-1">
         <Link
           href="/"
-          className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+          className="flex items-center gap-2.5 px-3 py-2 rounded-md text-xs text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
         >
           <TrendingUp className="w-3.5 h-3.5" />
           View Storefront

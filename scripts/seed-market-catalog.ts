@@ -1,4 +1,6 @@
 import dotenv from 'dotenv'
+import { promises as fs } from 'node:fs'
+import path from 'node:path'
 dotenv.config({ path: '.env.local' })
 dotenv.config()
 import { db } from '../lib/server/db'
@@ -24,6 +26,8 @@ type ProductSeed = {
   image: string
   imageQuery?: string
   sourcePage?: string
+  gsmArenaImage?: string
+  localImageName?: string
   shortDescription: string
 }
 
@@ -94,9 +98,15 @@ const productSeeds: ProductSeed[] = [
   { name: 'XGIMI MoGo 2 HD Projector', sku: 'AUD-XGI-MOGO2', categorySlug: 'tvs-projectors', price: '510000', stock: 7, tags: ['projector', 'xgimi'], image: 'https://source.unsplash.com/1600x1200/?projector', sourcePage: 'https://www.jumia.com.ng/slp/xgimi-halo-portable-led-smart-projector', shortDescription: 'Portable HD smart projector for movies and games.' },
   { name: 'Amazon Fire TV Stick 4K', sku: 'AUD-AMZ-FIRE4K', categorySlug: 'streaming-devices', price: '85000', stock: 16, tags: ['streaming-stick', 'amazon'], image: 'https://source.unsplash.com/1600x1200/?streaming,stick', sourcePage: 'https://www.konga.com/product/amazon-fire-tv-stick-4k-2nd-gen-2023-release-with-latest-alexa-voice-remote-6397254', shortDescription: '4K streaming stick with voice remote.' },
 
-  { name: 'Apple iPhone 15 128GB', sku: 'COM-APL-IP15-128', categorySlug: 'smartphones-tablets', price: '1340000', stock: 12, tags: ['iphone', 'apple'], image: 'https://source.unsplash.com/1600x1200/?iphone', shortDescription: 'Premium iPhone with advanced camera and performance.' },
-  { name: 'Apple iPad 10th Gen 64GB', sku: 'COM-APL-IPAD10-64', categorySlug: 'smartphones-tablets', price: '740000', stock: 10, tags: ['ipad', 'apple'], image: 'https://source.unsplash.com/1600x1200/?ipad', shortDescription: 'Versatile iPad for school, work, and entertainment.' },
-  { name: 'Redmi Note 13 Pro', sku: 'COM-RDM-N13PRO', categorySlug: 'smartphones-tablets', price: '465000', stock: 18, tags: ['redmi', 'phone'], image: 'https://source.unsplash.com/1600x1200/?android,phone', shortDescription: 'High-value Android phone with strong battery life.' },
+  { name: 'Apple iPhone 15 128GB', sku: 'COM-APL-IP15-128', categorySlug: 'smartphones-tablets', price: '1340000', stock: 12, tags: ['iphone', 'apple'], image: 'https://source.unsplash.com/1600x1200/?iphone', gsmArenaImage: 'https://fdn2.gsmarena.com/vv/bigpic/apple-iphone-15.jpg', localImageName: 'apple-iphone-15.jpg', shortDescription: 'Premium iPhone with advanced camera and performance.' },
+  { name: 'Apple iPhone 15 Pro Max 256GB', sku: 'COM-APL-IP15PM-256', categorySlug: 'smartphones-tablets', price: '1880000', stock: 8, tags: ['iphone', 'apple', 'pro-max'], image: 'https://source.unsplash.com/1600x1200/?iphone', gsmArenaImage: 'https://fdn2.gsmarena.com/vv/bigpic/apple-iphone-15-pro-max.jpg', localImageName: 'apple-iphone-15-pro-max.jpg', shortDescription: 'Flagship iPhone with top-tier performance and camera system.' },
+  { name: 'Apple iPhone 14 128GB', sku: 'COM-APL-IP14-128', categorySlug: 'smartphones-tablets', price: '1120000', stock: 10, tags: ['iphone', 'apple'], image: 'https://source.unsplash.com/1600x1200/?iphone', gsmArenaImage: 'https://fdn2.gsmarena.com/vv/bigpic/apple-iphone-14.jpg', localImageName: 'apple-iphone-14.jpg', shortDescription: 'Balanced iPhone option with strong all-round performance.' },
+  { name: 'Apple iPhone 13 128GB', sku: 'COM-APL-IP13-128', categorySlug: 'smartphones-tablets', price: '910000', stock: 12, tags: ['iphone', 'apple'], image: 'https://source.unsplash.com/1600x1200/?iphone', gsmArenaImage: 'https://fdn2.gsmarena.com/vv/bigpic/apple-iphone-13.jpg', localImageName: 'apple-iphone-13.jpg', shortDescription: 'Popular iPhone model with dependable daily performance.' },
+  { name: 'Apple iPad 10th Gen 64GB', sku: 'COM-APL-IPAD10-64', categorySlug: 'smartphones-tablets', price: '740000', stock: 10, tags: ['ipad', 'apple'], image: 'https://source.unsplash.com/1600x1200/?ipad', gsmArenaImage: 'https://fdn2.gsmarena.com/vv/bigpic/apple-ipad-10-2022.jpg', localImageName: 'apple-ipad-10-2022.jpg', shortDescription: 'Versatile iPad for school, work, and entertainment.' },
+  { name: 'Redmi Note 13 Pro', sku: 'COM-RDM-N13PRO', categorySlug: 'smartphones-tablets', price: '465000', stock: 18, tags: ['redmi', 'phone'], image: 'https://source.unsplash.com/1600x1200/?android,phone', gsmArenaImage: 'https://fdn2.gsmarena.com/vv/bigpic/xiaomi-redmi-note-13-pro-5g.jpg', localImageName: 'xiaomi-redmi-note-13-pro-5g.jpg', shortDescription: 'High-value Android phone with strong battery life.' },
+  { name: 'Redmi Note 13 256GB', sku: 'COM-RDM-N13-256', categorySlug: 'smartphones-tablets', price: '335000', stock: 16, tags: ['redmi', 'phone'], image: 'https://source.unsplash.com/1600x1200/?android,phone', gsmArenaImage: 'https://fdn2.gsmarena.com/vv/bigpic/xiaomi-redmi-note-13.jpg', localImageName: 'xiaomi-redmi-note-13.jpg', shortDescription: 'Affordable Redmi smartphone with AMOLED display and strong battery.' },
+  { name: 'Samsung Galaxy A55 5G', sku: 'COM-SAM-A55-5G', categorySlug: 'smartphones-tablets', price: '690000', stock: 10, tags: ['samsung', 'galaxy', '5g'], image: 'https://source.unsplash.com/1600x1200/?samsung,phone', gsmArenaImage: 'https://fdn2.gsmarena.com/vv/bigpic/samsung-galaxy-a55.jpg', localImageName: 'samsung-galaxy-a55.jpg', shortDescription: 'Midrange Samsung phone with premium build and reliable camera output.' },
+  { name: 'Tecno Camon 30', sku: 'COM-TEC-CAMON30', categorySlug: 'smartphones-tablets', price: '355000', stock: 14, tags: ['tecno', 'camon', 'phone'], image: 'https://source.unsplash.com/1600x1200/?tecno,phone', gsmArenaImage: 'https://fdn2.gsmarena.com/vv/bigpic/tecno-camon-30.jpg', localImageName: 'tecno-camon-30.jpg', shortDescription: 'Camera-focused Tecno phone designed for content and social use.' },
   { name: 'HP Pavilion 15 Laptop', sku: 'COM-HP-PAV15', categorySlug: 'laptops-monitors', price: '920000', stock: 9, tags: ['laptop', 'hp'], image: 'https://source.unsplash.com/1600x1200/?laptop', shortDescription: 'Everyday laptop for work and productivity.' },
   { name: 'Dell 24-inch IPS Monitor', sku: 'COM-DEL-24IPS', categorySlug: 'laptops-monitors', price: '230000', stock: 14, tags: ['monitor', 'dell'], image: 'https://source.unsplash.com/1600x1200/?computer,monitor', shortDescription: 'Crisp IPS monitor for office and creative tasks.' },
   { name: 'Logitech MK270 Keyboard & Mouse', sku: 'COM-LOG-MK270', categorySlug: 'computer-peripherals', price: '55000', stock: 30, tags: ['keyboard', 'mouse'], image: 'https://source.unsplash.com/1600x1200/?keyboard,mouse', shortDescription: 'Wireless keyboard and mouse combo set.' },
@@ -109,7 +119,7 @@ const productSeeds: ProductSeed[] = [
   { name: 'TP-Link M7350 MiFi', sku: 'NET-TPL-M7350', categorySlug: 'mifi-routers', price: '95000', stock: 15, tags: ['mifi', 'router'], image: 'https://source.unsplash.com/1600x1200/?mifi,router', sourcePage: 'https://www.jumia.com.ng/tp-link-m7350-4g-lte-mifi-portable-wi-fi-for-travel-decipher-mobile-wi-fi-hotspot-263214949.html', shortDescription: 'Portable 4G MiFi router for mobile internet.' },
   { name: 'Starlink Standard Kit', sku: 'NET-STR-STD-KIT', categorySlug: 'satellite-internet', price: '930000', stock: 5, tags: ['starlink', 'satellite-internet'], image: 'https://source.unsplash.com/1600x1200/?satellite,internet', shortDescription: 'Satellite internet kit for high-speed connectivity.' },
 
-  { name: 'Apple Watch SE (2nd Gen)', sku: 'WEA-APL-WSE2', categorySlug: 'smartwatches', price: '460000', stock: 9, tags: ['smartwatch', 'apple'], image: 'https://source.unsplash.com/1600x1200/?smartwatch', sourcePage: 'https://www.jumia.com.ng/apple-watch-se-2nd-gen-gps-44mm-smartwatch-midnight-cloud-sport-loop-one-size-418780140.html', shortDescription: 'Smartwatch for fitness, calls, and notifications.' },
+  { name: 'Apple Watch SE (2nd Gen)', sku: 'WEA-APL-WSE2', categorySlug: 'smartwatches', price: '460000', stock: 9, tags: ['smartwatch', 'apple'], image: 'https://source.unsplash.com/1600x1200/?smartwatch', gsmArenaImage: 'https://fdn2.gsmarena.com/vv/bigpic/apple-watch-se.jpg', localImageName: 'apple-watch-se.jpg', shortDescription: 'Smartwatch for fitness, calls, and notifications.' },
   { name: 'Ray-Ban Meta Smart Glasses', sku: 'WEA-RBM-META', categorySlug: 'smart-glasses', price: '820000', stock: 4, tags: ['smart-glasses', 'ai'], image: 'https://source.unsplash.com/1600x1200/?smart,glasses', shortDescription: 'AI-enabled smart glasses with camera and audio.' },
 
   { name: 'Hikvision 4MP CCTV Camera', sku: 'SEC-HIK-4MP', categorySlug: 'cctv-cameras', price: '115000', stock: 22, tags: ['cctv', 'hikvision'], image: 'https://source.unsplash.com/1600x1200/?cctv,camera', sourcePage: 'https://www.jumia.com.ng/hikvision-4mp-pro-solar-powered-security-pt-camera-4g-lte-pir-radar-detectotion-ds-2de2c400iwg-k-4g-c05s10-418628214.html', shortDescription: 'High-resolution surveillance camera.' },
@@ -173,6 +183,23 @@ async function upsertCategories() {
 
 async function upsertProducts(categoryMap: Map<string, string>) {
   const imageCache = new Map<string, string>()
+  const localCatalogDir = path.join(process.cwd(), 'public', 'catalog', 'phones')
+  await fs.mkdir(localCatalogDir, { recursive: true })
+
+  async function downloadToPublic(imageUrl: string, fileName: string) {
+    const safeName = fileName.replace(/[^a-z0-9._-]/gi, '-').toLowerCase()
+    const absolutePath = path.join(localCatalogDir, safeName)
+    try {
+      await fs.access(absolutePath)
+      return `/catalog/phones/${safeName}`
+    } catch {
+      const res = await fetch(imageUrl, { headers: { 'user-agent': 'Mozilla/5.0' } })
+      if (!res.ok) throw new Error(`Failed to download image: ${imageUrl}`)
+      const arr = await res.arrayBuffer()
+      await fs.writeFile(absolutePath, Buffer.from(arr))
+      return `/catalog/phones/${safeName}`
+    }
+  }
 
   async function ogImageFromPage(url: string) {
     const page = await fetch(url, { headers: { 'user-agent': 'Mozilla/5.0' } })
@@ -194,6 +221,12 @@ async function upsertProducts(categoryMap: Map<string, string>) {
     const query = (p.imageQuery ?? p.name).trim()
     if (imageCache.has(query)) return imageCache.get(query)!
     try {
+      if (p.gsmArenaImage && p.localImageName) {
+        const localUrl = await downloadToPublic(p.gsmArenaImage, p.localImageName)
+        imageCache.set(query, localUrl)
+        return localUrl
+      }
+
       if (p.sourcePage) {
         const official = await ogImageFromPage(p.sourcePage)
         if (official) { imageCache.set(query, official); return official }

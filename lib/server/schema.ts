@@ -154,6 +154,7 @@ export const reviews = pgTable('reviews', {
 export const orders = pgTable('orders', {
   id:              text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   reference:       varchar('reference', { length: 30 }).notNull().unique(),
+  idempotencyKey:  varchar('idempotency_key', { length: 128 }).unique(),
   userId:          text('user_id').references(() => users.id),
   guestEmail:      varchar('guest_email', { length: 255 }),
   status:          varchar('status', { length: 30 }).notNull().default('pending'),
@@ -177,6 +178,7 @@ export const orders = pgTable('orders', {
   index('orders_guest_email_idx').on(t.guestEmail),
   index('orders_status_idx').on(t.status),
   index('orders_reference_idx').on(t.reference),
+  index('orders_idempotency_key_idx').on(t.idempotencyKey),
 ])
 
 export interface OrderItem {

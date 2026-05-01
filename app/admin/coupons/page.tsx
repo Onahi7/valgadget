@@ -298,7 +298,7 @@ export default function CouponsPage() {
       </div>
 
       {coupons.length === 0 ? (
-        <div className="text-center py-12 bg-card border rounded-xl">
+        <div className="text-center py-12 bg-card border rounded-lg">
           <p className="text-muted-foreground mb-4">No coupons yet</p>
           <Button onClick={() => setDialogOpen(true)}>
             <Plus className="w-4 h-4 mr-2" /> Create Your First Coupon
@@ -307,7 +307,7 @@ export default function CouponsPage() {
       ) : (
         <div className="grid gap-4">
           {coupons.map((coupon) => (
-            <div key={coupon.id} className="bg-card border rounded-xl p-6">
+            <div key={coupon.id} className="bg-card border rounded-lg p-6">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">

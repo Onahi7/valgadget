@@ -60,13 +60,15 @@ export default function AdminOrdersPage() {
   const filtered = orders
   const revenue = filtered.reduce((s, o) => s + Number(o.total), 0)
 
+  const formatNaira = (value: number) => `₦${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-6 animate-page-reveal">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold">Orders</h1>
-          <p className="text-sm text-muted-foreground">{filtered.length} orders · ₦{revenue.toLocaleString()} revenue</p>
+          <h1 className="text-2xl font-bold tracking-tight">Orders</h1>
+          <p className="text-sm text-muted-foreground">{filtered.length} orders · {formatNaira(revenue)} revenue</p>
         </div>
         <Button variant="outline" size="sm" className="gap-2" onClick={() => {
           const params = new URLSearchParams()
@@ -87,7 +89,7 @@ export default function AdminOrdersPage() {
               key={status}
               onClick={() => setStatus(status)}
               className={cn(
-                'bg-card border border-border rounded-xl px-3 py-2.5 text-center transition-all hover:border-primary/40',
+                'bg-card border border-border rounded-lg px-3 py-2.5 text-center transition-all hover:border-primary/40',
                 statusFilter === status && 'border-primary ring-1 ring-primary/20'
               )}
             >
@@ -117,7 +119,7 @@ export default function AdminOrdersPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <div className="bg-card border border-border rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -143,10 +145,10 @@ export default function AdminOrdersPage() {
                     </Link>
                   </td>
                   <td className="px-4 py-3">
-                    <p className="font-medium">{order.shippingAddress?.fullName || '—'}</p>
+                    <p className="font-medium">{order.shippingAddress?.fullName || '-'}</p>
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">{order.items?.length ?? 0} item{(order.items?.length ?? 0) !== 1 ? 's' : ''}</td>
-                  <td className="px-4 py-3 font-bold">₦{Number(order.total).toLocaleString()}</td>
+                  <td className="px-4 py-3 font-bold">{formatNaira(Number(order.total))}</td>
                   <td className="px-4 py-3">
                     <Badge className={cn('text-[11px] border capitalize', STATUS_COLORS[order.status])}>{order.status}</Badge>
                   </td>
@@ -166,7 +168,7 @@ export default function AdminOrdersPage() {
             </tbody>
           </table>
         </div>
-        {filtered.length === 0 && (
+        {!loading && filtered.length === 0 && (
           <div className="py-12 text-center text-muted-foreground text-sm">No orders match your filters.</div>
         )}
       </div>

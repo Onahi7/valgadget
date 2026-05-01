@@ -77,7 +77,7 @@ export default function AdminCustomersPage() {
           { label: 'Affiliates', value: customers.filter(c => c.role === 'affiliate').length },
           { label: 'Admins', value: customers.filter(c => c.role === 'admin').length },
         ].map(({ label, value }) => (
-          <div key={label} className="bg-card border border-border rounded-xl px-4 py-3 text-center">
+          <div key={label} className="bg-card border border-border rounded-lg px-4 py-3 text-center">
             <p className="text-xl font-bold font-mono">{value}</p>
             <p className="text-xs text-muted-foreground">{label}</p>
           </div>
@@ -103,7 +103,7 @@ export default function AdminCustomersPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <div className="bg-card border border-border rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>

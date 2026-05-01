@@ -1,0 +1,30 @@
+{
+  "models": [
+    {"brand": "Apple", "model": "iPhone 15 Pro Max", "slug": "iphone-15-pro-max", "image_url": "", "source": "https://www.apple.com/iphone-15-pro/", "notes": "Official product image to be replaced with high-res asset when available."},
+    {"brand": "Apple", "model": "iPhone 15", "slug": "iphone-15", "image_url": "", "source": "https://www.apple.com/iphone-15/", "notes": "Official product image to be replaced with high-res asset when available."},
+    {"brand": "Apple", "model": "iPhone 14", "slug": "iphone-14", "image_url": "", "source": "https://www.apple.com/iphone-14/", "notes": "Official product image to be replaced with high-res asset when available."},
+    {"brand": "Apple", "model": "iPhone 13", "slug": "iphone-13", "image_url": "", "source": "https://www.apple.com/iphone-13/", "notes": "Official product image to be replaced with high-res asset when available."},
+
+    {"brand": "Samsung", "model": "Galaxy S24", "slug": "galaxy-s24", "image_url": "", "source": "https://www.samsung.com/global/galaxy-s/galaxy-s24/", "notes": "Official product image."},
+    {"brand": "Samsung", "model": "Galaxy A55", "slug": "galaxy-a55", "image_url": "", "source": "https://www.samsung.com/uk/smartphones/galaxy-a/galaxy-a55-5g-sm-a556blbceub/", "notes": "Official product image."},
+    {"brand": "Samsung", "model": "Galaxy A35", "slug": "galaxy-a35", "image_url": "", "source": "https://www.samsung.com/uk/smartphones/galaxy-a/galaxy-a35-5g-sm-a356bzkkins/", "notes": "Official product image."},
+    {"brand": "Samsung", "model": "Galaxy A15", "slug": "galaxy-a15", "image_url": "", "source": "https://www.samsung.com/uk/smartphones/galaxy-a/galaxy-a15-5g-sm-a156bzkains/", "notes": "Official product image."},
+
+    {"brand": "Xiaomi/ Redmi", "model": "Redmi Note 13", "slug": "redmi-note-13", "image_url": "", "source": "https://www.mi.com/global/product/redmi-note-13/", "notes": "Official product image."},
+    {"brand": "Xiaomi/ Redmi", "model": "Redmi Note 13 Pro", "slug": "redmi-note-13-pro", "image_url": "", "source": "https://www.mi.com/global/product/redmi-note-13-pro/", "notes": "Official product image."},
+    {"brand": "Xiaomi/ Redmi", "model": "Redmi Note 13 Pro+", "slug": "redmi-note-13-pro-plus", "image_url": "", "source": "https://www.mi.com/global/product/redmi-note-13-pro-plus/", "notes": "Official product image."},
+    {"brand": "Xiaomi/ Redmi", "model": "Redmi 13C", "slug": "redmi-13c", "image_url": "", "source": "https://www.mi.com/global/product/redmi-note-13c/", "notes": "Official product image."},
+
+    {"brand": "Tecno", "model": "Camon 30", "slug": "camon-30", "image_url": "", "source": "https://www.tecno-mobile.com/phones/product-detail/product/camon-30/", "notes": "Official product image."},
+    {"brand": "Tecno", "model": "Spark 20", "slug": "spark-20", "image_url": "", "source": "https://www.tecno-mobile.com/nga/phones/product-detail/product/spark-20/", "notes": "Official product image."},
+    {"brand": "Tecno", "model": "Phantom V Flip", "slug": "phantom-v-flip", "image_url": "", "source": "https://www.tecno-mobile.com/phones/product-detail/product/phantom-v-flip/", "notes": "Official product image."},
+
+    {"brand": "Infinix", "model": "Note 40", "slug": "note-40", "image_url": "", "source": "https://www.infinixmobility.com/phones/note-40/", "notes": "Official product image."},
+    {"brand": "Infinix", "model": "Hot 40", "slug": "hot-40", "image_url": "", "source": "https://www.infinixmobility.com/phones/hot-40/", "notes": "Official product image."},
+    {"brand": "Infinix", "model": "Zero 30", "slug": "zero-30", "image_url": "", "source": "https://www.infinixmobility.com/phones/zero-30/", "notes": "Official product image."},
+
+    {"brand": "itel", "model": "S24", "slug": "s24", "image_url": "", "source": "https://www.itelmobile.com/phones/s24/", "notes": "Official product image."},
+    {"brand": "itel", "model": "P55", "slug": "p55", "image_url": "", "source": "https://www.itelmobile.com/phones/p55/", "notes": "Official product image."},
+    {"brand": "itel", "model": "A60", "slug": "a60", "image_url": "", "source": "https://www.itelmobile.com/phones/a60/", "notes": "Official product image."}
+  ]
+}

@@ -59,23 +59,23 @@ export default function AdminSettingsPage() {
     }
   }
 
-  if (loading) return <div className="p-6 text-center text-muted-foreground text-sm">Loading settings…</div>
+  if (loading) return <div className="text-center text-muted-foreground text-sm">Loading settings...</div>
 
   return (
-    <div className="p-6 max-w-4xl">
-      <div className="mb-6">
+    <div className="space-y-6 max-w-6xl animate-page-reveal">
+      <div>
         <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
         <p className="text-muted-foreground text-sm mt-1">Manage your store configuration and preferences.</p>
       </div>
 
-      <div className="flex gap-6">
+      <div className="flex flex-col lg:flex-row gap-6">
         {/* Sidebar tabs */}
-        <nav className="w-44 shrink-0 space-y-1">
+        <nav className="lg:w-44 shrink-0 flex lg:block gap-2 overflow-x-auto lg:space-y-1" aria-label="Settings sections">
           {TABS.map(({ id, label, Icon }) => (
             <button
               key={id}
               onClick={() => setActiveTab(id)}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left ${
+              className={`shrink-0 lg:w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium transition-colors text-left ${
                 activeTab === id
                   ? 'bg-primary text-primary-foreground'
                   : 'text-muted-foreground hover:bg-accent hover:text-foreground'
@@ -88,7 +88,7 @@ export default function AdminSettingsPage() {
         </nav>
 
         {/* Content */}
-        <div className="flex-1 bg-card border border-border rounded-xl p-6 space-y-6">
+        <div className="flex-1 bg-card border border-border rounded-lg p-4 sm:p-6 space-y-6">
           {activeTab === 'store' && (
             <>
               <div>
@@ -135,7 +135,7 @@ export default function AdminSettingsPage() {
                 <a href="/admin/shipping" className="text-primary hover:underline">Shipping Rates</a> page.
               </p>
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 border border-border rounded-lg">
+                <div className="flex items-center justify-between p-4 border border-border rounded-md">
                   <div>
                     <p className="font-medium text-sm">Free Shipping Threshold</p>
                     <p className="text-xs text-muted-foreground">Orders above this amount get free shipping.</p>
@@ -145,7 +145,7 @@ export default function AdminSettingsPage() {
                     <Input className="w-28 text-right" value={get('freeShippingThreshold', '50000')} onChange={e => set('freeShippingThreshold', e.target.value)} />
                   </div>
                 </div>
-                <div className="flex items-center justify-between p-4 border border-border rounded-lg">
+                <div className="flex items-center justify-between p-4 border border-border rounded-md">
                   <div>
                     <p className="font-medium text-sm">Cash on Delivery</p>
                     <p className="text-xs text-muted-foreground">Allow customers to pay on delivery.</p>
@@ -168,7 +168,7 @@ export default function AdminSettingsPage() {
                   { key: 'usdtErc20Enabled', label: 'USDT ERC-20' },
                   { key: 'codEnabled', label: 'Cash on Delivery' },
                 ].map(m => (
-                  <div key={m.key} className="flex items-center justify-between p-4 border border-border rounded-lg">
+                  <div key={m.key} className="flex items-center justify-between p-4 border border-border rounded-md">
                     <p className="text-sm font-medium">{m.label}</p>
                     <Switch checked={getBool(m.key, true)} onCheckedChange={v => set(m.key, v)} />
                   </div>
@@ -184,21 +184,21 @@ export default function AdminSettingsPage() {
             <div>
               <h2 className="text-base font-semibold mb-4">Email Notifications (Customer)</h2>
               <div className="space-y-3">
-                <div className="flex items-center justify-between p-4 border border-border rounded-lg">
+                <div className="flex items-center justify-between p-4 border border-border rounded-md">
                   <div>
                     <p className="text-sm font-medium">Order Confirmation</p>
                     <p className="text-xs text-muted-foreground">Send email when order is placed.</p>
                   </div>
                   <Switch checked={getBool('emailOrderConfirm', true)} onCheckedChange={v => set('emailOrderConfirm', v)} />
                 </div>
-                <div className="flex items-center justify-between p-4 border border-border rounded-lg">
+                <div className="flex items-center justify-between p-4 border border-border rounded-md">
                   <div>
                     <p className="text-sm font-medium">Shipping Updates</p>
                     <p className="text-xs text-muted-foreground">Notify customer when order ships.</p>
                   </div>
                   <Switch checked={getBool('emailShippingUpdate', true)} onCheckedChange={v => set('emailShippingUpdate', v)} />
                 </div>
-                <div className="flex items-center justify-between p-4 border border-border rounded-lg">
+                <div className="flex items-center justify-between p-4 border border-border rounded-md">
                   <div>
                     <p className="text-sm font-medium">Promotional Emails</p>
                     <p className="text-xs text-muted-foreground">Send marketing and promotional emails.</p>
@@ -233,14 +233,14 @@ export default function AdminSettingsPage() {
             <div>
               <h2 className="text-base font-semibold mb-4">Admin Notifications</h2>
               <div className="space-y-3">
-                <div className="flex items-center justify-between p-4 border border-border rounded-lg">
+                <div className="flex items-center justify-between p-4 border border-border rounded-md">
                   <div>
                     <p className="text-sm font-medium">New Order Alert</p>
                     <p className="text-xs text-muted-foreground">Get notified when a new order is placed.</p>
                   </div>
                   <Switch checked={getBool('alertNewOrder', true)} onCheckedChange={v => set('alertNewOrder', v)} />
                 </div>
-                <div className="flex items-center justify-between p-4 border border-border rounded-lg">
+                <div className="flex items-center justify-between p-4 border border-border rounded-md">
                   <div>
                     <p className="text-sm font-medium">Low Stock Alert</p>
                     <p className="text-xs text-muted-foreground">Alert when product stock falls below threshold.</p>
@@ -248,7 +248,7 @@ export default function AdminSettingsPage() {
                   <Switch checked={getBool('alertLowStock', true)} onCheckedChange={v => set('alertLowStock', v)} />
                 </div>
                 {getBool('alertLowStock', true) && (
-                  <div className="flex items-center gap-3 p-4 border border-border rounded-lg">
+                  <div className="flex items-center gap-3 p-4 border border-border rounded-md">
                     <p className="text-sm font-medium flex-1">Low Stock Threshold</p>
                     <Input
                       className="w-24 text-right"
@@ -267,7 +267,7 @@ export default function AdminSettingsPage() {
           <div className="pt-2 flex justify-end">
             <Button onClick={handleSave} disabled={saving} className="gap-2">
               <Save className="w-4 h-4" />
-              {saving ? 'Saving…' : 'Save Changes'}
+              {saving ? 'Saving...' : 'Save Changes'}
             </Button>
           </div>
         </div>

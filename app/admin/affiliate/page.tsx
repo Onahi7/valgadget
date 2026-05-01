@@ -98,7 +98,7 @@ export default function AdminAffiliatePage() {
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {STAT_CARDS(stats).map(({ label, value, Icon, color, bg }) => (
-          <div key={label} className="bg-card border border-border rounded-xl p-4">
+          <div key={label} className="bg-card border border-border rounded-lg p-4">
             <div className={`w-9 h-9 rounded-lg ${bg} flex items-center justify-center mb-3`}>
               <Icon className={`w-4.5 h-4.5 ${color}`} />
             </div>
@@ -109,7 +109,7 @@ export default function AdminAffiliatePage() {
       </div>
 
       {/* Table */}
-      <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <div className="bg-card border border-border rounded-lg overflow-hidden">
         <div className="flex items-center gap-3 p-4 border-b border-border">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />

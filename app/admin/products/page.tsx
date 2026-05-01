@@ -32,6 +32,7 @@ export default function AdminProductsPage() {
   }, [search, categoryFilter])
 
   const filtered = products
+  const parentCategoryIds = new Set(categories.filter(c => !c.parentId).map(c => c.id))
 
   const handleDelete = async (id: string, name: string) => {
     if (!confirm(`Delete "${name}"? This cannot be undone.`)) return
@@ -45,7 +46,12 @@ export default function AdminProductsPage() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6 animate-page-reveal">
+      <div className="flex flex-col gap-1">
+        <h1 className="text-2xl font-bold tracking-tight">Products</h1>
+        <p className="text-sm text-muted-foreground">{products.length} products in the current view</p>
+      </div>
+
       {/* Toolbar */}
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
         <div className="relative flex-1 max-w-sm">
@@ -58,7 +64,7 @@ export default function AdminProductsPage() {
           className="appearance-none bg-card border border-border rounded-md px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <option value="all">All Categories</option>
-          {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          {categories.map(c => <option key={c.id} value={c.id}>{c.parentId ? `-- ${c.name}` : c.name}</option>)}
         </select>
         <Button asChild className="shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 gap-2">
           <Link href="/admin/products/new"><Plus className="w-4 h-4" /> Add Product</Link>
@@ -72,7 +78,7 @@ export default function AdminProductsPage() {
           { label: 'In Stock', value: products.filter(p => p.stock > 0).length, icon: Package },
           { label: 'Out of Stock', value: products.filter(p => p.stock === 0).length, icon: Package },
         ].map(({ label, value }) => (
-          <div key={label} className="bg-card border border-border rounded-xl px-4 py-3 text-center">
+          <div key={label} className="bg-card border border-border rounded-lg px-4 py-3 text-center">
             <p className="text-xl font-bold font-mono">{value}</p>
             <p className="text-xs text-muted-foreground">{label}</p>
           </div>
@@ -80,7 +86,11 @@ export default function AdminProductsPage() {
       </div>
 
       {/* Table */}
-      {filtered.length === 0 ? (
+      {loading ? (
+        <div className="bg-card border border-border rounded-lg py-12 text-center text-sm text-muted-foreground">
+          Loading products...
+        </div>
+      ) : filtered.length === 0 ? (
         <Empty>
           <EmptyHeader>
             <EmptyMedia variant="icon"><Package className="size-6" /></EmptyMedia>
@@ -89,7 +99,7 @@ export default function AdminProductsPage() {
           </EmptyHeader>
         </Empty>
       ) : (
-        <div className="bg-card border border-border rounded-xl overflow-hidden">
+        <div className="bg-card border border-border rounded-lg overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -117,7 +127,11 @@ export default function AdminProductsPage() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground">{p.category?.name}</td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      <span className={cn(p.categoryId && !parentCategoryIds.has(p.categoryId) && 'text-foreground')}>
+                        {p.category?.name ?? '-'}
+                      </span>
+                    </td>
                     <td className="px-4 py-3 font-bold">
                       ₦{p.price.toLocaleString()}
                       {p.comparePrice && <span className="text-xs text-muted-foreground line-through ml-1">₦{Number(p.comparePrice).toLocaleString()}</span>}

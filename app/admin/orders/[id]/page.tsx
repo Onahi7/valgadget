@@ -112,7 +112,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
 
       {/* Timeline */}
       {order.status !== 'cancelled' && order.status !== 'refunded' && (
-        <div className="bg-card border border-border rounded-xl p-5">
+        <div className="bg-card border border-border rounded-lg p-5">
           <div className="flex items-center justify-between relative">
             <div className="absolute top-5 left-0 right-0 h-0.5 bg-border -translate-y-1/2" />
             {TIMELINE.map((step, i) => {
@@ -136,7 +136,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
         {/* Left: items + totals */}
         <div className="lg:col-span-2 space-y-5">
           {/* Items */}
-          <div className="bg-card border border-border rounded-xl overflow-hidden">
+          <div className="bg-card border border-border rounded-lg overflow-hidden">
             <div className="px-5 py-4 border-b border-border flex items-center gap-2">
               <Package className="w-4 h-4 text-muted-foreground" />
               <h2 className="font-bold text-sm">Order Items</h2>
@@ -169,7 +169,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
           </div>
 
           {/* Tracking */}
-          <div className="bg-card border border-border rounded-xl p-5">
+          <div className="bg-card border border-border rounded-lg p-5">
             <h2 className="font-bold text-sm mb-4">Tracking</h2>
             {order.trackingNumber ? (
               <p className="font-mono text-sm bg-muted/30 px-3 py-2 rounded-md">{order.trackingNumber}</p>
@@ -191,7 +191,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
         {/* Right: customer + actions */}
         <div className="space-y-5">
           {/* Customer */}
-          <div className="bg-card border border-border rounded-xl p-5">
+          <div className="bg-card border border-border rounded-lg p-5">
             <h2 className="font-bold text-sm mb-4">Shipping Address</h2>
             <div className="text-sm text-muted-foreground space-y-0.5">
               <p className="font-medium text-foreground">{order.shippingAddress?.fullName ?? '—'}</p>
@@ -204,7 +204,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
           </div>
 
           {/* Payment */}
-          <div className="bg-card border border-border rounded-xl p-5">
+          <div className="bg-card border border-border rounded-lg p-5">
             <h2 className="font-bold text-sm mb-4">Payment</h2>
             <div className="text-sm space-y-2">
               <div className="flex justify-between">
@@ -219,7 +219,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
           </div>
 
           {/* Status Actions */}
-          <div className="bg-card border border-border rounded-xl p-5">
+          <div className="bg-card border border-border rounded-lg p-5">
             <h2 className="font-bold text-sm mb-4">Update Status</h2>
             <div className="flex flex-col gap-2">
               {(['processing', 'shipped', 'delivered'] as OrderStatus[]).map(s => (

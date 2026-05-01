@@ -22,6 +22,7 @@ export default function AdminCategoriesPage() {
   const [editName, setEditName]     = useState('')
   const [adding, setAdding]         = useState(false)
   const [newName, setNewName]       = useState('')
+  const categoryNameById = new Map(categories.map(cat => [cat.id, cat.name]))
 
   const startEdit = (cat: Category) => { setEditId(cat.id); setEditName(cat.name) }
   const cancelEdit = () => { setEditId(null); setEditName('') }
@@ -57,11 +58,11 @@ export default function AdminCategoriesPage() {
   }
 
   return (
-    <div className="space-y-5 max-w-2xl">
+    <div className="space-y-6 animate-page-reveal">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold">Categories</h1>
-          <p className="text-sm text-muted-foreground">{categories.length} categories</p>
+          <h1 className="text-2xl font-bold tracking-tight">Categories</h1>
+          <p className="text-sm text-muted-foreground">{categories.length} categories and subcategories</p>
         </div>
         <Button
           size="sm"
@@ -74,7 +75,7 @@ export default function AdminCategoriesPage() {
 
       {/* Add form */}
       {adding && (
-        <div className="bg-card border border-primary/30 rounded-xl p-4 flex items-center gap-3">
+        <div className="bg-card border border-primary/30 rounded-lg p-4 flex items-center gap-3">
           <Input
             autoFocus
             placeholder="Category name..."
@@ -91,11 +92,13 @@ export default function AdminCategoriesPage() {
         </div>
       )}
 
-      <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <div className="bg-card border border-border rounded-lg overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-xs text-muted-foreground border-b border-border bg-muted/30">
               <th className="text-left px-5 py-3 font-medium">Name</th>
+              <th className="text-left px-4 py-3 font-medium">Parent</th>
               <th className="text-left px-4 py-3 font-medium">Slug</th>
               <th className="text-left px-4 py-3 font-medium">Products</th>
               <th className="text-left px-4 py-3 font-medium">Status</th>
@@ -103,7 +106,9 @@ export default function AdminCategoriesPage() {
             </tr>
           </thead>
           <tbody>
-            {categories.map(cat => (
+            {loading ? (
+              <tr><td colSpan={6} className="py-12 text-center text-sm text-muted-foreground">Loading categories...</td></tr>
+            ) : categories.map(cat => (
               <tr key={cat.id} className="border-b border-border/50 hover:bg-accent/20 transition-colors">
                 <td className="px-5 py-3">
                   {editId === cat.id ? (
@@ -115,9 +120,10 @@ export default function AdminCategoriesPage() {
                       className="h-8 text-sm"
                     />
                   ) : (
-                    <span className="font-medium">{cat.name}</span>
+                    <span className="font-medium">{cat.parentId ? `-- ${cat.name}` : cat.name}</span>
                   )}
                 </td>
+                <td className="px-4 py-3 text-muted-foreground">{cat.parentId ? categoryNameById.get(cat.parentId) ?? '-' : '-'}</td>
                 <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{cat.slug}</td>
                 <td className="px-4 py-3 text-muted-foreground">{cat.productCount ?? 0}</td>
                 <td className="px-4 py-3">
@@ -150,6 +156,7 @@ export default function AdminCategoriesPage() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   )

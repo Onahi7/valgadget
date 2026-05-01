@@ -65,7 +65,7 @@ export default function AdminCustomerDetailPage({ params }: { params: Promise<{ 
 
       <div className="grid md:grid-cols-3 gap-6">
         {/* Profile card */}
-        <div className="bg-card border border-border rounded-xl p-6 flex flex-col items-center text-center gap-3">
+        <div className="bg-card border border-border rounded-lg p-6 flex flex-col items-center text-center gap-3">
           <Avatar className="w-16 h-16">
             <AvatarFallback className="text-lg bg-primary/10 text-primary font-bold">
               {customer.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
@@ -102,7 +102,7 @@ export default function AdminCustomerDetailPage({ params }: { params: Promise<{ 
               { label: 'Total Spent', value: `₦${totalSpent.toLocaleString()}` },
               { label: 'Avg Order', value: customerOrders.length ? `₦${Math.round(totalSpent / customerOrders.length).toLocaleString()}` : '₦0' },
             ].map(({ label, value }) => (
-              <div key={label} className="bg-card border border-border rounded-xl p-4 text-center">
+              <div key={label} className="bg-card border border-border rounded-lg p-4 text-center">
                 <p className="text-xl font-bold font-mono">{value}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
               </div>
@@ -110,7 +110,7 @@ export default function AdminCustomerDetailPage({ params }: { params: Promise<{ 
           </div>
 
           {/* Orders */}
-          <div className="bg-card border border-border rounded-xl overflow-hidden">
+          <div className="bg-card border border-border rounded-lg overflow-hidden">
             <div className="px-5 py-4 border-b border-border flex items-center gap-2">
               <ShoppingBag className="w-4 h-4 text-muted-foreground" />
               <h2 className="font-bold text-sm">Recent Orders</h2>

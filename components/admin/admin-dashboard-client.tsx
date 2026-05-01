@@ -46,8 +46,10 @@ export function AdminDashboardClient() {
     })
   }, [])
 
+  const formatNaira = (value: number) => `₦${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+
   const STAT_CARDS = [
-    { label: 'Total Revenue', value: `₦${stats.revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, sub: `${stats.confirmedOrders} confirmed`, icon: DollarSign, color: 'bg-green-50 text-green-600 dark:bg-green-950' },
+    { label: 'Total Revenue', value: formatNaira(stats.revenue), sub: `${stats.confirmedOrders} confirmed`, icon: DollarSign, color: 'bg-green-50 text-green-600 dark:bg-green-950' },
     { label: 'Orders',        value: stats.orders.toLocaleString(),   sub: `${stats.pendingOrders} pending`, icon: ShoppingCart, color: 'bg-blue-50 text-blue-600 dark:bg-blue-950' },
     { label: 'Customers',     value: stats.users.toLocaleString(),    sub: `${stats.affiliates} affiliates`, icon: Users,        color: 'bg-violet-50 text-violet-600 dark:bg-violet-950' },
     { label: 'Products',      value: stats.products.toLocaleString(), sub: `${stats.lowStock} low stock`, icon: ShoppingBag,  color: 'bg-amber-50 text-amber-600 dark:bg-amber-950' },
@@ -55,10 +57,15 @@ export function AdminDashboardClient() {
 
   return (
     <div className="space-y-6 animate-page-reveal">
+      <div className="flex flex-col gap-1">
+        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+        <p className="text-sm text-muted-foreground">Store performance, recent orders, and catalog health at a glance.</p>
+      </div>
+
       {/* Stat cards */}
       <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {STAT_CARDS.map(({ label, value, sub, icon: Icon, color }) => (
-          <div key={label} className="bg-card border border-border rounded-xl p-5">
+          <div key={label} className="bg-card border border-border rounded-lg p-5">
             <div className="flex items-start justify-between mb-4">
               <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${color}`}>
                 <Icon className="w-5 h-5" />
@@ -72,7 +79,7 @@ export function AdminDashboardClient() {
 
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Order status breakdown */}
-        <div className="lg:col-span-2 bg-card border border-border rounded-xl p-6">
+        <div className="lg:col-span-2 bg-card border border-border rounded-lg p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="font-bold">Order Overview</h2>
             <span className="text-xs text-muted-foreground">{stats.orders} total orders</span>
@@ -82,7 +89,7 @@ export function AdminDashboardClient() {
               { label: 'Pending', count: stats.pendingOrders, color: 'bg-amber-500' },
               { label: 'Confirmed', count: stats.confirmedOrders, color: 'bg-emerald-500' },
               { label: 'Total', count: stats.orders, color: 'bg-primary' },
-              { label: 'Revenue', count: null, value: `₦${stats.revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, color: 'bg-green-500' },
+              { label: 'Revenue', count: null, value: formatNaira(stats.revenue), color: 'bg-green-500' },
               { label: 'Low Stock', count: stats.lowStock, color: 'bg-red-500' },
               { label: 'Affiliates', count: stats.affiliates, color: 'bg-violet-500' },
             ].map(item => (
@@ -96,7 +103,7 @@ export function AdminDashboardClient() {
         </div>
 
         {/* Top products */}
-        <div className="bg-card border border-border rounded-xl p-6">
+        <div className="bg-card border border-border rounded-lg p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-bold">Top Products</h2>
             <Button variant="ghost" size="sm" asChild className="text-xs h-7">
@@ -111,7 +118,7 @@ export function AdminDashboardClient() {
                   <p className="text-sm font-medium truncate">{p.name}</p>
                   <p className="text-xs text-muted-foreground">{p.reviewCount} reviews</p>
                 </div>
-                <span className="text-sm font-bold shrink-0">₦{p.price}</span>
+                <span className="text-sm font-bold shrink-0">{formatNaira(p.price)}</span>
               </div>
             ))}
           </div>
@@ -119,7 +126,7 @@ export function AdminDashboardClient() {
       </div>
 
       {/* Recent orders */}
-      <div className="bg-card border border-border rounded-xl">
+      <div className="bg-card border border-border rounded-lg">
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <h2 className="font-bold">Recent Orders</h2>
           <Button variant="ghost" size="sm" asChild className="text-xs h-7">
@@ -148,14 +155,14 @@ export function AdminDashboardClient() {
                       {order.reference}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground">{order.shippingAddress?.fullName ?? '—'}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{order.shippingAddress?.fullName ?? '-'}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
                       <Package className="w-3.5 h-3.5 text-muted-foreground" />
                       <span>{order.items?.length ?? 0}</span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 font-bold">₦{Number(order.total).toLocaleString()}</td>
+                  <td className="px-4 py-3 font-bold">{formatNaira(Number(order.total))}</td>
                   <td className="px-4 py-3">
                     <Badge className={`text-[11px] border font-medium capitalize ${STATUS_COLORS[order.status] ?? ''}`}>
                       {order.status}

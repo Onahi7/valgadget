@@ -2,12 +2,13 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { Bell, LogOut, ChevronRight } from 'lucide-react'
+import { Bell, LogOut, ChevronRight, Menu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { NAV_GROUPS } from '@/components/admin/admin-sidebar'
 import { useAuth } from '@/contexts/auth-context'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -40,9 +41,34 @@ export function AdminHeader() {
   }
 
   return (
-    <header className="h-14 border-b border-border bg-card/60 backdrop-blur-sm flex items-center justify-between px-6 shrink-0 gap-4">
+    <header className="h-14 border-b border-border bg-card/80 backdrop-blur-sm flex items-center justify-between px-4 sm:px-6 shrink-0 gap-3">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8 md:hidden" aria-label="Open admin navigation">
+            <Menu className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-64">
+          {NAV_GROUPS.map(group => (
+            <div key={group.label} className="py-1">
+              <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                {group.label}
+              </DropdownMenuLabel>
+              {group.items.map(item => (
+                <DropdownMenuItem key={item.href} asChild>
+                  <Link href={item.href} className="gap-2 cursor-pointer">
+                    <item.icon className="h-4 w-4" />
+                    {item.label}
+                  </Link>
+                </DropdownMenuItem>
+              ))}
+            </div>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-1 text-sm min-w-0" aria-label="Breadcrumb">
+      <nav className="flex items-center gap-1 text-sm min-w-0 flex-1" aria-label="Breadcrumb">
         {breadcrumbs.map((crumb, i) => (
           <span key={crumb.href} className="flex items-center gap-1 min-w-0">
             {i > 0 && <ChevronRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}

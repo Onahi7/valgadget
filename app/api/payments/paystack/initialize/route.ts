@@ -8,7 +8,7 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
 import { orders } from '@/lib/server/schema'
 import { requireAuth, apiOk, apiError } from '@/lib/server/auth-helpers'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 
 export async function POST(req: NextRequest) {
   try {
@@ -30,8 +30,23 @@ export async function POST(req: NextRequest) {
       return apiError('Paystack is not configured. Set PAYSTACK_SECRET_KEY in env.', 503)
     }
 
-    const amountKobo = Math.round(Number(order.total) * 100) // Paystack uses kobo (100ths)
-    const reference = order.reference
+    const [reservedOrder] = await db.update(orders)
+      .set({ paymentMethod: 'paystack', paymentStatus: 'pending', updatedAt: new Date() })
+      .where(and(eq(orders.id, orderId), eq(orders.paymentStatus, 'unpaid')))
+      .returning({ id: orders.id, total: orders.total, reference: orders.reference })
+
+    if (!reservedOrder) {
+      const [latest] = await db.select({ paymentStatus: orders.paymentStatus })
+        .from(orders)
+        .where(eq(orders.id, orderId))
+        .limit(1)
+      if (latest?.paymentStatus === 'paid') return apiError('Order already paid', 400)
+      if (latest?.paymentStatus === 'pending') return apiError('Payment already initialized. Please complete the existing payment.', 400)
+      return apiError('Order is not ready for Paystack payment.', 409)
+    }
+
+    const amountKobo = Math.round(Number(reservedOrder.total) * 100) // Paystack uses kobo (100ths)
+    const reference = reservedOrder.reference
 
     const paystackRes = await fetch('https://api.paystack.co/transaction/initialize', {
       method: 'POST',
@@ -55,21 +70,26 @@ export async function POST(req: NextRequest) {
     })
 
     if (!paystackRes.ok) {
+      await releasePaystackReservation(orderId)
       const err = await paystackRes.json().catch(() => ({}))
       return apiError((err as any).message ?? 'Paystack initialization failed', 502)
     }
 
     const data = await paystackRes.json() as { status: boolean; data: { authorization_url: string; reference: string; access_code: string } }
-    if (!data.status) return apiError('Paystack returned unsuccessful status', 502)
-
-    // Mark order as awaiting Paystack payment
-    await db.update(orders)
-      .set({ paymentMethod: 'paystack', paymentStatus: 'pending', updatedAt: new Date() })
-      .where(eq(orders.id, orderId))
+    if (!data.status) {
+      await releasePaystackReservation(orderId)
+      return apiError('Paystack returned unsuccessful status', 502)
+    }
 
     return apiOk(data.data)
   } catch (err) {
     console.error('[paystack/initialize]', err)
     return apiError('Failed to initialize payment', 500)
   }
+}
+
+async function releasePaystackReservation(orderId: string) {
+  await db.update(orders)
+    .set({ paymentMethod: null, paymentStatus: 'unpaid', updatedAt: new Date() })
+    .where(and(eq(orders.id, orderId), eq(orders.paymentMethod, 'paystack'), eq(orders.paymentStatus, 'pending')))
 }

@@ -54,7 +54,7 @@ export default function NewRafflePage() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
+    <form onSubmit={handleSubmit} className="space-y-6 max-w-4xl">
       <div className="flex items-center gap-3">
         <Button type="button" variant="ghost" size="icon" asChild>
           <Link href="/admin/raffles"><ArrowLeft className="w-4 h-4" /></Link>
@@ -70,7 +70,7 @@ export default function NewRafflePage() {
       </div>
 
       <div className="space-y-5">
-        <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+        <div className="bg-card border border-border rounded-lg p-5 space-y-4">
           <h2 className="font-semibold text-sm">Raffle Details</h2>
           <div className="space-y-1.5">
             <Label htmlFor="title">Title *</Label>
@@ -93,7 +93,7 @@ export default function NewRafflePage() {
           </div>
         </div>
 
-        <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+        <div className="bg-card border border-border rounded-lg p-5 space-y-4">
           <h2 className="font-semibold text-sm">Prize</h2>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
@@ -110,7 +110,7 @@ export default function NewRafflePage() {
           </div>
         </div>
 
-        <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+        <div className="bg-card border border-border rounded-lg p-5 space-y-4">
           <h2 className="font-semibold text-sm">Tickets & Draw</h2>
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-1.5">

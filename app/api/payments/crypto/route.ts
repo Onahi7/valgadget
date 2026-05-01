@@ -7,7 +7,7 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
 import { orders } from '@/lib/server/schema'
 import { requireAuth, apiOk, apiError } from '@/lib/server/auth-helpers'
-import { eq } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 
 export async function POST(req: NextRequest) {
   try {
@@ -22,12 +22,15 @@ export async function POST(req: NextRequest) {
     if (!order) return apiError('Order not found', 404)
     if (order.userId !== auth.user.sub) return apiError('Forbidden', 403)
     if (order.paymentStatus === 'paid') return apiError('Order already paid', 400)
-    if (order.paymentStatus === 'pending_verification') return apiError('Transaction hash already submitted. Awaiting verification.', 400)
+    if (order.paymentStatus === 'pending_verification' && order.paymentRef === txHash) {
+      return apiOk({ message: 'Transaction hash already received. Your payment is awaiting verification.' })
+    }
+    if (order.paymentStatus === 'pending_verification') return apiError('A different transaction hash has already been submitted for this order.', 409)
 
     const validCoins = ['btc', 'eth', 'usdt_erc20', 'usdt_trc20']
     if (!validCoins.includes(coin.toLowerCase())) return apiError('Invalid coin', 400)
 
-    await db.update(orders)
+    const [updated] = await db.update(orders)
       .set({
         paymentMethod: `crypto_${coin.toLowerCase()}`,
         paymentStatus: 'pending_verification',
@@ -35,9 +38,28 @@ export async function POST(req: NextRequest) {
         notes: order.notes ? `${order.notes}\nCrypto TX Hash: ${txHash}` : `Crypto TX Hash: ${txHash}`,
         updatedAt: new Date(),
       })
-      .where(eq(orders.id, orderId))
+      .where(and(
+        eq(orders.id, orderId),
+        sql`${orders.paymentStatus} not in ('paid', 'pending_verification')`,
+      ))
+      .returning({ id: orders.id })
 
-    return apiOk({ message: 'Transaction hash received. Your payment will be verified within 1–30 minutes.' })
+    if (!updated) {
+      const [latest] = await db.select({ paymentStatus: orders.paymentStatus, paymentRef: orders.paymentRef })
+        .from(orders)
+        .where(eq(orders.id, orderId))
+        .limit(1)
+      if (latest?.paymentStatus === 'paid') return apiError('Order already paid', 400)
+      if (latest?.paymentStatus === 'pending_verification' && latest.paymentRef === txHash) {
+        return apiOk({ message: 'Transaction hash already received. Your payment is awaiting verification.' })
+      }
+      if (latest?.paymentStatus === 'pending_verification') {
+        return apiError('A different transaction hash has already been submitted for this order.', 409)
+      }
+      return apiError('Unable to submit transaction hash for this order. Please refresh and try again.', 409)
+    }
+
+    return apiOk({ message: 'Transaction hash received. Your payment will be verified within 1-30 minutes.' })
   } catch (err) {
     console.error('[crypto/confirm]', err)
     return apiError('Failed to record transaction', 500)
