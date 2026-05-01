@@ -215,9 +215,10 @@ function CheckoutPageContent() {
           body: JSON.stringify({ orderId: order.id, guestEmail: user ? undefined : data.guestEmail }),
         })
         const json = await res.json()
-        if (json.data?.authorization_url) {
+        const authorizationUrl = json?.authorization_url ?? json?.data?.authorization_url
+        if (authorizationUrl) {
           toast.success('Redirecting to Paystack…')
-          window.location.href = json.data.authorization_url
+          window.location.href = authorizationUrl
           return
         }
         toast.error(json.message ?? 'Paystack init failed')

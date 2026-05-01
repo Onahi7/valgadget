@@ -51,16 +51,14 @@ export default function HomePage() {
           categoryService.getFlat(),
           raffleService.getAll(),
         ])
-        
-        if (featured.status === 'fulfilled') setFeaturedProducts(featured.value.slice(0, 4))
-        if (arrivals.status === 'fulfilled') setNewArrivals(arrivals.value.slice(0, 4))
-        if (allProducts.status === 'fulfilled') setHeroProducts(allProducts.data.slice(0, 4))
+
+        setFeaturedProducts(Array.isArray(featured) ? featured.slice(0, 4) : [])
+        setNewArrivals(Array.isArray(arrivals) ? arrivals.slice(0, 4) : [])
+        setHeroProducts(Array.isArray(allProducts?.data) ? allProducts.data.slice(0, 4) : [])
         if (Array.isArray(cats)) setCategories(cats)
         if (Array.isArray(raffles)) setActiveRaffles(raffles.filter(x => x.status === 'active').slice(0, 2))
       } catch (err) {
         console.error('[home page load]', err)
-      } finally {
-        setIsLoading(false)
       }
     }
     loadData()

@@ -11,6 +11,7 @@ import { productService, type Product } from '@/lib/services/product.service'
 import { categoryService, type Category } from '@/lib/services/category.service'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import type { ApiError } from '@/lib/api-client'
 
 export default function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -101,8 +102,9 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         setProduct((prev: any) => prev ? { ...prev, images: res.images } : prev)
         toast.success(`${files.length} image(s) uploaded`)
       }
-    } catch {
-      toast.error('Failed to upload images')
+    } catch (err) {
+      const e = err as ApiError
+      toast.error(e.message ?? 'Failed to upload images')
     } finally {
       setUploading(false)
       e.target.value = ''
@@ -117,8 +119,9 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         images: (prev.images ?? []).filter((url: string) => url !== imageUrl)
       } : prev)
       toast.success('Image deleted')
-    } catch {
-      toast.error('Failed to delete image')
+    } catch (err) {
+      const e = err as ApiError
+      toast.error(e.message ?? 'Failed to delete image')
     }
   }
 
