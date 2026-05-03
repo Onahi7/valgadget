@@ -9,7 +9,7 @@ export default function CookiePolicyPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12 animate-page-reveal">
       <h1 className="text-3xl font-bold mb-2">Cookie Policy</h1>
-      <p className="text-sm text-muted-foreground mb-8">Last updated: January 2025</p>
+      <p className="text-sm text-muted-foreground mb-8">Last updated: May 2026</p>
 
       <div className="prose prose-sm dark:prose-invert max-w-none space-y-6">
         <section>

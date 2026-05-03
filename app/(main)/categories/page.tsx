@@ -30,7 +30,7 @@ export default function CategoriesPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 stagger-children">
-          {categories.map(cat => (
+          {categories.map((cat, idx) => (
             <Link
               key={cat.id}
               href={`/shop?category=${cat.slug}`}
@@ -44,6 +44,7 @@ export default function CategoriesPage() {
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-500"
                     unoptimized
+                    priority={idx < 3}
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-muted-foreground/20 text-5xl font-bold font-mono">
@@ -55,7 +56,9 @@ export default function CategoriesPage() {
               <div className="p-4 flex items-center justify-between">
                 <div>
                   <h2 className="font-bold group-hover:text-primary transition-colors">{cat.name}</h2>
-                  <p className="text-sm text-muted-foreground mt-0.5">{cat.productCount} products</p>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    {cat.productCount} {cat.productCount === 1 ? 'product' : 'products'}
+                  </p>
                 </div>
                 <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
               </div>

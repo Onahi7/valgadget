@@ -81,7 +81,7 @@ export default function AdminShippingPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2"><Truck className="w-6 h-6 text-primary" /> Shipping Rates</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Shipping Rates</h1>
         <p className="text-muted-foreground text-sm mt-1">Manage delivery prices per Nigerian state</p>
       </div>
 
