@@ -63,10 +63,10 @@ export default function AdminCustomersPage() {
   }, [search, roleFilter])
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6 animate-page-reveal">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold">Customers</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Customers</h1>
           <p className="text-sm text-muted-foreground">{total} registered users</p>
         </div>
         <Button className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90" size="sm" onClick={async () => {

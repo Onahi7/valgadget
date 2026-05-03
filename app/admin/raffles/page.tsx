@@ -66,10 +66,10 @@ export default function AdminRafflesPage() {
   const totalRevenue = raffles.reduce((s, r) => s + r.soldTickets * r.ticketPrice, 0)
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6 animate-page-reveal">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold">Raffles</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Raffles</h1>
           <p className="text-sm text-muted-foreground">{raffles.length} raffles · ₦{totalRevenue.toLocaleString()} revenue</p>
         </div>
         <Button className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90" size="sm" asChild>

@@ -126,10 +126,10 @@ export default function AdminReviewsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-page-reveal">
       <div>
-        <h1 className="text-3xl font-bold">Reviews</h1>
-        <p className="text-muted-foreground mt-1">Moderate customer reviews</p>
+        <h1 className="text-2xl font-bold tracking-tight">Reviews</h1>
+        <p className="text-muted-foreground text-sm mt-1">Moderate and approve customer reviews</p>
       </div>
 
       {/* Filters */}

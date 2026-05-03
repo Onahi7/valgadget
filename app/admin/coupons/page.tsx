@@ -180,11 +180,11 @@ export default function CouponsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-page-reveal">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Coupons</h1>
-          <p className="text-muted-foreground mt-1">Manage discount codes and promotions</p>
+          <h1 className="text-2xl font-bold tracking-tight">Coupons</h1>
+          <p className="text-muted-foreground text-sm mt-1">Manage discount codes and promotions</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm() }}>
           <DialogTrigger asChild>
