@@ -6,7 +6,7 @@ const JWT_SECRET_RAW = process.env.JWT_SECRET ?? process.env.NEXTAUTH_SECRET ?? 
 const SECRET = new TextEncoder().encode(JWT_SECRET_RAW)
 
 // Routes that require authentication
-const PROTECTED_PATHS = ['/account', '/checkout', '/admin', '/affiliate']
+const PROTECTED_PATHS = ['/account', '/admin', '/affiliate']
 
 // Routes that should redirect to home if already authenticated
 const AUTH_PATHS = ['/login', '/register']
@@ -16,7 +16,8 @@ const ADMIN_PATHS = ['/admin']
 
 async function verifyToken(token: string) {
   try {
-    const { payload } = await jwtVerify(token, SECRET, { algorithms: ['HS256'] })
+    const normalizedToken = token.includes('%') ? decodeURIComponent(token) : token
+    const { payload } = await jwtVerify(normalizedToken, SECRET, { algorithms: ['HS256'] })
     return payload as { sub: string; email: string; role: string; name: string }
   } catch {
     return null

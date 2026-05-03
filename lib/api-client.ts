@@ -18,7 +18,8 @@ export function setToken(token: string): void {
   if (typeof window === 'undefined') return
   localStorage.setItem('vg_token', token)
   // Also set as cookie for middleware access
-  document.cookie = `vg_token=${token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`
+  const secure = window.location.protocol === 'https:' ? '; Secure' : ''
+  document.cookie = `vg_token=${encodeURIComponent(token)}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax${secure}`
 }
 
 export function clearToken(): void {

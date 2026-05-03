@@ -21,6 +21,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
+  const [deletingImageUrl, setDeletingImageUrl] = useState<string | null>(null)
 
   const [form, setForm] = useState({
     name: '', description: '', shortDescription: '', price: '', comparePrice: '',
@@ -112,6 +113,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
   }
 
   const handleDeleteImage = async (imageUrl: string) => {
+    setDeletingImageUrl(imageUrl)
     try {
       await productService.deleteImage(id, imageUrl)
       setProduct((prev: any) => prev ? {
@@ -122,6 +124,8 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     } catch (err) {
       const e = err as ApiError
       toast.error(e.message ?? 'Failed to delete image')
+    } finally {
+      setDeletingImageUrl(null)
     }
   }
 
@@ -259,10 +263,15 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                 <img src={url} alt={`Product ${idx + 1}`} className="w-full h-24 object-cover" />
                 <button
                   type="button"
+                  disabled={deletingImageUrl === url || uploading}
                   onClick={() => handleDeleteImage(url)}
-                  className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-100 disabled:cursor-not-allowed"
                 >
-                  <X className="w-3 h-3" />
+                  {deletingImageUrl === url ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <X className="w-3 h-3" />
+                  )}
                 </button>
               </div>
             ))}
@@ -276,13 +285,21 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
               type="file"
               accept="image/*"
               multiple
+              disabled={uploading || !!deletingImageUrl}
               onChange={handleImageUpload}
               className="hidden"
               id="image-upload"
             />
-            <Button type="button" variant="outline" size="sm" asChild className={cn(uploading && 'opacity-50')}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              asChild
+              disabled={uploading || !!deletingImageUrl}
+              className={cn(uploading && 'opacity-50')}
+            >
               <label htmlFor="image-upload" className="cursor-pointer flex items-center gap-2">
-                <Upload className="w-3.5 h-3.5" />
+                {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
                 {uploading ? 'Uploading...' : 'Upload Images'}
               </label>
             </Button>
