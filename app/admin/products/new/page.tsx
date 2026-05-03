@@ -3,18 +3,21 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Plus, Loader2 } from 'lucide-react'
+import { ArrowLeft, Plus, Loader2, Upload, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { productService } from '@/lib/services/product.service'
 import { categoryService, type Category } from '@/lib/services/category.service'
 import { toast } from 'sonner'
+import type { ApiError } from '@/lib/api-client'
 
 export default function NewProductPage() {
   const router = useRouter()
   const [categories, setCategories] = useState<Category[]>([])
   const [saving, setSaving] = useState(false)
+  const [selectedImages, setSelectedImages] = useState<File[]>([])
+  const [uploadingImages, setUploadingImages] = useState(false)
 
   const [form, setForm] = useState({
     name: '', description: '', shortDescription: '', price: '', comparePrice: '',
@@ -27,6 +30,18 @@ export default function NewProductPage() {
 
   const set = (field: string, value: string | boolean) =>
     setForm(prev => ({ ...prev, [field]: value }))
+
+  const handleImagePick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files?.length) return
+    const picked = Array.from(files).filter(file => file.type.startsWith('image/'))
+    setSelectedImages(prev => [...prev, ...picked])
+    e.target.value = ''
+  }
+
+  const removeSelectedImage = (index: number) => {
+    setSelectedImages(prev => prev.filter((_, i) => i !== index))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -50,11 +65,23 @@ export default function NewProductPage() {
         isNew: form.isNew,
         isActive: form.isActive,
       })
-      toast.success(`"${form.name}" created. You can now upload images.`)
+
+      if (selectedImages.length > 0) {
+        setUploadingImages(true)
+        const formData = new FormData()
+        selectedImages.forEach(file => formData.append('images', file))
+        await productService.uploadImages(res.id, formData)
+        toast.success(`"${form.name}" created with ${selectedImages.length} image(s).`)
+      } else {
+        toast.success(`"${form.name}" created.`)
+      }
+
       router.push(`/admin/products/${res.id}/edit`)
-    } catch {
-      toast.error('Failed to create product')
+    } catch (err) {
+      const e = err as ApiError
+      toast.error(e.message ?? 'Failed to create product')
     } finally {
+      setUploadingImages(false)
       setSaving(false)
     }
   }
@@ -69,9 +96,9 @@ export default function NewProductPage() {
           <h1 className="text-xl font-bold">New Product</h1>
           <p className="text-xs text-muted-foreground">Fill in the details to add to your catalog</p>
         </div>
-        <Button type="submit" disabled={saving} className="gap-2 bg-primary text-primary-foreground">
-          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-          Create Product
+        <Button type="submit" disabled={saving || uploadingImages} className="gap-2 bg-primary text-primary-foreground">
+          {(saving || uploadingImages) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+          {uploadingImages ? 'Uploading Images...' : saving ? 'Creating...' : 'Create Product'}
         </Button>
       </div>
 
@@ -172,6 +199,42 @@ export default function NewProductPage() {
                 {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
+          </div>
+
+          <div className="bg-card border border-border rounded-lg p-5 space-y-4">
+            <h2 className="font-semibold text-sm">Product Images (Optional)</h2>
+            <div className="flex items-center gap-3">
+              <Input
+                id="new-product-images"
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleImagePick}
+              />
+            </div>
+            {selectedImages.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">{selectedImages.length} image(s) selected</p>
+                <div className="flex flex-col gap-2">
+                  {selectedImages.map((file, idx) => (
+                    <div key={`${file.name}-${idx}`} className="flex items-center justify-between rounded-md border border-border px-3 py-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Upload className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                        <span className="text-xs truncate">{file.name}</span>
+                      </div>
+                      <button
+                        type="button"
+                        className="text-muted-foreground hover:text-destructive"
+                        onClick={() => removeSelectedImage(idx)}
+                        aria-label={`Remove ${file.name}`}
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
