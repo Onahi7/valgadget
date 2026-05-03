@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { ArrowRight } from 'lucide-react'
 import { categoryService, type Category } from '@/lib/services/category.service'
 
@@ -28,15 +29,28 @@ export default function CategoriesPage() {
           {Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-52 bg-muted animate-pulse rounded-xl" />)}
         </div>
       ) : (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 stagger-children">
-        {categories.map(cat => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 stagger-children">
+          {categories.map(cat => (
             <Link
               key={cat.id}
-              href={`/categories/${cat.slug}`}
+              href={`/shop?category=${cat.slug}`}
               className="animate-fade-up group bg-card border border-border rounded-xl overflow-hidden hover:border-primary/40 hover:shadow-md transition-all"
             >
-              <div className="h-36 bg-surface flex items-center justify-center text-muted-foreground/20 text-5xl font-bold font-mono">
-                —
+              <div className="relative h-40 bg-muted overflow-hidden">
+                {cat.image ? (
+                  <Image
+                    src={cat.image}
+                    alt={cat.name}
+                    fill
+                    className="object-cover group-hover:scale-105 transition-transform duration-500"
+                    unoptimized
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-muted-foreground/20 text-5xl font-bold font-mono">
+                    —
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
               </div>
               <div className="p-4 flex items-center justify-between">
                 <div>
@@ -46,8 +60,8 @@ export default function CategoriesPage() {
                 <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
               </div>
             </Link>
-        ))}
-      </div>
+          ))}
+        </div>
       )}
     </div>
   )

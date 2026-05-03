@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { SlidersHorizontal, X, Search, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -33,9 +34,12 @@ const PRICE_RANGES = [
 
 const PAGE_SIZE = 8
 
-export default function ShopPage() {
+function ShopPageInner() {
+  const searchParams = useSearchParams()
+  const initialCategory = searchParams.get('category')
+
   const [search, setSearch]               = useState('')
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(initialCategory)
   const [selectedPrice, setSelectedPrice] = useState<{ min: number; max: number } | null>(null)
   const [sort, setSort]                   = useState('popular')
   const [page, setPage]                   = useState(1)
@@ -54,6 +58,12 @@ export default function ShopPage() {
       if (Array.isArray(res)) setCategories(res as any[])
     })
   }, [])
+
+  // Sync with URL param changes
+  useEffect(() => {
+    setSelectedCategory(searchParams.get('category'))
+    setPage(1)
+  }, [searchParams])
 
   // Load products whenever filters change
   useEffect(() => {
@@ -80,7 +90,7 @@ export default function ShopPage() {
   const resetPage = useCallback(() => setPage(1), [])
 
   const activeFilters: string[] = []
-  if (selectedCategory) activeFilters.push(categories.find(c => c.slug === selectedCategory)?.name ?? '')
+  if (selectedCategory) activeFilters.push(categories.find(c => c.slug === selectedCategory)?.name ?? selectedCategory)
   if (selectedPrice) activeFilters.push(PRICE_RANGES.find(p => p.min === selectedPrice.min)?.label ?? '')
 
   const FilterPanel = () => (
@@ -188,7 +198,7 @@ export default function ShopPage() {
               {f}
               <button
                 onClick={() => {
-                  if (selectedCategory && categories.find(c => c.slug === selectedCategory)?.name === f) setSelectedCategory(null)
+                  if (selectedCategory && (categories.find(c => c.slug === selectedCategory)?.name === f || selectedCategory === f)) setSelectedCategory(null)
                   if (selectedPrice && PRICE_RANGES.find(p => p.label === f)) setSelectedPrice(null)
                   setPage(1)
                 }}
@@ -231,5 +241,21 @@ export default function ShopPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function ShopPage() {
+  return (
+    <Suspense fallback={
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <div className="h-8 w-32 bg-muted animate-pulse rounded mb-2" />
+        <div className="h-4 w-48 bg-muted animate-pulse rounded mb-8" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 8 }).map((_, i) => <div key={i} className="h-64 bg-muted animate-pulse rounded-xl" />)}
+        </div>
+      </div>
+    }>
+      <ShopPageInner />
+    </Suspense>
   )
 }
