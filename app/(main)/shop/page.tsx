@@ -80,7 +80,7 @@ export default function ShopPage() {
   const resetPage = useCallback(() => setPage(1), [])
 
   const activeFilters: string[] = []
-  if (selectedCategory) activeFilters.push(categories.find(c => c.id === selectedCategory)?.name ?? '')
+  if (selectedCategory) activeFilters.push(categories.find(c => c.slug === selectedCategory)?.name ?? '')
   if (selectedPrice) activeFilters.push(PRICE_RANGES.find(p => p.min === selectedPrice.min)?.label ?? '')
 
   const FilterPanel = () => (
@@ -97,8 +97,8 @@ export default function ShopPage() {
           {categories.map(cat => (
             <button
               key={cat.id}
-              onClick={() => { setSelectedCategory(cat.id); resetPage() }}
-              className={`text-left px-3 py-2 rounded-md text-sm transition-colors flex justify-between items-center ${selectedCategory === cat.id ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-accent text-muted-foreground'}`}
+              onClick={() => { setSelectedCategory(cat.slug); resetPage() }}
+              className={`text-left px-3 py-2 rounded-md text-sm transition-colors flex justify-between items-center ${selectedCategory === cat.slug ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-accent text-muted-foreground'}`}
             >
               <span>{cat.name}</span>
               <span className="text-xs opacity-60">{cat.productCount}</span>
@@ -188,7 +188,7 @@ export default function ShopPage() {
               {f}
               <button
                 onClick={() => {
-                  if (selectedCategory && categories.find(c => c.id === selectedCategory)?.name === f) setSelectedCategory(null)
+                  if (selectedCategory && categories.find(c => c.slug === selectedCategory)?.name === f) setSelectedCategory(null)
                   if (selectedPrice && PRICE_RANGES.find(p => p.label === f)) setSelectedPrice(null)
                   setPage(1)
                 }}

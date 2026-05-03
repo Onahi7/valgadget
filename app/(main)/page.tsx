@@ -44,17 +44,17 @@ export default function HomePage() {
   useEffect(() => {
     async function loadData() {
       try {
-        const [featured, arrivals, allProducts, cats, raffles] = await Promise.all([
+        const [featured, arrivals, cats, raffles] = await Promise.all([
           productService.getFeatured(),
           productService.getNewArrivals(),
-          productService.getAll({ limit: 4 }),
+          
           categoryService.getFlat(),
           raffleService.getAll(),
         ])
 
         setFeaturedProducts(Array.isArray(featured) ? featured.slice(0, 4) : [])
         setNewArrivals(Array.isArray(arrivals) ? arrivals.slice(0, 4) : [])
-        setHeroProducts(Array.isArray(allProducts?.data) ? allProducts.data.slice(0, 4) : [])
+        setHeroProducts(Array.isArray(featured) ? featured.slice(0, 4) : [])
         if (Array.isArray(cats)) setCategories(cats)
         if (Array.isArray(raffles)) setActiveRaffles(raffles.filter(x => x.status === 'active').slice(0, 2))
       } catch (err) {
