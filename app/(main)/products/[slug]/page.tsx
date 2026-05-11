@@ -161,7 +161,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
       />
 
       {/* Main grid */}
-      <div className="grid md:grid-cols-2 gap-10 lg:gap-16">
+      <div className="grid gap-8 md:grid-cols-2 lg:gap-16">
         {/* Images */}
         <div className="flex flex-col gap-3">
           <div className="relative aspect-square rounded-xl overflow-hidden bg-surface">
@@ -180,13 +180,13 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
             )}
           </div>
           {product.images.length > 1 && (
-            <div className="flex gap-2">
+            <div className="flex gap-2 overflow-x-auto pb-1">
               {product.images.map((img, i) => (
                 <button
                   key={i}
                   onClick={() => setActiveImg(i)}
                   className={cn(
-                    'w-16 h-16 rounded-md overflow-hidden border-2 transition-all',
+                    'h-16 w-16 shrink-0 rounded-md overflow-hidden border-2 transition-all',
                     i === activeImg ? 'border-primary' : 'border-transparent hover:border-border'
                   )}
                   aria-label={`View image ${i + 1}`}
@@ -207,7 +207,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
           )}
           <div>
             <h1 className="text-2xl md:text-3xl font-bold leading-tight text-balance">{product.name}</h1>
-            <div className="flex items-center gap-3 mt-3">
+            <div className="mt-3 flex flex-wrap items-center gap-2 sm:gap-3">
               <div className="flex items-center gap-0.5" aria-label={`Rating: ${product.rating} out of 5`}>
                 {Array.from({ length: 5 }).map((_, i) => (
                   <Star key={i} className={cn('w-4 h-4', i < Math.round(product.rating) ? 'fill-primary text-primary' : 'text-muted-foreground/30')} />
@@ -256,7 +256,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
 
           {/* Quantity + Add to cart */}
           <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-3 sm:gap-4">
               <label className="text-sm font-medium">Qty:</label>
               <div className="flex items-center border border-border rounded-md overflow-hidden">
                 <button
@@ -282,7 +282,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
               </span>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row">
               <Button
                 size="lg"
                 disabled={effectiveStock === 0}
@@ -297,31 +297,31 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
                 variant="outline"
                 onClick={handleWishlist}
                 aria-label={isWishlisted ? 'Remove from wishlist' : 'Save to wishlist'}
-                className={cn(isWishlisted && 'text-destructive border-destructive hover:bg-destructive/5')}
+                className={cn('sm:flex-none', isWishlisted && 'text-destructive border-destructive hover:bg-destructive/5')}
               >
                 <Heart className={cn('w-4 h-4', isWishlisted && 'fill-current')} />
               </Button>
-              <Button size="lg" variant="outline" aria-label="Share product">
+              <Button size="lg" variant="outline" aria-label="Share product" className="sm:flex-none">
                 <Share2 className="w-4 h-4" />
               </Button>
             </div>
           </div>
 
           {/* Trust */}
-          <div className="grid grid-cols-3 gap-3 pt-2">
+          <div className="grid grid-cols-1 gap-3 pt-2 sm:grid-cols-3">
             {[
               { icon: Truck, text: 'Free shipping over ₦99' },
               { icon: RotateCcw, text: '30-day returns' },
               { icon: Shield, text: 'Secure checkout' },
             ].map(({ icon: Icon, text }) => (
-              <div key={text} className="flex flex-col items-center gap-1.5 p-3 bg-surface rounded-lg text-center">
+              <div key={text} className="flex items-center gap-3 rounded-lg bg-surface p-3 text-left sm:flex-col sm:items-center sm:gap-1.5 sm:text-center">
                 <Icon className="w-4 h-4 text-primary" />
                 <span className="text-[11px] text-muted-foreground leading-tight">{text}</span>
               </div>
             ))}
           </div>
 
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <span className="font-mono">SKU: {product.sku}</span>
             {product.tags.map(t => (
               <Badge key={t} variant="secondary" className="text-[10px] font-mono uppercase">{t}</Badge>
@@ -333,7 +333,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
       {/* Tabs */}
       <div className="mt-16">
         <Tabs defaultValue="description">
-          <TabsList className="mb-6">
+          <TabsList className="mb-6 grid h-auto grid-cols-1 gap-2 bg-transparent p-0 sm:inline-flex sm:h-10 sm:grid-cols-none">
             <TabsTrigger value="description">Description</TabsTrigger>
             <TabsTrigger value="specs">Specifications</TabsTrigger>
             <TabsTrigger value="reviews">Reviews ({product.reviewCount})</TabsTrigger>
@@ -345,8 +345,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
           <TabsContent value="specs">
             <div className="grid sm:grid-cols-2 gap-px bg-border rounded-lg overflow-hidden text-sm">
               {detailSpecs.map(({ label, value }) => (
-                <div key={`${label}-${value}`} className="bg-card flex gap-4 px-4 py-3">
-                  <span className="text-muted-foreground w-28 shrink-0">{label}</span>
+                <div key={`${label}-${value}`} className="bg-card flex flex-col gap-1 px-4 py-3 sm:flex-row sm:gap-4">
+                  <span className="text-muted-foreground shrink-0 sm:w-28">{label}</span>
                   <span className="font-medium">{value}</span>
                 </div>
               ))}
@@ -355,7 +355,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
           <TabsContent value="reviews">
             <div className="space-y-8">
               {/* Rating Summary */}
-              <div className="flex items-center gap-8 bg-card border rounded-xl p-6">
+              <div className="flex flex-col gap-6 rounded-xl border bg-card p-6 sm:flex-row sm:items-center sm:gap-8">
                 <div className="text-center">
                   <div className="text-4xl font-bold mb-2">{product.rating.toFixed(1)}</div>
                   <StarRating rating={product.rating} showCount count={product.reviewCount} />
