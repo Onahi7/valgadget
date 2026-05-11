@@ -87,6 +87,7 @@ export const products = pgTable('products', {
   slug:             varchar('slug', { length: 320 }).notNull().unique(),
   description:      text('description').notNull().default(''),
   shortDescription: text('short_description'),
+  specs:            json('specs').$type<Array<{ label: string; value: string }>>().notNull().default([]),
   price:            numeric('price', { precision: 10, scale: 2 }).notNull(),
   comparePrice:     numeric('compare_price', { precision: 10, scale: 2 }),
   cost:             numeric('cost', { precision: 10, scale: 2 }),

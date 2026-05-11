@@ -34,6 +34,7 @@ export interface Product {
   slug: string
   description: string
   shortDescription?: string
+  specs?: Array<{ label: string; value: string }>
   price: number
   comparePrice?: number
   cost?: number          // admin only
@@ -85,6 +86,7 @@ export interface CreateProductPayload {
   name: string
   description: string
   shortDescription?: string
+  specs?: Array<{ label: string; value: string }>
   price: number
   comparePrice?: number
   cost?: number

@@ -57,6 +57,7 @@ export async function GET(request: NextRequest) {
   const data = await db.select({
     id: products.id, name: products.name, slug: products.slug,
     description: products.description, shortDescription: products.shortDescription,
+    specs: products.specs,
     price: products.price, comparePrice: products.comparePrice,
     images: products.images, categoryId: products.categoryId,
     stock: products.stock, sku: products.sku, rating: products.rating,
