@@ -10,6 +10,7 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ sl
   const [product] = await db.select({
     id: products.id, name: products.name, slug: products.slug,
     description: products.description, shortDescription: products.shortDescription,
+    specs: products.specs,
     price: products.price, comparePrice: products.comparePrice,
     images: products.images, categoryId: products.categoryId,
     stock: products.stock, sku: products.sku, rating: products.rating,

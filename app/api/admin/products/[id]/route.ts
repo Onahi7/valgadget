@@ -11,7 +11,7 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
   const { id } = await context.params
   try {
     const body = await req.json()
-    const { name, description, price, comparePrice, cost, categoryId, stock, sku, tags, featured, isNew, isActive, images, shortDescription } = body
+    const { name, description, shortDescription, specs, price, comparePrice, cost, categoryId, stock, sku, tags, featured, isNew, isActive, images } = body
 
     const slug = name
       ? name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
@@ -21,6 +21,7 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
       ...(name        && { name, slug }),
       ...(description !== undefined && { description }),
       ...(shortDescription !== undefined && { shortDescription }),
+      ...(specs !== undefined && { specs }),
       ...(price       !== undefined && { price: String(price) }),
       ...(comparePrice !== undefined && { comparePrice: comparePrice ? String(comparePrice) : null }),
       ...(cost        !== undefined && { cost: cost ? String(cost) : null }),

@@ -27,16 +27,16 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json()
-    const { name, description = '', price, comparePrice, cost, categoryId,
+    const { name, description = '', shortDescription, specs = [], price, comparePrice, cost, categoryId,
             stock = 0, sku, tags = [], featured = false, isNew = false,
-            isActive = true, images = [], shortDescription } = body
+            isActive = true, images = [] } = body
 
     if (!name || !price || !sku) return apiError('name, price, and sku are required.')
 
     const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + Date.now()
 
     const [product] = await db.insert(products).values({
-      name, slug, description, shortDescription,
+      name, slug, description, shortDescription, specs,
       price: String(price), comparePrice: comparePrice ? String(comparePrice) : null,
       cost: cost ? String(cost) : null,
       categoryId, stock, sku, tags, featured, isNew, isActive, images,
