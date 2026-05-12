@@ -7,6 +7,7 @@ import { ArrowLeft, Plus, Loader2, Upload, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { SpecsEditor, type ProductSpec } from '@/components/admin/specs-editor'
 import { productService } from '@/lib/services/product.service'
 import { categoryService, type Category } from '@/lib/services/category.service'
 import { toast } from 'sonner'
@@ -18,6 +19,7 @@ export default function NewProductPage() {
   const [saving, setSaving] = useState(false)
   const [selectedImages, setSelectedImages] = useState<File[]>([])
   const [uploadingImages, setUploadingImages] = useState(false)
+  const [specs, setSpecs] = useState<ProductSpec[]>([])
 
   const [form, setForm] = useState({
     name: '', description: '', shortDescription: '', price: '', comparePrice: '',
@@ -55,6 +57,7 @@ export default function NewProductPage() {
         name: form.name.trim(),
         description: form.description.trim(),
         shortDescription: form.shortDescription.trim() || undefined,
+        specs: specs.filter(spec => spec.label.trim() && spec.value.trim()),
         price: Number(form.price),
         comparePrice: form.comparePrice ? Number(form.comparePrice) : undefined,
         sku: form.sku.trim(),
@@ -128,6 +131,7 @@ export default function NewProductPage() {
               <Label htmlFor="tags">Tags (comma-separated)</Label>
               <Input id="tags" value={form.tags} onChange={e => set('tags', e.target.value)} placeholder="wireless, gaming, rgb" />
             </div>
+            <SpecsEditor value={specs} onChange={setSpecs} />
           </div>
 
           <div className="bg-card border border-border rounded-lg p-5 space-y-4">

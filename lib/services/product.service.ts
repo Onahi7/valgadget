@@ -98,6 +98,7 @@ export interface CreateProductPayload {
   featured?: boolean
   isNew?: boolean
   isActive?: boolean
+  images?: string[]
 }
 
 // ─── Service ──────────────────────────────────────────────────────────────────
@@ -140,6 +141,14 @@ export const productService = {
   /** [Admin] Create product */
   create: (payload: CreateProductPayload) =>
     api.post<Product>('/admin/products', payload),
+
+  /** [Admin] Paginated product list including inactive products */
+  getAdminAll: (filters?: ProductFilters & { isActive?: boolean }) =>
+    api.get<ProductsResponse>('/admin/products', filters as Record<string, string | number | boolean | undefined | null>),
+
+  /** [Admin] Single product by ID */
+  getAdminById: (id: string) =>
+    api.get<Product>(`/admin/products/${id}`),
 
   /** [Admin] Update product */
   update: (id: string, payload: Partial<CreateProductPayload>) =>

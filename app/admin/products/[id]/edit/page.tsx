@@ -13,6 +13,7 @@ import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import type { ApiError } from '@/lib/api-client'
 import { ImageCropModal } from '@/components/admin/image-crop-modal'
+import { SpecsEditor, type ProductSpec } from '@/components/admin/specs-editor'
 
 export default function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -25,6 +26,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [deletingImageUrl, setDeletingImageUrl] = useState<string | null>(null)
+  const [specs, setSpecs] = useState<ProductSpec[]>([])
 
   const [cropModalOpen, setCropModalOpen] = useState(false)
   const [cropQueue, setCropQueue] = useState<File[]>([])
@@ -37,7 +39,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
 
   useEffect(() => {
     Promise.all([
-      productService.getById(id),
+      productService.getAdminById(id),
       categoryService.getFlat(),
     ]).then(([pr, cr]) => {
       const p = pr as any
@@ -57,6 +59,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           isNew: p.isNew,
           isActive: p.isActive,
         })
+        setSpecs(Array.isArray(p.specs) ? p.specs : [])
       }
       if (Array.isArray(cr)) setCategories(cr as any[])
     }).finally(() => setLoading(false))
@@ -76,6 +79,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
       name: form.name.trim(),
       description: form.description.trim(),
       shortDescription: form.shortDescription.trim() || undefined,
+      specs: specs.filter(spec => spec.label.trim() && spec.value.trim()),
       price: Number(form.price),
       comparePrice: form.comparePrice ? Number(form.comparePrice) : undefined,
       sku: form.sku.trim(),
@@ -218,6 +222,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                 <Label htmlFor="tags">Tags (comma-separated)</Label>
                 <Input id="tags" value={form.tags} onChange={e => set('tags', e.target.value)} placeholder="wireless, gaming, rgb" />
               </div>
+              <SpecsEditor value={specs} onChange={setSpecs} />
             </div>
 
             <div className="bg-card border border-border rounded-lg p-5 space-y-4">

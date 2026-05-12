@@ -13,11 +13,13 @@ export async function GET(req: NextRequest) {
   const page   = Math.max(1, Number(searchParams.get('page')  ?? '1'))
   const limit  = Math.min(100, Math.max(1, Number(searchParams.get('limit') ?? '20')))
   const status = searchParams.get('status') ?? undefined
-  const search = searchParams.get('search') ?? undefined   // search by reference
+  const search = searchParams.get('search')?.trim() ?? undefined
 
   const conditions: SQL[] = []
   if (status) conditions.push(eq(orders.status, status))
-  if (search) conditions.push(ilike(orders.reference, `%${search}%`))
+  if (search) {
+    conditions.push(sql`(${orders.reference} ilike ${`%${search}%`} or coalesce(${orders.shippingAddress}->>'fullName', '') ilike ${`%${search}%`})`)
+  }
 
   const where = conditions.length ? and(...conditions) : undefined
 
@@ -27,12 +29,33 @@ export async function GET(req: NextRequest) {
   const data = await db.select().from(orders).where(where)
     .orderBy(desc(orders.createdAt)).limit(limit).offset((page - 1) * limit)
 
+  const [summary] = await db.select({
+    revenue: sql<number>`coalesce(sum(${orders.total})::numeric, 0)`,
+    pending: sql<number>`count(*) filter (where ${orders.status} = 'pending')::int`,
+    confirmed: sql<number>`count(*) filter (where ${orders.status} = 'confirmed')::int`,
+    processing: sql<number>`count(*) filter (where ${orders.status} = 'processing')::int`,
+    shipped: sql<number>`count(*) filter (where ${orders.status} = 'shipped')::int`,
+    delivered: sql<number>`count(*) filter (where ${orders.status} = 'delivered')::int`,
+    cancelled: sql<number>`count(*) filter (where ${orders.status} = 'cancelled')::int`,
+    refunded: sql<number>`count(*) filter (where ${orders.status} = 'refunded')::int`,
+  }).from(orders).where(where)
+
   return apiOk({
     data: data.map(numericOrder),
     total: count,
     page,
     limit,
     totalPages: Math.max(1, Math.ceil(count / limit)),
+    summary: {
+      revenue: Number(summary?.revenue ?? 0),
+      pending: summary?.pending ?? 0,
+      confirmed: summary?.confirmed ?? 0,
+      processing: summary?.processing ?? 0,
+      shipped: summary?.shipped ?? 0,
+      delivered: summary?.delivered ?? 0,
+      cancelled: summary?.cancelled ?? 0,
+      refunded: summary?.refunded ?? 0,
+    },
   })
 }
 

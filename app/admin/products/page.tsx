@@ -16,6 +16,7 @@ import { toast } from 'sonner'
 export default function AdminProductsPage() {
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
+  const [activeFilter, setActiveFilter] = useState<string>('all')
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
@@ -26,10 +27,15 @@ export default function AdminProductsPage() {
 
   useEffect(() => {
     setLoading(true)
-    productService.getAll({ limit: 100, search: search || undefined, category: categoryFilter !== 'all' ? categoryFilter : undefined })
+    productService.getAdminAll({
+      limit: 100,
+      search: search || undefined,
+      category: categoryFilter !== 'all' ? categoryFilter : undefined,
+      isActive: activeFilter === 'all' ? undefined : activeFilter === 'active',
+    })
       .then(r => { if ((r as any)?.data) setProducts((r as any).data) })
       .finally(() => setLoading(false))
-  }, [search, categoryFilter])
+  }, [search, categoryFilter, activeFilter])
 
   const filtered = products
   const parentCategoryIds = new Set(categories.filter(c => !c.parentId).map(c => c.id))
@@ -66,6 +72,15 @@ export default function AdminProductsPage() {
           <option value="all">All Categories</option>
           {categories.map(c => <option key={c.id} value={c.id}>{c.parentId ? `-- ${c.name}` : c.name}</option>)}
         </select>
+        <select
+          value={activeFilter}
+          onChange={e => setActiveFilter(e.target.value)}
+          className="appearance-none bg-card border border-border rounded-md px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <option value="all">All Statuses</option>
+          <option value="active">Active Only</option>
+          <option value="inactive">Inactive Only</option>
+        </select>
         <Button asChild className="shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 gap-2">
           <Link href="/admin/products/new"><Plus className="w-4 h-4" /> Add Product</Link>
         </Button>
@@ -75,7 +90,7 @@ export default function AdminProductsPage() {
       <div className="grid grid-cols-3 gap-3">
         {[
           { label: 'Total', value: products.length, icon: Package },
-          { label: 'In Stock', value: products.filter(p => p.stock > 0).length, icon: Package },
+          { label: 'Active', value: products.filter(p => p.isActive).length, icon: Package },
           { label: 'Out of Stock', value: products.filter(p => p.stock === 0).length, icon: Package },
         ].map(({ label, value }) => (
           <div key={label} className="bg-card border border-border rounded-lg px-4 py-3 text-center">
@@ -119,7 +134,11 @@ export default function AdminProductsPage() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-lg overflow-hidden bg-surface border border-border shrink-0">
-                          <Image src={p.images[0]} alt={p.name} width={40} height={40} className="object-cover w-full h-full" unoptimized />
+                          {p.images?.[0] ? (
+                            <Image src={p.images[0]} alt={p.name} width={40} height={40} className="object-cover w-full h-full" unoptimized />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-[10px] text-muted-foreground">No image</div>
+                          )}
                         </div>
                         <div>
                           <p className="font-medium truncate max-w-[200px]">{p.name}</p>
@@ -151,6 +170,7 @@ export default function AdminProductsPage() {
                       <div className="flex flex-wrap gap-1">
                         {p.featured && <Badge className="text-[10px] bg-primary/10 text-primary border-primary/20 border">Featured</Badge>}
                         {p.isNew && <Badge className="text-[10px] bg-green-100 text-green-700 border-green-200 border">New</Badge>}
+                        {!p.isActive && <Badge className="text-[10px] bg-muted text-muted-foreground border">Inactive</Badge>}
                         {p.stock === 0 && <Badge className="text-[10px] bg-red-100 text-red-700 border-red-200 border">OOS</Badge>}
                       </div>
                     </td>

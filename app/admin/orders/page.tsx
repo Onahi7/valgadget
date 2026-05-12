@@ -6,7 +6,6 @@ import { Search, ChevronDown, Download, Eye, ChevronLeft, ChevronRight } from 'l
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import type { OrderStatus } from '@/lib/services/order.service'
 import { cn } from '@/lib/utils'
 import { getToken } from '@/lib/api-client'
 
@@ -44,6 +43,7 @@ type OrdersResponse = {
   page: number;
   limit: number;
   totalPages: number;
+  summary?: Record<string, number>;
 }
 
 export default function AdminOrdersPage() {
@@ -54,6 +54,7 @@ export default function AdminOrdersPage() {
   const [page, setPage]           = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [total, setTotal]         = useState(0)
+  const [summary, setSummary]     = useState<Record<string, number>>({})
 
   const PAGE_SIZE = 20
 
@@ -69,7 +70,8 @@ export default function AdminOrdersPage() {
       .then((d: OrdersResponse) => {
         if (d.data) setOrders(d.data)
         if (d.totalPages) setTotalPages(d.totalPages)
-        if (d.total) setTotal(d.total)
+        setTotal(d.total ?? 0)
+        setSummary(d.summary ?? {})
         setPage(p)
       })
       .finally(() => setLoading(false))
@@ -79,9 +81,9 @@ export default function AdminOrdersPage() {
     fetchOrders(1)
   }, [search, statusFilter])
 
-  const revenue = orders.reduce((s, o) => s + Number(o.total), 0)
+  const revenue = Number(summary.revenue ?? 0)
 
-  const formatNaira = (value: number) => `₦${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+  const formatNaira = (value: number) => `NGN ${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
 
   return (
     <div className="space-y-6 animate-page-reveal">
@@ -104,7 +106,7 @@ export default function AdminOrdersPage() {
       {/* Stats */}
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
         {STATUS_OPTIONS.filter(s => s !== 'all').map(status => {
-          const count = orders.filter(o => o.status === status).length
+          const count = Number(summary[status] ?? 0)
           return (
             <button
               key={status}
