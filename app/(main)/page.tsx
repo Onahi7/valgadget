@@ -6,7 +6,7 @@ import Image from 'next/image'
 import {
   ArrowRight, Zap, Shield, Truck, RotateCcw, Trophy, Timer,
   Smartphone, Laptop, Headphones, Camera, Battery, Wifi,
-  Watch, Gamepad2, Speaker, Tablet,
+  Watch, Speaker, Tablet,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -24,16 +24,16 @@ const TRUST_BADGES = [
 ]
 
 const QUICK_CATEGORIES = [
-  { label: 'Phones',      icon: Smartphone,  slug: 'smartphones-tablets',    color: 'bg-blue-50 text-blue-600' },
-  { label: 'Laptops',     icon: Laptop,      slug: 'laptops-computers',       color: 'bg-purple-50 text-purple-600' },
-  { label: 'Audio',       icon: Headphones,  slug: 'audio-sound',             color: 'bg-pink-50 text-pink-600' },
-  { label: 'Cameras',     icon: Camera,      slug: 'camera-recording-gear',   color: 'bg-amber-50 text-amber-600' },
-  { label: 'Power Banks', icon: Battery,     slug: 'powerbanks',              color: 'bg-green-50 text-green-600' },
-  { label: 'Networking',  icon: Wifi,        slug: 'networking-connectivity', color: 'bg-cyan-50 text-cyan-600' },
-  { label: 'Wearables',   icon: Watch,       slug: 'wearables-smartwatches',  color: 'bg-rose-50 text-rose-600' },
-  { label: 'Gaming',      icon: Gamepad2,    slug: 'gaming-entertainment',    color: 'bg-violet-50 text-violet-600' },
-  { label: 'Speakers',    icon: Speaker,     slug: 'smart-home-speakers',     color: 'bg-orange-50 text-orange-600' },
-  { label: 'Tablets',     icon: Tablet,      slug: 'smartphones-tablets',     color: 'bg-teal-50 text-teal-600' },
+  { label: 'iPhones',     icon: Smartphone,  slug: 'iphones-uk-used',         color: 'bg-blue-50 text-blue-600' },
+  { label: 'Android',     icon: Tablet,      slug: 'android-phones-tablets',  color: 'bg-green-50 text-green-600' },
+  { label: 'Speakers',    icon: Speaker,     slug: 'speakers',                color: 'bg-orange-50 text-orange-600' },
+  { label: 'Watches',     icon: Watch,       slug: 'smartwatches',            color: 'bg-rose-50 text-rose-600' },
+  { label: 'Fans',        icon: Battery,     slug: 'rechargeable-fans',       color: 'bg-cyan-50 text-cyan-600' },
+  { label: 'Audio',       icon: Headphones,  slug: 'audio-entertainment',     color: 'bg-pink-50 text-pink-600' },
+  { label: 'Power',       icon: Battery,     slug: 'power-charging',          color: 'bg-amber-50 text-amber-600' },
+  { label: 'Networking',  icon: Wifi,        slug: 'networking-connectivity', color: 'bg-violet-50 text-violet-600' },
+  { label: 'Monitors',    icon: Laptop,      slug: 'monitors',                color: 'bg-purple-50 text-purple-600' },
+  { label: 'Security',    icon: Camera,      slug: 'security-surveillance',   color: 'bg-teal-50 text-teal-600' },
 ]
 
 function CountdownTimer({ drawDate }: { drawDate: string }) {
@@ -304,14 +304,14 @@ export default function HomePage() {
               <Badge className="w-fit bg-white/20 text-white border-0 text-xs">🔥 Hot Deal</Badge>
               <h3 className="text-xl font-bold leading-tight">Up to 30% off<br/>on Smartphones</h3>
               <Button size="sm" className="w-fit bg-white text-orange-600 hover:bg-white/90 rounded-full font-semibold" asChild>
-                <Link href="/shop?category=smartphones-tablets">Shop Phones</Link>
+                <Link href="/shop?category=iphones-uk-used">Shop Phones</Link>
               </Button>
             </div>
             <div className="rounded-2xl bg-gradient-to-br from-violet-600 to-violet-900 text-white p-6 flex flex-col gap-3">
               <Badge className="w-fit bg-white/20 text-white border-0 text-xs">⚡ Flash Sale</Badge>
               <h3 className="text-xl font-bold leading-tight">Best deals on<br/>Audio & Sound</h3>
               <Button size="sm" className="w-fit bg-white text-violet-700 hover:bg-white/90 rounded-full font-semibold" asChild>
-                <Link href="/shop?category=audio-sound">Shop Audio</Link>
+                <Link href="/shop?category=speakers">Shop Audio</Link>
               </Button>
             </div>
             <div className="rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white p-6 flex flex-col gap-3">
@@ -411,7 +411,7 @@ export default function HomePage() {
           </div>
           <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-6">
             {[
-              { step: '01', title: 'Browse',    desc: 'Explore 46+ premium gadgets across all categories',           emoji: '🔍' },
+              { step: '01', title: 'Browse',    desc: 'Explore our premium gadgets across all categories',           emoji: '🔍' },
               { step: '02', title: 'Add to Cart', desc: 'Pick your items and head to secure checkout',              emoji: '🛒' },
               { step: '03', title: 'Pay Safely', desc: 'Pay via card, bank transfer, or crypto — 100% secure',      emoji: '🔒' },
               { step: '04', title: 'Get Delivered', desc: 'Nationwide delivery to all 37 Nigerian states',          emoji: '🚚' },

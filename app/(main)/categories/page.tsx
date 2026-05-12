@@ -12,7 +12,7 @@ export default function CategoriesPage() {
 
   useEffect(() => {
     categoryService.getFlat()
-      .then(r => { if (Array.isArray(r)) setCategories(r as any[]) })
+      .then(r => { if (Array.isArray(r)) setCategories((r as any[]).filter(c => (c.productCount ?? 0) > 0)) })
       .finally(() => setLoading(false))
   }, [])
 

@@ -104,9 +104,18 @@ async function request<T>(
   }
 
   if (res.status === 401) {
-    clearToken()
-    if (typeof window !== 'undefined') window.dispatchEvent(new Event('vg:unauthorized'))
-    throw { message: 'Session expired. Please log in again.', status: 401 } as ApiError
+    // Only treat as session expiry if this is NOT an auth endpoint
+    const isAuthEndpoint = path.includes('/auth/login') || path.includes('/auth/register')
+    if (!isAuthEndpoint) {
+      clearToken()
+      if (typeof window !== 'undefined') window.dispatchEvent(new Event('vg:unauthorized'))
+    }
+    let errData: ApiEnvelope<unknown> = {}
+    try { errData = await res.json() } catch {}
+    throw {
+      message: getErrorMessage(errData.message, 'Invalid email or password.'),
+      status: 401,
+    } as ApiError
   }
 
   let data: unknown
