@@ -310,7 +310,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
           {/* Trust */}
           <div className="grid grid-cols-1 gap-3 pt-2 sm:grid-cols-3">
             {[
-              { icon: Truck, text: 'Free shipping over ₦99' },
+              { icon: Truck, text: 'Free shipping over ₦500k' },
               { icon: RotateCcw, text: '30-day returns' },
               { icon: Shield, text: 'Secure checkout' },
             ].map(({ icon: Icon, text }) => (

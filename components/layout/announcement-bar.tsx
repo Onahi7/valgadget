@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
 
 const ANNOUNCEMENTS = [
-  '🚚 Free shipping on orders over ₦50,000 — Nationwide delivery to all 37 states!',
+  '🚚 Free shipping on orders over ₦500,000 — Nationwide delivery to all 37 states!',
   '🎟 Live Raffles active now — Win an iPhone 15 Pro Max for just ₦2,500!',
   '⚡ Flash deals updated daily — check the shop for today\'s best offers',
   '🔒 100% secure checkout — Pay via card, bank transfer, or crypto',

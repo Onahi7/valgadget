@@ -14,6 +14,8 @@ import { cn } from '@/lib/utils'
 import type { ApiError } from '@/lib/api-client'
 import { ImageCropModal } from '@/components/admin/image-crop-modal'
 import { SpecsEditor, type ProductSpec } from '@/components/admin/specs-editor'
+import { CategorySelect } from '@/components/admin/category-select'
+import { ConditionSelect, getConditionFromTags, updateConditionInTags } from '@/components/admin/condition-select'
 
 export default function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -31,6 +33,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
   const [cropModalOpen, setCropModalOpen] = useState(false)
   const [cropQueue, setCropQueue] = useState<File[]>([])
   const [currentCropFile, setCurrentCropFile] = useState<File | null>(null)
+  const [condition, setCondition] = useState('')
 
   const [form, setForm] = useState({
     name: '', description: '', shortDescription: '', price: '', comparePrice: '',
@@ -60,6 +63,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           isActive: p.isActive,
         })
         setSpecs(Array.isArray(p.specs) ? p.specs : [])
+        setCondition(getConditionFromTags(p.tags ?? []))
       }
       if (Array.isArray(cr)) setCategories(cr as any[])
     }).finally(() => setLoading(false))
@@ -85,7 +89,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
       sku: form.sku.trim(),
       stock: Number(form.stock) || 0,
       categoryId: form.categoryId || undefined,
-      tags: form.tags.split(',').map(t => t.trim()).filter(Boolean),
+      tags: updateConditionInTags(form.tags.split(',').map(t => t.trim()).filter(Boolean), condition),
       featured: form.featured,
       isNew: form.isNew,
       isActive: form.isActive,
@@ -282,18 +286,12 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
 
             <div className="bg-card border border-border rounded-lg p-5 space-y-4">
               <h2 className="font-semibold text-sm">Organization</h2>
-              <div className="space-y-1.5">
-                <Label htmlFor="categoryId">Category</Label>
-                <select
-                  id="categoryId"
-                  value={form.categoryId}
-                  onChange={e => set('categoryId', e.target.value)}
-                  className="w-full appearance-none bg-background border border-input rounded-md px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <option value="">— No category —</option>
-                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-              </div>
+              <CategorySelect
+                categories={categories}
+                value={form.categoryId}
+                onChange={v => set('categoryId', v)}
+              />
+              <ConditionSelect value={condition} onChange={setCondition} />
             </div>
           </div>
         </div>

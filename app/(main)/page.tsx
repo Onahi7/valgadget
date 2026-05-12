@@ -17,7 +17,7 @@ import { raffleService, type Raffle } from '@/lib/services/raffle.service'
 import { cn } from '@/lib/utils'
 
 const TRUST_BADGES = [
-  { icon: Truck,     label: 'Free Shipping',    desc: 'On orders over ₦50k' },
+  { icon: Truck,     label: 'Free Shipping',    desc: 'On orders over ₦500k' },
   { icon: Shield,    label: 'Secure Payments',  desc: 'SSL encrypted checkout' },
   { icon: RotateCcw, label: '30-Day Returns',   desc: 'Hassle-free policy' },
   { icon: Zap,       label: 'Fast Dispatch',    desc: 'Ships within 24 hours' },

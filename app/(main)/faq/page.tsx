@@ -56,7 +56,7 @@ const faqs: FAQ[] = [
   {
     category: 'Shipping & Delivery',
     question: 'Is there free shipping?',
-    answer: 'Yes! Orders over ₦50,000 qualify for free shipping nationwide. We also occasionally offer free shipping promotions - check our homepage for current offers.',
+    answer: 'Yes! Orders over ₦500,000 qualify for free shipping nationwide. We also occasionally offer free shipping promotions - check our homepage for current offers.',
   },
   {
     category: 'Shipping & Delivery',

@@ -3,11 +3,14 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Plus, Loader2, Upload, X } from 'lucide-react'
+import { ArrowLeft, Plus, Loader2, Upload, X, ImagePlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { SpecsEditor, type ProductSpec } from '@/components/admin/specs-editor'
+import { CategorySelect } from '@/components/admin/category-select'
+import { ConditionSelect, updateConditionInTags } from '@/components/admin/condition-select'
+import { ImageCropModal } from '@/components/admin/image-crop-modal'
 import { productService } from '@/lib/services/product.service'
 import { categoryService, type Category } from '@/lib/services/category.service'
 import { toast } from 'sonner'
@@ -20,7 +23,11 @@ export default function NewProductPage() {
   const [selectedImages, setSelectedImages] = useState<File[]>([])
   const [uploadingImages, setUploadingImages] = useState(false)
   const [specs, setSpecs] = useState<ProductSpec[]>([])
-
+  const [condition, setCondition] = useState('')
+  const [cropModalOpen, setCropModalOpen] = useState(false)
+  const [cropQueue, setCropQueue] = useState<File[]>([])
+  const [currentCropFile, setCurrentCropFile] = useState<File | null>(null)
+  const [croppedBlobs, setCroppedBlobs] = useState<{ blob: Blob; name: string }[]>([])
   const [form, setForm] = useState({
     name: '', description: '', shortDescription: '', price: '', comparePrice: '',
     sku: '', stock: '0', categoryId: '', tags: '', featured: false, isNew: true, isActive: true,
@@ -37,8 +44,35 @@ export default function NewProductPage() {
     const files = e.target.files
     if (!files?.length) return
     const picked = Array.from(files).filter(file => file.type.startsWith('image/'))
-    setSelectedImages(prev => [...prev, ...picked])
     e.target.value = ''
+    if (picked.length === 0) return
+    const [first, ...rest] = picked
+    setCurrentCropFile(first)
+    setCropQueue(rest)
+    setCropModalOpen(true)
+  }
+
+  const handleCropConfirm = (blob: Blob, filename: string) => {
+    setCropModalOpen(false)
+    setCurrentCropFile(null)
+    setCroppedBlobs(prev => [...prev, { blob, name: filename }])
+    // Process next in queue
+    if (cropQueue.length > 0) {
+      const [next, ...remaining] = cropQueue
+      setCropQueue(remaining)
+      setCurrentCropFile(next)
+      setCropModalOpen(true)
+    }
+  }
+
+  const handleCropClose = () => {
+    setCropModalOpen(false)
+    setCurrentCropFile(null)
+    setCropQueue([])
+  }
+
+  const removeCroppedImage = (index: number) => {
+    setCroppedBlobs(prev => prev.filter((_, i) => i !== index))
   }
 
   const removeSelectedImage = (index: number) => {
@@ -63,13 +97,21 @@ export default function NewProductPage() {
         sku: form.sku.trim(),
         stock: Number(form.stock) || 0,
         categoryId: form.categoryId || '',
-        tags: form.tags.split(',').map(t => t.trim()).filter(Boolean),
+        tags: updateConditionInTags(form.tags.split(',').map(t => t.trim()).filter(Boolean), condition),
         featured: form.featured,
         isNew: form.isNew,
         isActive: form.isActive,
       })
 
-      if (selectedImages.length > 0) {
+      if (croppedBlobs.length > 0) {
+        setUploadingImages(true)
+        const formData = new FormData()
+        croppedBlobs.forEach(({ blob, name }) => {
+          formData.append('images', new File([blob], name, { type: 'image/webp' }))
+        })
+        await productService.uploadImages(res.id, formData)
+        toast.success(`"${form.name}" created with ${croppedBlobs.length} image(s).`)
+      } else if (selectedImages.length > 0) {
         setUploadingImages(true)
         const formData = new FormData()
         selectedImages.forEach(file => formData.append('images', file))
@@ -90,7 +132,17 @@ export default function NewProductPage() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 max-w-3xl">
+    <>
+      <ImageCropModal
+        open={cropModalOpen}
+        file={currentCropFile}
+        onClose={handleCropClose}
+        onConfirm={handleCropConfirm}
+        label="Product Image"
+        outputSize={800}
+      />
+
+      <form onSubmit={handleSubmit} className="space-y-6 max-w-3xl">
       <div className="flex items-center gap-3">
         <Button type="button" variant="ghost" size="icon" asChild>
           <Link href="/admin/products"><ArrowLeft className="w-4 h-4" /></Link>
@@ -191,48 +243,53 @@ export default function NewProductPage() {
 
           <div className="bg-card border border-border rounded-lg p-5 space-y-4">
             <h2 className="font-semibold text-sm">Organization</h2>
-            <div className="space-y-1.5">
-              <Label htmlFor="categoryId">Category</Label>
-              <select
-                id="categoryId"
-                value={form.categoryId}
-                onChange={e => set('categoryId', e.target.value)}
-                className="w-full appearance-none bg-background border border-input rounded-md px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <option value="">— No category —</option>
-                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </div>
+            <CategorySelect
+              categories={categories}
+              value={form.categoryId}
+              onChange={v => set('categoryId', v)}
+            />
+            <ConditionSelect value={condition} onChange={setCondition} />
           </div>
 
           <div className="bg-card border border-border rounded-lg p-5 space-y-4">
-            <h2 className="font-semibold text-sm">Product Images (Optional)</h2>
+            <h2 className="font-semibold text-sm">Product Images</h2>
+            <p className="text-xs text-muted-foreground">Images are auto-cropped to 800×800px WebP</p>
             <div className="flex items-center gap-3">
-              <Input
+              <input
                 id="new-product-images"
                 type="file"
                 accept="image/*"
                 multiple
+                className="hidden"
                 onChange={handleImagePick}
               />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() => document.getElementById('new-product-images')?.click()}
+              >
+                <ImagePlus className="w-4 h-4" /> Add Images
+              </Button>
             </div>
-            {selectedImages.length > 0 && (
+            {croppedBlobs.length > 0 && (
               <div className="space-y-2">
-                <p className="text-xs text-muted-foreground">{selectedImages.length} image(s) selected</p>
-                <div className="flex flex-col gap-2">
-                  {selectedImages.map((file, idx) => (
-                    <div key={`${file.name}-${idx}`} className="flex items-center justify-between rounded-md border border-border px-3 py-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <Upload className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                        <span className="text-xs truncate">{file.name}</span>
-                      </div>
+                <p className="text-xs text-muted-foreground">{croppedBlobs.length} cropped image(s) ready</p>
+                <div className="grid grid-cols-4 gap-2">
+                  {croppedBlobs.map((item, idx) => (
+                    <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border border-border bg-muted group">
+                      <img
+                        src={URL.createObjectURL(item.blob)}
+                        alt={`Preview ${idx + 1}`}
+                        className="w-full h-full object-cover"
+                      />
                       <button
                         type="button"
-                        className="text-muted-foreground hover:text-destructive"
-                        onClick={() => removeSelectedImage(idx)}
-                        aria-label={`Remove ${file.name}`}
+                        onClick={() => removeCroppedImage(idx)}
+                        className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
                       >
-                        <X className="w-3.5 h-3.5" />
+                        <X className="w-3 h-3" />
                       </button>
                     </div>
                   ))}
@@ -243,5 +300,6 @@ export default function NewProductPage() {
         </div>
       </div>
     </form>
+    </>
   )
 }
