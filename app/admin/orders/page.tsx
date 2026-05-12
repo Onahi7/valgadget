@@ -88,12 +88,12 @@ export default function AdminOrdersPage() {
   return (
     <div className="space-y-6 animate-page-reveal">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Orders</h1>
           <p className="text-sm text-muted-foreground">{total} orders · {formatNaira(revenue)} revenue</p>
         </div>
-        <Button variant="outline" size="sm" className="gap-2" onClick={() => {
+        <Button variant="outline" size="sm" className="gap-2 w-full sm:w-auto" onClick={() => {
           const params = new URLSearchParams()
           if (statusFilter !== 'all') params.set('status', statusFilter)
           if (search) params.set('search', search)
@@ -104,7 +104,7 @@ export default function AdminOrdersPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {STATUS_OPTIONS.filter(s => s !== 'all').map(status => {
           const count = Number(summary[status] ?? 0)
           return (
@@ -124,7 +124,7 @@ export default function AdminOrdersPage() {
       </div>
 
       {/* Toolbar */}
-      <div className="flex gap-3">
+      <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input placeholder="Search by reference or customer..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />

@@ -22,6 +22,7 @@ import { NIGERIA_STATES_LGAS, getLGAsForState } from '@/lib/data/nigeria-locatio
 import { toast } from 'sonner'
 import { getToken } from '@/lib/api-client'
 import type { ApiError } from '@/lib/api-client'
+import { cn } from '@/lib/utils'
 
 interface ShippingRate { id: string; state: string; price: string; estimatedDays: number }
 
@@ -318,17 +319,43 @@ function CheckoutPageContent() {
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 animate-page-reveal">
       <h1 className="text-3xl font-bold mb-8">Checkout</h1>
 
-      {/* Steps */}
-      <div className="flex items-center gap-4 mb-10">
-        {(['address', 'payment'] as const).map((s, i) => (
-          <div key={s} className="flex items-center gap-2">
-            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold font-mono border-2 ${step === s || (s === 'address' && step === 'payment') ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground'}`}>
-              {i + 1}
+      {/* Steps indicator */}
+      <div className="flex items-center mb-10">
+        {(['Address', 'Payment', 'Confirmation'] as const).map((label, i) => {
+          const stepKeys = ['address', 'payment', 'confirmation'] as const
+          const isCompleted = i === 0 || (i === 1 && step === 'payment')
+          const isCurrent = (i === 0 && step === 'address') || (i === 1 && step === 'payment')
+          return (
+            <div key={label} className="flex items-center flex-1 last:flex-none">
+              <div className="flex items-center gap-2">
+                <div className={cn(
+                  'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold font-mono border-2 transition-colors',
+                  isCompleted || isCurrent
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'border-border text-muted-foreground bg-background'
+                )}>
+                  {isCompleted && !isCurrent ? (
+                    <CheckCircle className="w-4 h-4" />
+                  ) : (
+                    i + 1
+                  )}
+                </div>
+                <span className={cn(
+                  'text-sm font-medium hidden sm:block',
+                  isCurrent ? 'text-foreground' : 'text-muted-foreground'
+                )}>
+                  {label}
+                </span>
+              </div>
+              {i < 2 && (
+                <div className={cn(
+                  'flex-1 h-0.5 mx-3 rounded-full transition-colors',
+                  isCompleted && !isCurrent ? 'bg-primary' : 'bg-border'
+                )} />
+              )}
             </div>
-            <span className={`text-sm font-medium capitalize ${step === s ? 'text-foreground' : 'text-muted-foreground'}`}>{s}</span>
-            {i < 1 && <div className="w-8 h-px bg-border" />}
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       <div className="grid lg:grid-cols-3 gap-8">

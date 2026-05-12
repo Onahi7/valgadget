@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription, EmptyContent } from '@/components/ui/empty'
-import { ProtectedRoute } from '@/components/auth/protected-route'
 import { orderService, type Order } from '@/lib/services/order.service'
 
 const STATUS_COLORS: Record<string, string> = {
@@ -38,8 +37,7 @@ export default function OrdersPage() {
   )
 
   return (
-    <ProtectedRoute>
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 animate-page-reveal">
+      <div className="space-y-6 animate-page-reveal">
         <div className="flex items-center justify-between mb-8 gap-4 flex-wrap">
           <div>
             <h1 className="text-2xl font-bold">My Orders</h1>
@@ -119,6 +117,5 @@ export default function OrdersPage() {
           </div>
         )}
       </div>
-    </ProtectedRoute>
   )
 }

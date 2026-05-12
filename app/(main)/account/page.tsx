@@ -4,13 +4,10 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import {
-  User, Package, Heart, LayoutDashboard, ChevronRight,
-  ShoppingBag, Star, Share2, Settings, Loader2, TrendingUp, MapPin,
+  Package, Heart, ChevronRight, User, MapPin, Share2,
+  ShoppingBag, TrendingUp,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
-import { ProtectedRoute } from '@/components/auth/protected-route'
 import { useAuth } from '@/contexts/auth-context'
 import { useWishlist } from '@/contexts/wishlist-context'
 import { orderService, type Order } from '@/lib/services/order.service'
@@ -25,16 +22,16 @@ const STATUS_COLORS: Record<string, string> = {
 }
 
 const QUICK_LINKS = [
-  { href: '/account/profile',   icon: User,        label: 'My Profile',   desc: 'Update name, email & password' },
-  { href: '/account/orders',    icon: Package,     label: 'My Orders',    desc: 'View & track all orders' },
-  { href: '/account/addresses', icon: MapPin,      label: 'Addresses',    desc: 'Manage delivery addresses' },
-  { href: '/wishlist',          icon: Heart,       label: 'Wishlist',     desc: 'Your saved items' },
-  { href: '/affiliate',         icon: Share2,      label: 'Affiliate',    desc: 'Earn by referring friends' },
+  { href: '/account/profile',   icon: User,    label: 'My Profile',   desc: 'Update name, email & password' },
+  { href: '/account/orders',    icon: Package, label: 'My Orders',    desc: 'View & track all orders' },
+  { href: '/account/addresses', icon: MapPin,  label: 'Addresses',    desc: 'Manage delivery addresses' },
+  { href: '/wishlist',          icon: Heart,   label: 'Wishlist',     desc: 'Your saved items' },
+  { href: '/affiliate',         icon: Share2,  label: 'Affiliate',    desc: 'Earn by referring friends' },
 ]
 
 function StatCard({ icon: Icon, label, value, sub }: { icon: React.ElementType; label: string; value: string | number; sub?: string }) {
   return (
-    <div className="bg-card border border-border rounded-2xl p-5 flex items-center gap-4">
+    <div className="bg-card border border-border rounded-xl p-5 flex items-center gap-4">
       <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
         <Icon className="w-5 h-5 text-primary" />
       </div>
@@ -64,11 +61,10 @@ export default function AccountDashboardPage() {
   const firstName = user?.name?.split(' ')[0] ?? 'there'
 
   return (
-    <ProtectedRoute>
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-8 animate-page-reveal">
+      <div className="space-y-8">
 
         {/* Welcome banner */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary to-primary/70 p-6 text-white shadow-lg">
+        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-primary to-primary/70 p-6 text-white shadow-lg">
           <div className="absolute -right-8 -top-8 w-36 h-36 rounded-full bg-white/10" />
           <div className="absolute -right-2 -bottom-10 w-24 h-24 rounded-full bg-white/5" />
           <div className="relative z-10 flex items-start justify-between gap-4">
@@ -77,7 +73,7 @@ export default function AccountDashboardPage() {
               <h1 className="text-2xl sm:text-3xl font-bold">Hey, {firstName}! 👋</h1>
               <p className="text-white/80 text-sm mt-1">{user?.email}</p>
             </div>
-            <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center shrink-0 text-2xl font-bold uppercase">
+            <div className="w-14 h-14 rounded-xl bg-white/20 flex items-center justify-center shrink-0 text-2xl font-bold uppercase">
               {firstName[0]}
             </div>
           </div>
@@ -92,15 +88,13 @@ export default function AccountDashboardPage() {
 
         {/* Quick links */}
         <div>
-          <h2 className="font-bold text-base mb-3 flex items-center gap-2">
-            <LayoutDashboard className="w-4 h-4 text-primary" /> Quick Access
-          </h2>
+          <h2 className="font-bold text-base mb-3">Quick Access</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {QUICK_LINKS.map(({ href, icon: Icon, label, desc }) => (
               <Link key={href} href={href}
-                className="group flex items-center gap-4 bg-card border border-border rounded-2xl p-4 hover:border-primary/40 hover:bg-primary/5 transition-all"
+                className="group flex items-center gap-4 bg-card border border-border rounded-xl p-4 hover:border-primary/40 hover:bg-primary/5 transition-all"
               >
-                <div className="w-10 h-10 rounded-xl bg-muted group-hover:bg-primary/10 flex items-center justify-center shrink-0 transition-colors">
+                <div className="w-10 h-10 rounded-lg bg-muted group-hover:bg-primary/10 flex items-center justify-center shrink-0 transition-colors">
                   <Icon className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -126,10 +120,10 @@ export default function AccountDashboardPage() {
 
           {loading ? (
             <div className="space-y-3">
-              {[1,2,3].map(i => <div key={i} className="h-20 bg-muted rounded-2xl animate-pulse" />)}
+              {[1,2,3].map(i => <div key={i} className="h-20 bg-muted rounded-xl animate-pulse" />)}
             </div>
           ) : orders.length === 0 ? (
-            <div className="text-center py-12 bg-card border border-border rounded-2xl">
+            <div className="text-center py-12 bg-card border border-border rounded-xl">
               <ShoppingBag className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
               <p className="font-semibold text-sm">No orders yet</p>
               <p className="text-xs text-muted-foreground mt-1 mb-4">Start shopping to see your orders here</p>
@@ -141,10 +135,10 @@ export default function AccountDashboardPage() {
             <div className="space-y-3">
               {orders.map(order => (
                 <Link key={order.id} href={`/account/orders/${order.id}`}
-                  className="group flex items-center gap-4 bg-card border border-border rounded-2xl p-4 hover:border-primary/40 hover:bg-primary/5 transition-all"
+                  className="group flex items-center gap-4 bg-card border border-border rounded-xl p-4 hover:border-primary/40 hover:bg-primary/5 transition-all"
                 >
                   {/* Thumbnail */}
-                  <div className="w-14 h-14 rounded-xl bg-muted overflow-hidden shrink-0">
+                  <div className="w-14 h-14 rounded-lg bg-muted overflow-hidden shrink-0">
                     {order.items[0]?.product?.images?.[0] ? (
                       <Image
                         src={order.items[0].product.images[0]}
@@ -186,6 +180,5 @@ export default function AccountDashboardPage() {
           )}
         </div>
       </div>
-    </ProtectedRoute>
   )
 }

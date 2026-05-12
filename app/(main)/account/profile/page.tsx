@@ -10,7 +10,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { ProtectedRoute } from '@/components/auth/protected-route'
 import { useAuth } from '@/contexts/auth-context'
 import { authService } from '@/lib/services/auth.service'
 import { toast } from 'sonner'
@@ -71,8 +70,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <ProtectedRoute>
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10 animate-page-reveal space-y-8">
+      <div className="space-y-8">
         <div>
           <h1 className="text-2xl font-bold">Profile Settings</h1>
           <p className="text-muted-foreground text-sm mt-1">Manage your account information and password</p>
@@ -149,6 +147,5 @@ export default function ProfilePage() {
           </form>
         </div>
       </div>
-    </ProtectedRoute>
   )
 }

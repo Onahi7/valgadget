@@ -14,7 +14,7 @@ export function CheckoutSummary({ shipping = 0, tax = 0 }: CheckoutSummaryProps)
   const grandTotal = total + shipping + tax
 
   return (
-    <div className="bg-card rounded-lg border border-border p-6">
+    <div className="bg-card rounded-xl border border-border p-6">
       <h2 className="font-bold text-base mb-4">Order Summary</h2>
       <div className="flex flex-col gap-2 text-sm">
         {items.map(item => (

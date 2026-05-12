@@ -87,7 +87,7 @@ export default function AdminProductsPage() {
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[
           { label: 'Total', value: products.length, icon: Package },
           { label: 'Active', value: products.filter(p => p.isActive).length, icon: Package },

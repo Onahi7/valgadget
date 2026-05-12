@@ -12,9 +12,12 @@ export interface ProductImage {
 export interface ProductVariant {
   id: string
   name: string
-  value: string
+  sku: string
+  price?: number
   stock: number
-  priceModifier: number
+  attributes: Record<string, string>
+  image?: string
+  isActive: boolean
 }
 
 export interface ProductReview {

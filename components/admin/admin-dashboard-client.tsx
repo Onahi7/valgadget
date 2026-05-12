@@ -132,7 +132,7 @@ export function AdminDashboardClient() {
             <h2 className="font-bold">Order Overview</h2>
             <span className="text-xs text-muted-foreground">{stats.orders} total orders</span>
           </div>
-          <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             {[
               { label: 'Pending', count: stats.pendingOrders, color: 'bg-amber-500' },
               { label: 'Confirmed', count: stats.confirmedOrders, color: 'bg-emerald-500' },

@@ -64,12 +64,12 @@ export default function AdminCustomersPage() {
 
   return (
     <div className="space-y-6 animate-page-reveal">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Customers</h1>
           <p className="text-sm text-muted-foreground">{total} registered users</p>
         </div>
-        <Button className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90" size="sm" onClick={async () => {
+        <Button className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90 w-full sm:w-auto" size="sm" onClick={async () => {
           const email = prompt('Enter email address to invite:')
           if (!email) return
           try {
@@ -90,7 +90,7 @@ export default function AdminCustomersPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[
           { label: 'Customers', value: customers.filter(c => c.role === 'customer').length },
           { label: 'Affiliates', value: customers.filter(c => c.role === 'affiliate').length },
@@ -104,7 +104,7 @@ export default function AdminCustomersPage() {
       </div>
 
       {/* Toolbar */}
-      <div className="flex gap-3">
+      <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input placeholder="Search by name or email..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
@@ -185,7 +185,7 @@ export default function AdminCustomersPage() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-5 py-3 border-t border-border">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-3 border-t border-border">
             <p className="text-xs text-muted-foreground">
               Page {page} of {totalPages} ({total} total)
             </p>
@@ -196,7 +196,7 @@ export default function AdminCustomersPage() {
                 onClick={() => fetchCustomers(page - 1)}
                 disabled={page <= 1}
               >
-                <ChevronLeft className="w-3.5 h-3.5 mr-1" /> Previous
+                <ChevronLeft className="w-3.5 h-3.5 mr-1" /> Prev
               </Button>
               <Button
                 variant="outline"

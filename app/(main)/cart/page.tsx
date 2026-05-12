@@ -128,9 +128,6 @@ export default function CartPage() {
               <ArrowLeft className="w-4 h-4 mr-2" /> Continue Shopping
             </Link>
           </Button>
-          <Button variant="ghost" size="sm" className="w-full text-muted-foreground" asChild>
-            <Link href="/shop">Continue Shopping</Link>
-          </Button>
         </div>
       </div>
     </div>

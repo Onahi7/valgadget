@@ -10,7 +10,14 @@ export async function GET() {
     icon: categories.icon, parentId: categories.parentId,
     isActive: categories.isActive, sortOrder: categories.sortOrder,
     createdAt: categories.createdAt, updatedAt: categories.updatedAt,
-    productCount: sql<number>`(select count(*) from products where products.category_id = categories.id and products.is_active = true)::int`,
+    productCount: sql<number>`(
+      select count(*) from products
+      where products.is_active = true
+      and (
+        products.category_id = categories.id
+        or products.category_id in (select c2.id from categories c2 where c2.parent_id = categories.id)
+      )
+    )::int`,
   })
     .from(categories)
     .where(eq(categories.isActive, true))

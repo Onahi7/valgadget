@@ -7,7 +7,6 @@ import { ChevronLeft, Package, MapPin, CreditCard, Truck, Download, Printer, Ref
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { ProtectedRoute } from '@/components/auth/protected-route'
 import { orderService, type Order } from '@/lib/services/order.service'
 import { getToken } from '@/lib/api-client'
 import { toast } from 'sonner'
@@ -54,9 +53,8 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   const stepIdx = STEPS.indexOf(order.status)
 
   return (
-    <ProtectedRoute>
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10 animate-page-reveal">
-        <Link href="/account/orders" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary mb-6 transition-colors">
+      <div className="space-y-6">
+        <Link href="/account/orders" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors">
           <ChevronLeft className="w-4 h-4" /> Back to Orders
         </Link>
 
@@ -191,6 +189,5 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
           </div>
         </div>
       </div>
-    </ProtectedRoute>
   )
 }

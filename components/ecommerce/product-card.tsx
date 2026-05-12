@@ -49,7 +49,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
   return (
     <article
       className={cn(
-        'group relative bg-card rounded-lg border border-border overflow-hidden',
+        'group relative bg-card rounded-xl border border-border overflow-hidden',
         'hover:border-primary/40 hover:shadow-lg transition-all duration-200',
         className
       )}

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { getToken } from '@/lib/api-client'
-import { MessageCircle, Send, Loader2, User, Clock, CheckCircle, XCircle } from 'lucide-react'
+import { MessageCircle, Send, Loader2, User, Clock, CheckCircle, XCircle, ChevronLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -83,16 +83,19 @@ export default function AdminChatPage() {
   }
 
   return (
-    <div className="h-[calc(100vh-7rem)] flex rounded-lg border border-border overflow-hidden bg-card">
-      {/* Session list */}
-      <div className="w-72 shrink-0 border-r border-border flex flex-col">
+    <div className="h-[calc(100vh-7rem)] flex flex-col md:flex-row rounded-lg border border-border overflow-hidden bg-card">
+      {/* Session list — full width on mobile, sidebar on desktop */}
+      <div className={cn(
+        'border-b md:border-b-0 md:border-r border-border flex flex-col',
+        activeSession ? 'hidden md:flex md:w-72 md:shrink-0' : 'w-full md:w-72 md:shrink-0'
+      )}>
         <div className="px-4 py-3 border-b border-border">
           <h2 className="font-bold text-sm flex items-center gap-2">
             <MessageCircle className="w-4 h-4 text-primary" /> Live Chat Sessions
           </h2>
           <p className="text-xs text-muted-foreground mt-0.5">{sessions.length} sessions</p>
         </div>
-        <div className="flex-1 overflow-y-auto divide-y divide-border">
+        <div className="flex-1 overflow-y-auto divide-y divide-border max-h-[50vh] md:max-h-none">
           {sessions.length === 0 && (
             <p className="text-sm text-muted-foreground text-center p-8">No chat sessions yet</p>
           )}
@@ -124,7 +127,7 @@ export default function AdminChatPage() {
 
       {/* Message panel */}
       {!activeSession ? (
-        <div className="flex-1 flex items-center justify-center text-muted-foreground">
+        <div className="hidden md:flex flex-1 items-center justify-center text-muted-foreground">
           <div className="text-center">
             <MessageCircle className="w-12 h-12 mx-auto mb-3 opacity-30" />
             <p className="text-sm">Select a session to view messages</p>
@@ -134,9 +137,16 @@ export default function AdminChatPage() {
         <div className="flex-1 flex flex-col min-w-0">
           {/* Session header */}
           <div className="px-4 py-3 border-b border-border flex items-center gap-3 shrink-0">
-            <div>
-              <p className="font-semibold text-sm">{activeSession.guestName ?? 'Anonymous'}</p>
-              <p className="text-xs text-muted-foreground">{activeSession.guestEmail} · {activeSession.subject}</p>
+            <button
+              onClick={() => setActiveSession(null)}
+              className="md:hidden p-1.5 -ml-1 rounded-md hover:bg-accent text-muted-foreground"
+              aria-label="Back to sessions"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <div className="min-w-0">
+              <p className="font-semibold text-sm truncate">{activeSession.guestName ?? 'Anonymous'}</p>
+              <p className="text-xs text-muted-foreground truncate">{activeSession.guestEmail} · {activeSession.subject}</p>
             </div>
             <div className="ml-auto flex gap-2">
               <Badge variant={activeSession.status === 'open' ? 'default' : 'secondary'}>{activeSession.status}</Badge>
