@@ -32,6 +32,7 @@ export interface InitiatePaymentPayload {
   method: PaymentMethod
   returnUrl?: string      // where to redirect after 3DS / external payment
   cancelUrl?: string
+  guestEmail?: string
 }
 
 export interface RefundPayload {

@@ -21,7 +21,6 @@ import { useAuth } from '@/contexts/auth-context'
 import { productService, type Product } from '@/lib/services/product.service'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
-import type { ApiError } from '@/lib/api-client'
 export default function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params)
   const [product, setProduct] = useState<Product | null>(null)
@@ -56,20 +55,17 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
         try {
           const res = await fetch(`/api/products/${found.id}/variants`)
           const data = await res.json()
-          if (data.data && mounted) {
-            setVariants(data.data)
-          }
+          if (!mounted) return
+          const list = Array.isArray(data) ? data : data.data
+          setVariants(Array.isArray(list) ? list : [])
         } catch {
           setVariants([])
         }
 
         // Load reviews
         try {
-          const res = await fetch(`/api/reviews?productId=${found.id}`)
-          const data = await res.json()
-          if (data.data && mounted) {
-            setReviews(data.data)
-          }
+          const res = await productService.getReviews(found.id)
+          if (mounted) setReviews(res.data)
         } catch {
           setReviews([])
         }
@@ -380,12 +376,9 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
                           productId={product.id}
                           onSuccess={() => {
                             setShowReviewForm(false)
-                            // Reload reviews
-                            fetch(`/api/reviews?productId=${product.id}`)
-                              .then(res => res.json())
-                              .then(data => {
-                                if (data.data) setReviews(data.data)
-                              })
+                            productService.getReviews(product.id)
+                              .then(res => setReviews(res.data))
+                              .catch(() => setReviews([]))
                           }}
                           onCancel={() => setShowReviewForm(false)}
                         />

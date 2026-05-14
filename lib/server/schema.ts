@@ -247,11 +247,25 @@ export const affiliateClicks = pgTable('affiliate_clicks', {
   referrer:    text('referrer'),
   userAgent:   text('user_agent'),
   convertedAt: timestamp('converted_at'),
+  paidAt:      timestamp('paid_at'),
   orderId:     text('order_id').references(() => orders.id),
   commission:  numeric('commission', { precision: 10, scale: 2 }),
   createdAt:   timestamp('created_at').notNull().defaultNow(),
   }, t => [
   index('aff_clicks_code_idx').on(t.code),
+])
+
+// ─── Wishlists ────────────────────────────────────────────────────────────
+
+export const wishlists = pgTable('wishlists', {
+  id:        text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId:    text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  productId: text('product_id').notNull().references(() => products.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, t => [
+  index('wishlists_user_idx').on(t.userId),
+  index('wishlists_product_idx').on(t.productId),
+  index('wishlists_user_product_idx').on(t.userId, t.productId),
 ])
 
 // ─── Affiliate Payouts ───────────────────────────────────────────────

@@ -5,37 +5,8 @@ import Link from 'next/link'
 import { ShoppingBag, ShoppingCart, Users, DollarSign, ArrowUpRight, Package } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { getToken } from '@/lib/api-client'
+import { adminService, type DashboardStats, type RecentOrder, type TopProduct } from '@/lib/services/admin.service'
 
-type Stats = {
-  users: number
-  orders: number
-  revenue: number
-  products: number
-  pendingOrders: number
-  confirmedOrders: number
-  lowStock: number
-  affiliates: number
-}
-
-type Order = {
-  id: string
-  reference: string
-  total: number
-  status: string
-  paymentStatus: string
-  createdAt: string
-  shippingAddress?: { fullName?: string }
-  items?: unknown[]
-}
-
-type Product = {
-  id: string
-  name: string
-  price: number
-  reviewCount: number
-  images: string[]
-}
 
 const STATUS_COLORS: Record<string, string> = {
   pending: 'bg-amber-100 text-amber-700 border-amber-200',
@@ -47,60 +18,39 @@ const STATUS_COLORS: Record<string, string> = {
 }
 
 export function AdminDashboardClient() {
-  const [stats, setStats] = useState<Stats>({
-    users: 0,
-    orders: 0,
-    revenue: 0,
-    products: 0,
-    pendingOrders: 0,
-    confirmedOrders: 0,
-    lowStock: 0,
-    affiliates: 0,
-  })
-  const [recentOrders, setOrders] = useState<Order[]>([])
-  const [topProducts, setTopProducts] = useState<Product[]>([])
+  const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [recentOrders, setOrders] = useState<RecentOrder[]>([])
+  const [topProducts, setTopProducts] = useState<TopProduct[]>([])
 
   useEffect(() => {
-    fetch('/api/admin/stats', { headers: { Authorization: `Bearer ${getToken()}` } })
-      .then(r => r.json())
-      .then(d => {
-        if (d.users || d.orders || d.products) {
-          setStats({
-            users: d.users?.total ?? 0,
-            orders: d.orders?.total ?? 0,
-            revenue: d.orders?.revenue ?? 0,
-            products: d.products?.total ?? 0,
-            pendingOrders: d.orders?.pending ?? 0,
-            confirmedOrders: d.orders?.confirmed ?? 0,
-            lowStock: d.products?.lowStock ?? 0,
-            affiliates: d.users?.affiliates ?? 0,
-          })
-        }
-      })
+    adminService.getDashboardStats()
+      .then(setStats)
       .catch(() => console.error('Failed to fetch dashboard stats'))
 
-    fetch('/api/admin/orders?limit=5&page=1', { headers: { Authorization: `Bearer ${getToken()}` } })
-      .then(r => r.json())
-      .then(d => {
-        if (Array.isArray(d.data)) setOrders(d.data)
-      })
+    adminService.getRecentOrders(5)
+      .then(setOrders)
       .catch(() => console.error('Failed to fetch recent orders'))
 
-    fetch('/api/products?limit=5&sort=rating')
-      .then(r => r.json())
-      .then(d => {
-        if (Array.isArray(d.data)) setTopProducts(d.data)
-      })
+    adminService.getTopProducts(5)
+      .then(setTopProducts)
       .catch(() => console.error('Failed to fetch top products'))
   }, [])
 
   const formatNaira = (value: number) => `NGN ${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
 
+  const revenueTotal = stats?.revenue.total ?? 0
+  const ordersTotal = stats?.orders.total ?? 0
+  const ordersPending = stats?.orders.pending ?? 0
+  const customersTotal = stats?.customers.total ?? 0
+  const affiliatesTotal = stats?.affiliates.total ?? 0
+  const productsTotal = stats?.products.total ?? 0
+  const lowStock = stats?.products.lowStock ?? 0
+
   const statCards = [
-    { label: 'Total Revenue', value: formatNaira(stats.revenue), sub: `${stats.confirmedOrders} confirmed`, icon: DollarSign, color: 'bg-green-50 text-green-600 dark:bg-green-950' },
-    { label: 'Orders', value: stats.orders.toLocaleString(), sub: `${stats.pendingOrders} pending`, icon: ShoppingCart, color: 'bg-blue-50 text-blue-600 dark:bg-blue-950' },
-    { label: 'Customers', value: stats.users.toLocaleString(), sub: `${stats.affiliates} affiliates`, icon: Users, color: 'bg-violet-50 text-violet-600 dark:bg-violet-950' },
-    { label: 'Products', value: stats.products.toLocaleString(), sub: `${stats.lowStock} low stock`, icon: ShoppingBag, color: 'bg-amber-50 text-amber-600 dark:bg-amber-950' },
+    { label: 'Total Revenue', value: formatNaira(revenueTotal), sub: `${ordersPending} pending`, icon: DollarSign, color: 'bg-green-50 text-green-600 dark:bg-green-950' },
+    { label: 'Orders', value: ordersTotal.toLocaleString(), sub: `${ordersPending} pending`, icon: ShoppingCart, color: 'bg-blue-50 text-blue-600 dark:bg-blue-950' },
+    { label: 'Customers', value: customersTotal.toLocaleString(), sub: `${affiliatesTotal} affiliates`, icon: Users, color: 'bg-violet-50 text-violet-600 dark:bg-violet-950' },
+    { label: 'Products', value: productsTotal.toLocaleString(), sub: `${lowStock} low stock`, icon: ShoppingBag, color: 'bg-amber-50 text-amber-600 dark:bg-amber-950' },
   ]
 
   return (
@@ -130,16 +80,16 @@ export function AdminDashboardClient() {
         <div className="rounded-lg border border-border bg-card p-6 lg:col-span-2">
           <div className="mb-6 flex items-center justify-between">
             <h2 className="font-bold">Order Overview</h2>
-            <span className="text-xs text-muted-foreground">{stats.orders} total orders</span>
+            <span className="text-xs text-muted-foreground">{ordersTotal} total orders</span>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             {[
-              { label: 'Pending', count: stats.pendingOrders, color: 'bg-amber-500' },
-              { label: 'Confirmed', count: stats.confirmedOrders, color: 'bg-emerald-500' },
-              { label: 'Total', count: stats.orders, color: 'bg-primary' },
-              { label: 'Revenue', count: null, value: formatNaira(stats.revenue), color: 'bg-green-500' },
-              { label: 'Low Stock', count: stats.lowStock, color: 'bg-red-500' },
-              { label: 'Affiliates', count: stats.affiliates, color: 'bg-violet-500' },
+              { label: 'Pending', count: ordersPending, color: 'bg-amber-500' },
+              { label: 'Processing', count: stats?.orders.processing ?? 0, color: 'bg-blue-500' },
+              { label: 'Total', count: ordersTotal, color: 'bg-primary' },
+              { label: 'Revenue', count: null, value: formatNaira(revenueTotal), color: 'bg-green-500' },
+              { label: 'Low Stock', count: lowStock, color: 'bg-red-500' },
+              { label: 'Affiliates', count: affiliatesTotal, color: 'bg-violet-500' },
             ].map(item => (
               <div key={item.label} className="rounded-lg bg-muted/40 p-3 text-center">
                 <div className={`mx-auto mb-2 h-2 w-2 rounded-full ${item.color}`} />
@@ -167,9 +117,9 @@ export function AdminDashboardClient() {
                 <span className="w-4 shrink-0 font-mono text-xs text-muted-foreground">{index + 1}</span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{product.name}</p>
-                  <p className="text-xs text-muted-foreground">{product.reviewCount} reviews</p>
+                  <p className="text-xs text-muted-foreground">{product.totalSold} sold</p>
                 </div>
-                <span className="shrink-0 text-sm font-bold">{formatNaira(product.price)}</span>
+                <span className="shrink-0 text-sm font-bold">{formatNaira(product.revenue)}</span>
               </div>
             ))}
           </div>
@@ -209,11 +159,11 @@ export function AdminDashboardClient() {
                       {order.reference}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground">{order.shippingAddress?.fullName ?? '-'}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{order.customer?.name ?? '-'}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
                       <Package className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span>{order.items?.length ?? 0}</span>
+                      <span>{order.itemCount ?? 0}</span>
                     </div>
                   </td>
                   <td className="px-4 py-3 font-bold">{formatNaira(Number(order.total))}</td>

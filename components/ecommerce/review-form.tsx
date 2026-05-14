@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
-import { getToken } from '@/lib/api-client'
+import { productService } from '@/lib/services/product.service'
 
 interface ReviewFormProps {
   productId: string
@@ -34,33 +34,19 @@ export function ReviewForm({ productId, onSuccess, onCancel }: ReviewFormProps) 
     setSubmitting(true)
 
     try {
-      const res = await fetch('/api/reviews', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${getToken()}`,
-        },
-        body: JSON.stringify({
-          productId,
-          rating,
-          title: title.trim() || undefined,
-          body: body.trim(),
-        }),
+      await productService.submitReview(productId, {
+        rating,
+        title: title.trim() || undefined,
+        body: body.trim(),
       })
 
-      const data = await res.json()
-
-      if (res.ok) {
-        toast.success('Review submitted!', {
-          description: 'Thank you for your feedback',
-        })
-        setRating(5)
-        setTitle('')
-        setBody('')
-        onSuccess?.()
-      } else {
-        toast.error(data.message || 'Failed to submit review')
-      }
+      toast.success('Review submitted!', {
+        description: 'Thank you for your feedback',
+      })
+      setRating(5)
+      setTitle('')
+      setBody('')
+      onSuccess?.()
     } catch (err) {
       toast.error('Failed to submit review')
     } finally {

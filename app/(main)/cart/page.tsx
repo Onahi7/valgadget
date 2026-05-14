@@ -10,6 +10,7 @@ import { CheckoutSummary } from '@/components/ecommerce/checkout-summary'
 import { useCart } from '@/contexts/cart-context'
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { paymentService } from '@/lib/services/payment.service'
 
 export default function CartPage() {
   const { items, itemCount, total, clearCart, applyCoupon, couponCode, removeCoupon } = useCart()
@@ -21,20 +22,14 @@ export default function CartPage() {
     
     setValidating(true)
     try {
-      const res = await fetch('/api/coupons/validate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: couponInput.toUpperCase(), cartTotal: total }),
-      })
-      
-      const data = await res.json()
-      
-      if (res.ok) {
-        applyCoupon(data.code, data.discount)
-        toast.success(data.message)
+      const data = await paymentService.validateCoupon(couponInput.toUpperCase(), total)
+
+      if (data.isValid) {
+        applyCoupon(data.code, data.discountAmount)
+        toast.success(data.message ?? 'Coupon applied')
         setCouponInput('')
       } else {
-        toast.error(data.message || 'Invalid coupon code')
+        toast.error(data.message ?? 'Invalid coupon code')
       }
     } catch (err) {
       toast.error('Failed to validate coupon')

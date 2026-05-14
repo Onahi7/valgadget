@@ -65,6 +65,7 @@ export interface RecentOrder {
   status: string
   paymentStatus: string
   createdAt: string
+  itemCount?: number
 }
 
 export interface SiteSettings {

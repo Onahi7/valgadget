@@ -17,6 +17,7 @@ import { CheckoutSummary } from '@/components/ecommerce/checkout-summary'
 import { useAuth } from '@/contexts/auth-context'
 import { useCart } from '@/contexts/cart-context'
 import { orderService } from '@/lib/services/order.service'
+import { paymentService } from '@/lib/services/payment.service'
 import { addressService, type UserAddress } from '@/lib/services/address.service'
 import { NIGERIA_STATES_LGAS, getLGAsForState } from '@/lib/data/nigeria-locations'
 import { toast } from 'sonner'
@@ -221,23 +222,20 @@ function CheckoutPageContent() {
 
       if (data.paymentMethod === 'paystack') {
         setInitializingPayment(true)
-        const token = getToken()
-        const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-        if (token) headers.Authorization = `Bearer ${token}`
-        const res = await fetch('/api/payments/paystack/initialize', {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({ orderId: order.id, guestEmail: user ? undefined : data.guestEmail }),
+        const intent = await paymentService.initiate({
+          orderId: order.id,
+          method: 'card',
+          returnUrl: `${window.location.origin}/account/orders/${order.id}?paid=1`,
+          cancelUrl: `${window.location.origin}/checkout?orderId=${order.id}`,
+          guestEmail: user ? undefined : data.guestEmail,
         })
-        const json = await res.json()
-        const authorizationUrl = json?.authorization_url ?? json?.data?.authorization_url
-        if (authorizationUrl) {
+        if (intent.redirectUrl) {
           toast.success('Redirecting to Paystack…')
-          window.location.href = authorizationUrl
+          window.location.href = intent.redirectUrl
           return
         }
         setInitializingPayment(false)
-        toast.error(json.message ?? 'Paystack init failed')
+        toast.error('Paystack init failed')
         return
       }
 
