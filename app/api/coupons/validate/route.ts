@@ -1,11 +1,16 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
 import { coupons } from '@/lib/server/schema'
-import { apiOk, apiError } from '@/lib/server/auth-helpers'
+import { apiOk, apiError, apiRateLimited } from '@/lib/server/auth-helpers'
+import { rateLimit, rateLimitPresets, getRateLimitKey } from '@/lib/server/rate-limiter'
 import { eq, and, or, isNull, gt } from 'drizzle-orm'
 
 export async function POST(req: NextRequest) {
   try {
+    // Rate limit
+    const rl = rateLimit(getRateLimitKey(req), rateLimitPresets.coupon)
+    if (!rl.success) return apiRateLimited(rl.resetAt)
+
     const { code, cartTotal } = await req.json()
 
     if (!code || typeof code !== 'string') {

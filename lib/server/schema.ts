@@ -13,6 +13,7 @@ import {
   json,
   index,
   primaryKey,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
 
@@ -70,7 +71,7 @@ export const categories = pgTable('categories', {
   description: text('description'),
   image:       text('image'),
   icon:        varchar('icon', { length: 50 }),
-  parentId:    text('parent_id'),
+  parentId:    text('parent_id').references((): any => categories.id, { onDelete: 'set null' }),
   isActive:    boolean('is_active').notNull().default(true),
   sortOrder:   integer('sort_order').default(0),
   createdAt:   timestamp('created_at').notNull().defaultNow(),
@@ -227,11 +228,12 @@ export const raffles = pgTable('raffles', {
 export const raffleEntries = pgTable('raffle_entries', {
   id:           text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   raffleId:     text('raffle_id').notNull().references(() => raffles.id, { onDelete: 'cascade' }),
-  userId:       text('user_id').notNull().references(() => users.id),
+  userId:       text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   ticketCount:  integer('ticket_count').notNull().default(1),
   ticketNums:   json('ticket_nums').$type<number[]>().notNull().default([]),
   totalPaid:    numeric('total_paid', { precision: 10, scale: 2 }).notNull(),
   createdAt:    timestamp('created_at').notNull().defaultNow(),
+  updatedAt:    timestamp('updated_at').notNull().defaultNow(),
 }, t => [
   index('raffle_entries_raffle_idx').on(t.raffleId),
   index('raffle_entries_user_idx').on(t.userId),
@@ -242,13 +244,13 @@ export const raffleEntries = pgTable('raffle_entries', {
 export const affiliateClicks = pgTable('affiliate_clicks', {
   id:          text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   code:        varchar('code', { length: 30 }).notNull(),
-  userId:      text('user_id').references(() => users.id),
+  userId:      text('user_id').references(() => users.id, { onDelete: 'set null' }),
   ip:          varchar('ip', { length: 45 }),
   referrer:    text('referrer'),
   userAgent:   text('user_agent'),
   convertedAt: timestamp('converted_at'),
   paidAt:      timestamp('paid_at'),
-  orderId:     text('order_id').references(() => orders.id),
+  orderId:     text('order_id').references(() => orders.id, { onDelete: 'set null' }),
   commission:  numeric('commission', { precision: 10, scale: 2 }),
   createdAt:   timestamp('created_at').notNull().defaultNow(),
   }, t => [
@@ -265,19 +267,19 @@ export const wishlists = pgTable('wishlists', {
 }, t => [
   index('wishlists_user_idx').on(t.userId),
   index('wishlists_product_idx').on(t.productId),
-  index('wishlists_user_product_idx').on(t.userId, t.productId),
+  uniqueIndex('wishlists_user_product_unique').on(t.userId, t.productId),
 ])
 
 // ─── Affiliate Payouts ───────────────────────────────────────────────
 
 export const affiliatePayouts = pgTable('affiliate_payouts', {
   id:          text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  userId:      text('user_id').notNull().references(() => users.id),
+  userId:      text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   amount:      numeric('amount', { precision: 10, scale: 2 }).notNull(),
   method:      varchar('method', { length: 50 }).notNull(), // bank_transfer | crypto | paystack
   reference:   text('reference'),
   status:      varchar('status', { length: 20 }).notNull().default('completed'),
-  adminId:    text('admin_id').references(() => users.id),
+  adminId:    text('admin_id').references(() => users.id, { onDelete: 'set null' }),
   notes:       text('notes'),
   createdAt:   timestamp('created_at').notNull().defaultNow(),
   updatedAt:   timestamp('updated_at').notNull().defaultNow(),

@@ -1,11 +1,16 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
 import { users } from '@/lib/server/schema'
-import { hashPassword, apiOk, apiError } from '@/lib/server/auth-helpers'
+import { hashPassword, apiOk, apiError, apiRateLimited } from '@/lib/server/auth-helpers'
+import { rateLimit, rateLimitPresets, getScopedRateLimitKey } from '@/lib/server/rate-limiter'
 import { and, eq, gt } from 'drizzle-orm'
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limit per IP
+    const rl = rateLimit(getScopedRateLimitKey(request, 'reset-password'), rateLimitPresets.passwordReset)
+    if (!rl.success) return apiRateLimited(rl.resetAt)
+
     const body = await request.json().catch(() => null)
     const { token, password, passwordConfirmation } = body ?? {}
 

@@ -23,7 +23,7 @@ export interface ProductVariant {
 export interface ProductReview {
   id: string
   userId: string
-  user: { name: string; avatar?: string }
+  user: { id: string; name: string; avatar?: string }
   rating: number
   title?: string
   body: string

@@ -29,17 +29,17 @@ export async function POST(
   const balance = Number(affiliate.affiliateBalance ?? 0)
   if (balance <= 0) return apiError('No pending earnings to pay out', 400)
 
-  // Get admin ID from auth
-  const adminId = (await req.json()).adminId ?? null
+  // Get admin ID from authenticated user, not request body
+  const { method = 'paystack', notes: payoutNotes } = await req.json().catch(() => ({})) as { method?: string; notes?: string }
 
   // Create payout record
   const [payout] = await db.insert(affiliatePayouts).values({
     userId: id,
-    amount: balance,
-    method: 'paystack', // default, can be updated later
+    amount: String(balance),
+    method: ['bank_transfer', 'crypto', 'paystack'].includes(method) ? method : 'paystack',
     status: 'completed',
-    adminId: adminId,
-    notes: `Payout for ${affiliate.name}`,
+    adminId: auth.user.sub,
+    notes: payoutNotes ?? `Payout for ${affiliate.name}`,
   }).returning({ id: affiliatePayouts.id })
 
   // Reset balance to 0

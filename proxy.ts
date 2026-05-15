@@ -2,8 +2,11 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { jwtVerify } from 'jose'
 
-const JWT_SECRET_RAW = process.env.JWT_SECRET ?? process.env.NEXTAUTH_SECRET ?? 'dev-secret-change-me'
-const SECRET = new TextEncoder().encode(JWT_SECRET_RAW)
+const JWT_SECRET_RAW = process.env.JWT_SECRET ?? process.env.NEXTAUTH_SECRET
+if (!JWT_SECRET_RAW && process.env.NODE_ENV === 'production') {
+  throw new Error('[proxy] JWT_SECRET is required in production.')
+}
+const SECRET = new TextEncoder().encode(JWT_SECRET_RAW ?? 'dev-secret-change-me')
 
 // Routes that require authentication
 const PROTECTED_PATHS = ['/account', '/admin', '/affiliate']

@@ -1,7 +1,8 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
 import { reviews, orders, products, users } from '@/lib/server/schema'
-import { requireAuth, apiOk, apiError } from '@/lib/server/auth-helpers'
+import { requireAuth, apiOk, apiError, apiRateLimited } from '@/lib/server/auth-helpers'
+import { rateLimit, rateLimitPresets, getRateLimitKey } from '@/lib/server/rate-limiter'
 import { eq, and, desc, sql } from 'drizzle-orm'
 
 export async function GET(req: NextRequest) {
@@ -48,6 +49,10 @@ export async function POST(req: NextRequest) {
   if ('status' in auth) return auth
 
   try {
+    // Rate limit reviews
+    const rl = rateLimit(getRateLimitKey(req), rateLimitPresets.review)
+    if (!rl.success) return apiRateLimited(rl.resetAt)
+
     const { productId, rating, title, body } = await req.json()
 
     if (!productId || !rating || !body) {
@@ -57,6 +62,10 @@ export async function POST(req: NextRequest) {
     if (rating < 1 || rating > 5) {
       return apiError('Rating must be between 1 and 5', 400)
     }
+
+    // Sanitize input
+    const sanitizedTitle = title?.trim().slice(0, 200) || null
+    const sanitizedBody = body.trim().slice(0, 5000)
 
     // Check if user already reviewed this product
     const [existingReview] = await db
@@ -95,8 +104,8 @@ export async function POST(req: NextRequest) {
         productId,
         userId: auth.user.sub,
         rating,
-        title: title?.trim() || null,
-        body: body.trim(),
+        title: sanitizedTitle,
+        body: sanitizedBody,
         verified,
         isActive: true,
       })

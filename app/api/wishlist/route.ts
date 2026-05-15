@@ -1,7 +1,8 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
 import { wishlists, products } from '@/lib/server/schema'
-import { requireAuth, apiOk, apiError } from '@/lib/server/auth-helpers'
+import { requireAuth, apiOk, apiError, apiRateLimited } from '@/lib/server/auth-helpers'
+import { rateLimit, rateLimitPresets, getRateLimitKey } from '@/lib/server/rate-limiter'
 import { and, desc, eq } from 'drizzle-orm'
 
 export async function GET(req: NextRequest) {
@@ -53,6 +54,10 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const auth = await requireAuth(req)
   if ('status' in auth) return auth
+
+  // Rate limit
+  const rl = rateLimit(getRateLimitKey(req), rateLimitPresets.wishlist)
+  if (!rl.success) return apiRateLimited(rl.resetAt)
 
   const { productId } = await req.json().catch(() => ({})) as { productId?: string }
   if (!productId) return apiError('productId is required', 400)

@@ -3,7 +3,6 @@ import { db } from '@/lib/server/db'
 import { reviews, users, products } from '@/lib/server/schema'
 import { requireAuth, apiOk, apiError, getRequestUser } from '@/lib/server/auth-helpers'
 import { eq, desc, sql, and } from 'drizzle-orm'
-import { ok } from '@/lib/server/http'
 
 export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params

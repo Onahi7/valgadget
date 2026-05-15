@@ -1,13 +1,18 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
 import { users } from '@/lib/server/schema'
-import { hashPassword, signToken, apiOk, apiError } from '@/lib/server/auth-helpers'
+import { hashPassword, signToken, apiOk, apiError, apiRateLimited } from '@/lib/server/auth-helpers'
 import { sendVerificationEmail } from '@/lib/server/email'
+import { rateLimit, rateLimitPresets, getScopedRateLimitKey } from '@/lib/server/rate-limiter'
 import { eq } from 'drizzle-orm'
 import crypto from 'crypto'
 
 export async function POST(req: NextRequest) {
   try {
+    // Rate limit per IP
+    const rl = rateLimit(getScopedRateLimitKey(req, 'register'), rateLimitPresets.register)
+    if (!rl.success) return apiRateLimited(rl.resetAt)
+
     const body = await req.json().catch(() => null)
     const { name, email, password, role = 'customer', affiliateCode } = body ?? {}
 
@@ -16,6 +21,9 @@ export async function POST(req: NextRequest) {
     }
     if (password.length < 8) {
       return apiError('Password must be at least 8 characters.', 400, { password: ['Minimum 8 characters'] })
+    }
+    if (name.length > 200) {
+      return apiError('Name is too long.', 400)
     }
 
     const existing = await db.select({ id: users.id }).from(users).where(eq(users.email, email.toLowerCase())).limit(1)

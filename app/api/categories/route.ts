@@ -1,6 +1,6 @@
 import { db } from '@/lib/server/db'
 import { categories, products } from '@/lib/server/schema'
-import { ok } from '@/lib/server/http'
+import { apiOk } from '@/lib/server/auth-helpers'
 import { eq, asc, sql } from 'drizzle-orm'
 
 export async function GET() {
@@ -23,5 +23,5 @@ export async function GET() {
     .where(eq(categories.isActive, true))
     .orderBy(asc(categories.sortOrder), asc(categories.name))
 
-  return ok(data)
+  return apiOk(data)
 }

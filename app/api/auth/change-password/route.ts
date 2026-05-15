@@ -1,7 +1,8 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
 import { users } from '@/lib/server/schema'
-import { requireAuth, hashPassword, comparePassword, apiOk, apiError } from '@/lib/server/auth-helpers'
+import { requireAuth, hashPassword, comparePassword, apiOk, apiError, apiRateLimited } from '@/lib/server/auth-helpers'
+import { rateLimit, rateLimitPresets, getRateLimitKey } from '@/lib/server/rate-limiter'
 import { eq } from 'drizzle-orm'
 
 export async function POST(request: NextRequest) {
@@ -9,6 +10,10 @@ export async function POST(request: NextRequest) {
   if ('status' in auth) return auth
 
   try {
+    // Rate limit
+    const rl = rateLimit(getRateLimitKey(request), rateLimitPresets.auth)
+    if (!rl.success) return apiRateLimited(rl.resetAt)
+
     const body = await request.json().catch(() => ({}))
     const currentPassword = body.currentPassword
     const newPassword = body.newPassword

@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
 import { products, categories } from '@/lib/server/schema'
-import { fail, ok } from '@/lib/server/http'
+import { apiOk, apiError } from '@/lib/server/auth-helpers'
 import { eq } from 'drizzle-orm'
 
 export async function GET(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
@@ -24,6 +24,6 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
     .where(eq(products.id, id))
     .limit(1)
 
-  if (!product) return fail('Product not found.', 404)
-  return ok({ ...product, price: Number(product.price), comparePrice: product.comparePrice ? Number(product.comparePrice) : undefined, rating: Number(product.rating) })
+  if (!product) return apiError('Product not found.', 404)
+  return apiOk({ ...product, price: Number(product.price), comparePrice: product.comparePrice ? Number(product.comparePrice) : undefined, rating: Number(product.rating) })
 }

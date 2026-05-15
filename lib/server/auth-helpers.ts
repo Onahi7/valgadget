@@ -10,6 +10,9 @@ import { NextRequest, NextResponse } from 'next/server'
 
 const JWT_SECRET_RAW = process.env.JWT_SECRET ?? process.env.NEXTAUTH_SECRET
 if (!JWT_SECRET_RAW) {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('[auth] JWT_SECRET is required in production. Set it in your environment variables.')
+  }
   console.warn('[auth] JWT_SECRET is not set — using insecure dev default.')
 }
 const SECRET = new TextEncoder().encode(JWT_SECRET_RAW ?? 'dev-secret-change-me')
@@ -95,6 +98,16 @@ export function apiOk<T>(data: T, status = 200): NextResponse {
 
 export function apiError(message: string, status = 400, errors?: Record<string, string[]>): NextResponse {
   return NextResponse.json({ message, ...(errors ? { errors } : {}) }, { status })
+}
+
+export function apiRateLimited(resetAt: number): NextResponse {
+  const response = NextResponse.json(
+    { message: 'Too many requests. Please try again later.' },
+    { status: 429 }
+  )
+  response.headers.set('Retry-After', String(Math.ceil((resetAt - Date.now()) / 1000)))
+  response.headers.set('X-RateLimit-Reset', String(resetAt))
+  return response
 }
 
 // ─── Reference generator ───────────────────────────────────────────────────

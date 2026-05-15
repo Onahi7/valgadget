@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
 import { products, categories } from '@/lib/server/schema'
-import { ok } from '@/lib/server/http'
+import { apiOk } from '@/lib/server/auth-helpers'
 import { eq, ilike, gte, lte, and, asc, desc, sql, type SQL, inArray } from 'drizzle-orm'
 
 export async function GET(request: NextRequest) {
@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
     .limit(limit)
     .offset((page - 1) * limit)
 
-  return ok({ data: data.map(withNumericPrices), total: count, page, limit, totalPages: Math.max(1, Math.ceil(count / limit)) })
+  return apiOk({ data: data.map(withNumericPrices), total: count, page, limit, totalPages: Math.max(1, Math.ceil(count / limit)) })
 }
 
 function withNumericPrices<T extends { price: unknown; comparePrice?: unknown; rating?: unknown }>(p: T) {

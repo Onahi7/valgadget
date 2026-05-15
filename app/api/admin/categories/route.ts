@@ -23,7 +23,8 @@ export async function POST(req: NextRequest) {
 
     const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
 
-    const [cat] = await db.insert(categories).values({ name, slug, description, image, icon, parentId, isActive, sortOrder }).returning()
+    const result = await db.insert(categories).values({ name, slug, description, image, icon, parentId, isActive, sortOrder }).returning()
+    const cat = (result as unknown as any[])?.[0]
     return apiOk(cat, 201)
   } catch (err) {
     console.error('[admin create category]', err)

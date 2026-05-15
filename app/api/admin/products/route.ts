@@ -88,6 +88,11 @@ export async function POST(req: NextRequest) {
   }
 }
 
-function numericProduct(p: typeof products.$inferSelect) {
-  return { ...p, price: Number(p.price), comparePrice: p.comparePrice ? Number(p.comparePrice) : undefined, rating: Number(p.rating) }
+function numericProduct(p: Record<string, unknown>) {
+  return {
+    ...p,
+    price: p.price ? Number(p.price) : undefined,
+    comparePrice: p.comparePrice ? Number(p.comparePrice) : undefined,
+    rating: p.rating ? Number(p.rating) : 0,
+  }
 }

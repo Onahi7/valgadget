@@ -2,7 +2,9 @@ import { NextRequest } from 'next/server'
 import crypto from 'node:crypto'
 import { db } from '@/lib/server/db'
 import { orders, products, shippingRates, users, affiliateClicks } from '@/lib/server/schema'
-import { requireAuth, getRequestUser, apiOk, apiError, generateReference } from '@/lib/server/auth-helpers'
+import { requireAuth, getRequestUser, apiOk, apiError, apiRateLimited, generateReference } from '@/lib/server/auth-helpers'
+import { rateLimit, rateLimitPresets, getRateLimitKey } from '@/lib/server/rate-limiter'
+import { sendOrderConfirmationEmail, sendGuestOrderConfirmationEmail } from '@/lib/server/email'
 import { eq, desc, and, sql, inArray } from 'drizzle-orm'
 import type { OrderItem, Address } from '@/lib/server/schema'
 
@@ -42,6 +44,10 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  // Rate limit
+  const rl = rateLimit(getRateLimitKey(req), { max: 10, windowSeconds: 60 })
+  if (!rl.success) return apiRateLimited(rl.resetAt)
+
   // Make auth optional for guest checkout
   const user = await getRequestUser(req)
   let scopedIdempotencyKey: string | undefined
@@ -181,6 +187,21 @@ export async function POST(req: NextRequest) {
 
       return createdOrder
     })
+
+    // Send order confirmation email
+    if (order.userId) {
+      // Logged-in user — email fetched from users table
+      const [userRecord] = await db.select({ email: users.email, name: users.name })
+        .from(users).where(eq(users.id, order.userId)).limit(1)
+      if (userRecord) {
+        sendOrderConfirmationEmail(userRecord.email, userRecord.name, order.reference, `₦${Number(order.total).toLocaleString()}`)
+          .catch(err => console.error('[order email]', err))
+      }
+    } else if (order.guestEmail) {
+      // Guest order
+      sendGuestOrderConfirmationEmail(order.guestEmail, order.reference, `₦${Number(order.total).toLocaleString()}`)
+        .catch(err => console.error('[guest order email]', err))
+    }
 
     return apiOk(numericOrder(order), 201)
   } catch (err) {

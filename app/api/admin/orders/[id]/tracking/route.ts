@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
 import { orders } from '@/lib/server/schema'
 import { requireAuth, apiOk, apiError } from '@/lib/server/auth-helpers'
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 
 export async function PATCH(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await requireAuth(req, ['admin'])
@@ -14,7 +14,7 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
   if (!trackingNumber) return apiError('trackingNumber is required', 400)
 
   const [updated] = await db.update(orders)
-    .set({ trackingNumber, trackingUrl, updatedAt: new Date() })
+    .set({ notes: sql`CONCAT(${orders.notes}, ${'\nTracking: ' + trackingNumber + (trackingUrl ? ' - ' + trackingUrl : '')})`, updatedAt: new Date() })
     .where(eq(orders.id, id))
     .returning()
 

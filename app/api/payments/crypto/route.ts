@@ -9,6 +9,25 @@ import { orders } from '@/lib/server/schema'
 import { requireAuth, apiOk, apiError } from '@/lib/server/auth-helpers'
 import { and, eq, sql } from 'drizzle-orm'
 
+/** Validate crypto transaction hash format per coin */
+function validateTxHash(txHash: string, coin: string): boolean {
+  const hash = txHash.trim()
+  switch (coin.toLowerCase()) {
+    case 'btc':
+      // Bitcoin TX hashes are 64 hex chars
+      return /^[a-f0-9]{64}$/i.test(hash)
+    case 'eth':
+    case 'usdt_erc20':
+      // Ethereum TX hashes are 66 chars (0x + 64 hex)
+      return /^0x[a-f0-9]{64}$/i.test(hash)
+    case 'usdt_trc20':
+      // Tron TX hashes are 64 hex chars
+      return /^[a-f0-9]{64}$/i.test(hash)
+    default:
+      return false
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const auth = await requireAuth(req)
@@ -18,17 +37,15 @@ export async function POST(req: NextRequest) {
 
     if (!orderId || !txHash || !coin) return apiError('orderId, txHash and coin are required', 400)
 
-    const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1)
-    if (!order) return apiError('Order not found', 404)
-    if (order.userId !== auth.user.sub) return apiError('Forbidden', 403)
-    if (order.paymentStatus === 'paid') return apiError('Order already paid', 400)
-    if (order.paymentStatus === 'pending_verification' && order.paymentRef === txHash) {
-      return apiOk({ message: 'Transaction hash already received. Your payment is awaiting verification.' })
-    }
-    if (order.paymentStatus === 'pending_verification') return apiError('A different transaction hash has already been submitted for this order.', 409)
-
     const validCoins = ['btc', 'eth', 'usdt_erc20', 'usdt_trc20']
     if (!validCoins.includes(coin.toLowerCase())) return apiError('Invalid coin', 400)
+
+    if (!validateTxHash(txHash, coin)) {
+      return apiError('Invalid transaction hash format for the selected coin', 400)
+    }
+
+    const [order] = await db.select({ id: orders.id, notes: orders.notes }).from(orders).where(eq(orders.id, orderId)).limit(1)
+    if (!order) return apiError('Order not found', 404)
 
     const [updated] = await db.update(orders)
       .set({

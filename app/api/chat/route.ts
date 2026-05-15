@@ -5,15 +5,24 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
 import { chatSessions, chatMessages } from '@/lib/server/schema'
-import { requireAuth, apiOk, apiError } from '@/lib/server/auth-helpers'
+import { requireAuth, apiOk, apiError, apiRateLimited } from '@/lib/server/auth-helpers'
+import { rateLimit, rateLimitPresets, getRateLimitKey } from '@/lib/server/rate-limiter'
 import { desc, eq } from 'drizzle-orm'
 
 export async function POST(req: NextRequest) {
   try {
+    // Rate limit
+    const rl = rateLimit(getRateLimitKey(req), rateLimitPresets.chat)
+    if (!rl.success) return apiRateLimited(rl.resetAt)
+
     const body = await req.json()
     const { subject, guestName, guestEmail, productId } = body as {
       subject?: string; guestName?: string; guestEmail?: string; productId?: string
     }
+
+    // Sanitize inputs
+    const sanitizedSubject = subject?.trim().slice(0, 500) ?? null
+    const sanitizedGuestName = guestName?.trim().slice(0, 200) ?? null
 
     // Optionally get logged-in user
     let userId: string | undefined
@@ -27,9 +36,9 @@ export async function POST(req: NextRequest) {
     const [session] = await db.insert(chatSessions).values({
       id: crypto.randomUUID(),
       userId: userId ?? null,
-      guestName: guestName ?? null,
-      guestEmail: guestEmail ?? null,
-      subject: subject ?? null,
+      guestName: sanitizedGuestName,
+      guestEmail: guestEmail?.trim().slice(0, 255) ?? null,
+      subject: sanitizedSubject,
       productId: productId ?? null,
     }).returning()
 
