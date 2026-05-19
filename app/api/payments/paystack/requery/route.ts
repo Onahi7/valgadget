@@ -7,9 +7,9 @@
  */
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
-import { orders, users } from '@/lib/server/schema'
+import { orders } from '@/lib/server/schema'
 import { requireAuth, apiOk, apiError } from '@/lib/server/auth-helpers'
-import { sendOrderConfirmationEmail } from '@/lib/server/email'
+import { sendPurchaseConfirmationForOrder } from '@/lib/server/order-email'
 import { eq, and, sql } from 'drizzle-orm'
 
 async function confirmPayment(reference: string): Promise<{ ok: boolean; alreadyPaid: boolean }> {
@@ -17,7 +17,7 @@ async function confirmPayment(reference: string): Promise<{ ok: boolean; already
   const [updated] = await db.update(orders)
     .set({ paymentStatus: 'paid', status: 'confirmed', paymentRef: reference, updatedAt: new Date() })
     .where(and(eq(orders.reference, reference), sql`${orders.paymentStatus} != 'paid'`))
-    .returning({ id: orders.id, userId: orders.userId, reference: orders.reference, total: orders.total })
+    .returning({ id: orders.id, userId: orders.userId, guestEmail: orders.guestEmail, reference: orders.reference, total: orders.total })
 
   if (!updated) {
     const [exists] = await db.select({ id: orders.id })
@@ -25,16 +25,8 @@ async function confirmPayment(reference: string): Promise<{ ok: boolean; already
     return { ok: !!exists, alreadyPaid: !!exists }
   }
 
-  // Send confirmation email on first payment
-  if (updated.userId) {
-    const [user] = await db.select({ email: users.email, name: users.name })
-      .from(users).where(eq(users.id, updated.userId)).limit(1)
-    if (user) {
-      sendOrderConfirmationEmail(user.email, user.name, updated.reference, `₦${Number(updated.total).toLocaleString()}`)
-        .catch(err => console.error('[requery email]', err))
-    }
-  }
-
+  sendPurchaseConfirmationForOrder(updated, 'requery email')
+    .catch(err => console.error('[requery email]', err))
   return { ok: true, alreadyPaid: false }
 }
 

@@ -37,9 +37,9 @@ export default function CategoriesPage() {
               className="animate-fade-up group bg-card border border-border rounded-xl overflow-hidden hover:border-primary/40 hover:shadow-md transition-all"
             >
               <div className="relative h-40 bg-muted overflow-hidden">
-                {cat.image ? (
+                {cat.displayImage ? (
                   <Image
-                    src={cat.image}
+                    src={cat.displayImage}
                     alt={cat.name}
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-500"

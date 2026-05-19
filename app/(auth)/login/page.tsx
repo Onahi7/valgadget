@@ -21,6 +21,16 @@ const schema = z.object({
 })
 type FormValues = z.infer<typeof schema>
 
+function getSafeReturnUrl(value: string) {
+  try {
+    const decoded = decodeURIComponent(value)
+    if (!decoded.startsWith('/') || decoded.startsWith('//')) return '/'
+    return decoded
+  } catch {
+    return '/'
+  }
+}
+
 export default function LoginPage() {
   return (
     <Suspense fallback={<LoginPageFallback />}>
@@ -51,7 +61,7 @@ function LoginPageContent() {
       await new Promise(resolve => setTimeout(resolve, 100))
       
       // Use push instead of replace to ensure middleware sees the cookie
-      router.push(decodeURIComponent(returnUrl))
+      router.push(getSafeReturnUrl(returnUrl))
     } catch (err) {
       const e = err as ApiError
       setApiError(e.message ?? 'Login failed. Please try again.')

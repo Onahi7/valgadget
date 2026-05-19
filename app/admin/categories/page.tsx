@@ -1,11 +1,13 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import { ArrowDown, ArrowUp, Check, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import Image from 'next/image'
+import { ArrowDown, ArrowUp, Check, Loader2, Pencil, Plus, Trash2, Upload, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
+import { ImageCropModal } from '@/components/admin/image-crop-modal'
 import { categoryService } from '@/lib/services/category.service'
 import type { Category, CreateCategoryPayload } from '@/lib/services/category.service'
 import { toast } from 'sonner'
@@ -30,6 +32,10 @@ const emptyForm: CategoryForm = {
   sortOrder: 0,
 }
 
+function getDisplayImage(category: Category) {
+  return category.displayImage ?? (category.image && !category.image.includes('source.unsplash.com') ? category.image : null)
+}
+
 function toPayload(form: CategoryForm): CreateCategoryPayload {
   return {
     name: form.name.trim(),
@@ -43,9 +49,13 @@ function toPayload(form: CategoryForm): CreateCategoryPayload {
 }
 
 export default function AdminCategoriesPage() {
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const [cropFile, setCropFile] = useState<File | null>(null)
+  const [cropModalOpen, setCropModalOpen] = useState(false)
   const [editorOpen, setEditorOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<CategoryForm>(emptyForm)
@@ -53,7 +63,7 @@ export default function AdminCategoriesPage() {
   const loadCategories = async () => {
     setLoading(true)
     try {
-      const result = await categoryService.getFlat()
+      const result = await categoryService.getAdminAll()
       if (Array.isArray(result)) {
         const ordered = [...result].sort((a, b) => {
           const sortDelta = (b.sortOrder ?? 0) - (a.sortOrder ?? 0)
@@ -103,6 +113,43 @@ export default function AdminCategoriesPage() {
     setEditorOpen(false)
     setEditingId(null)
     setForm(emptyForm)
+    setCropFile(null)
+    setCropModalOpen(false)
+  }
+
+  const handleImagePick = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please choose an image file')
+      return
+    }
+    setCropFile(file)
+    setCropModalOpen(true)
+  }
+
+  const handleCropClose = () => {
+    if (uploadingImage) return
+    setCropModalOpen(false)
+    setCropFile(null)
+  }
+
+  const handleCropConfirm = async (blob: Blob, filename: string) => {
+    setUploadingImage(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', new File([blob], filename, { type: 'image/webp' }))
+      const uploaded = await categoryService.uploadImage(formData)
+      setForm(prev => ({ ...prev, image: uploaded.url }))
+      setCropModalOpen(false)
+      setCropFile(null)
+      toast.success('Category image uploaded')
+    } catch {
+      toast.error('Failed to upload category image')
+    } finally {
+      setUploadingImage(false)
+    }
   }
 
   const handleSave = async () => {
@@ -176,10 +223,20 @@ export default function AdminCategoriesPage() {
 
   return (
     <div className="space-y-6 animate-page-reveal">
+      <ImageCropModal
+        open={cropModalOpen}
+        file={cropFile}
+        onClose={handleCropClose}
+        onConfirm={handleCropConfirm}
+        aspectRatio={16 / 9}
+        outputSize={1200}
+        label="Category Image"
+      />
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Categories</h1>
-          <p className="text-sm text-muted-foreground">{categories.length} categories and subcategories</p>
+          <p className="text-sm text-muted-foreground">{categories.length} categories and subcategories, including inactive ones</p>
         </div>
         <Button size="sm" className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90" onClick={openCreate}>
           <Plus className="h-4 w-4" /> Add Category
@@ -231,7 +288,47 @@ export default function AdminCategoriesPage() {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Image URL</label>
-              <Input value={form.image} onChange={event => setForm(prev => ({ ...prev, image: event.target.value }))} placeholder="/catalog/categories/monitors.jpg" />
+              <div className="flex gap-2">
+                <Input value={form.image} onChange={event => setForm(prev => ({ ...prev, image: event.target.value }))} placeholder="/catalog/categories/monitors.jpg" />
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImagePick}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="shrink-0 gap-2"
+                  disabled={uploadingImage}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {uploadingImage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                  Upload
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">Uploads are cropped to 1200x675 WebP so category cards fit cleanly.</p>
+              {form.image && !form.image.includes('source.unsplash.com') && (
+                <div className="relative aspect-video overflow-hidden rounded-md border border-border bg-muted">
+                  <Image src={form.image} alt={form.name || 'Category preview'} fill className="object-cover" unoptimized />
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="destructive"
+                    className="absolute right-2 top-2 h-7 w-7"
+                    onClick={() => setForm(prev => ({ ...prev, image: '' }))}
+                    aria-label="Clear category image"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              )}
+              {form.image.includes('source.unsplash.com') && (
+                <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  This category still has an old seed image URL. Upload a new image to replace it.
+                </div>
+              )}
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Icon</label>
@@ -272,6 +369,7 @@ export default function AdminCategoriesPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/30 text-xs text-muted-foreground">
+                <th className="px-5 py-3 text-left font-medium">Image</th>
                 <th className="px-5 py-3 text-left font-medium">Name</th>
                 <th className="px-4 py-3 text-left font-medium">Parent</th>
                 <th className="px-4 py-3 text-left font-medium">Slug</th>
@@ -284,14 +382,27 @@ export default function AdminCategoriesPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-sm text-muted-foreground">Loading categories...</td>
+                  <td colSpan={8} className="py-12 text-center text-sm text-muted-foreground">Loading categories...</td>
                 </tr>
-              ) : categories.map((category, index) => (
+              ) : categories.map((category, index) => {
+                const displayImage = getDisplayImage(category)
+
+                return (
                 <tr key={category.id} className="border-b border-border/50 transition-colors hover:bg-accent/20">
+                  <td className="px-5 py-3">
+                    <div className="h-11 w-14 overflow-hidden rounded-md border border-border bg-muted">
+                      {displayImage ? (
+                        <Image src={displayImage} alt={category.name} width={56} height={44} className="h-full w-full object-cover" unoptimized />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center px-1 text-center text-[9px] leading-tight text-muted-foreground">Needs image</div>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-5 py-3">
                     <div className="space-y-1">
                       <p className="font-medium">{category.parentId ? `— ${category.name}` : category.name}</p>
                       {category.description && <p className="line-clamp-2 text-xs text-muted-foreground">{category.description}</p>}
+                      {!displayImage && <Badge className="border border-amber-200 bg-amber-100 text-[10px] text-amber-700">Needs image</Badge>}
                     </div>
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">{category.parentId ? categoryNameById.get(category.parentId) ?? '-' : '-'}</td>
@@ -324,7 +435,8 @@ export default function AdminCategoriesPage() {
                     </div>
                   </td>
                 </tr>
-              ))}
+                )
+              })}
             </tbody>
           </table>
         </div>

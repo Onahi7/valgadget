@@ -1,7 +1,8 @@
 import { db } from '@/lib/server/db'
-import { categories, products } from '@/lib/server/schema'
+import { categories } from '@/lib/server/schema'
 import { apiOk } from '@/lib/server/auth-helpers'
 import { eq, asc, sql } from 'drizzle-orm'
+import { withCategoryDisplayImages } from '@/lib/server/category-images'
 
 export async function GET() {
   const data = await db.select({
@@ -23,5 +24,5 @@ export async function GET() {
     .where(eq(categories.isActive, true))
     .orderBy(asc(categories.sortOrder), asc(categories.name))
 
-  return apiOk(data)
+  return apiOk(await withCategoryDisplayImages(data))
 }

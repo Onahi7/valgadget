@@ -8,6 +8,8 @@ export interface Category {
   slug: string
   description?: string
   image?: string
+  displayImage?: string | null
+  imageStatus?: 'ready' | 'needs_image'
   icon?: string
   productCount?: number
   parentId?: string
@@ -40,6 +42,10 @@ export const categoryService = {
   getFlat: () =>
     api.get<Category[]>('/categories/flat'),
 
+  /** [Admin] Flat list including inactive categories */
+  getAdminAll: () =>
+    api.get<Category[]>('/admin/categories'),
+
   /** Single category by slug */
   getBySlug: (slug: string) =>
     api.get<Category>(`/categories/slug/${slug}`),
@@ -61,6 +67,10 @@ export const categoryService = {
   /** [Admin] Delete category */
   delete: (id: string) =>
     api.delete<{ message: string }>(`/admin/categories/${id}`),
+
+  /** [Admin] Upload a category image */
+  uploadImage: (formData: FormData) =>
+    api.upload<{ url: string }>('/admin/assets/categories', formData),
 
   /** [Admin] Reorder categories */
   reorder: (items: { id: string; sortOrder: number }[]) =>

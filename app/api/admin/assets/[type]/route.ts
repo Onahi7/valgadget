@@ -14,6 +14,14 @@ export async function POST(req: NextRequest, context: { params: Promise<{ type: 
     return apiError('file is required', 400)
   }
 
+  if (!file.type.startsWith('image/')) {
+    return apiError(`Unsupported file type: ${file.type || 'unknown'}`, 400)
+  }
+
+  if (file.size > 5 * 1024 * 1024) {
+    return apiError('File too large. Max 5MB.', 400)
+  }
+
   const arrayBuffer = await (file as File).arrayBuffer()
   const buffer = Buffer.from(arrayBuffer)
   const mimeType = (file as File).type || 'application/octet-stream'
