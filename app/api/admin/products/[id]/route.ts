@@ -40,13 +40,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     .limit(1)
 
   if (!product) return apiError('Product not found.', 404)
-  return apiOk({
-    ...product,
-    price: Number(product.price),
-    comparePrice: product.comparePrice ? Number(product.comparePrice) : undefined,
-    cost: product.cost ? Number(product.cost) : undefined,
-    rating: Number(product.rating),
-  })
+  return apiOk(numericProduct(product))
 }
 
 export async function PUT(req: NextRequest, context: { params: Promise<{ id: string }> }) {
@@ -82,7 +76,7 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
     }).where(eq(products.id, id)).returning()
 
     if (!updated) return apiError('Product not found.', 404)
-    return apiOk({ ...updated, price: Number(updated.price), comparePrice: updated.comparePrice ? Number(updated.comparePrice) : undefined })
+    return apiOk(numericProduct(updated))
   } catch (err) {
     console.error('[admin update product]', err)
     return apiError('Failed to update product.', 500)
@@ -99,4 +93,20 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ id: 
 
   if (!deleted) return apiError('Product not found.', 404)
   return apiOk({ message: 'Product deactivated.' })
+}
+
+function numericProduct(p: Record<string, unknown>) {
+  const images = Array.isArray(p.images) ? p.images.filter((src): src is string => typeof src === 'string') : []
+  const displayImage = images.find(src => !src.includes('source.unsplash.com')) ?? null
+
+  return {
+    ...p,
+    images,
+    displayImage,
+    imageStatus: displayImage ? 'ready' : 'needs_image',
+    price: p.price ? Number(p.price) : undefined,
+    comparePrice: p.comparePrice ? Number(p.comparePrice) : undefined,
+    cost: p.cost ? Number(p.cost) : undefined,
+    rating: p.rating ? Number(p.rating) : 0,
+  }
 }

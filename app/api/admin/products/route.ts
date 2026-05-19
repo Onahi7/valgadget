@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
 import { products, categories } from '@/lib/server/schema'
 import { requireAuth, apiOk, apiError } from '@/lib/server/auth-helpers'
-import { eq, desc, sql, and, type SQL, ilike } from 'drizzle-orm'
+import { eq, desc, sql, and, type SQL } from 'drizzle-orm'
 
 // GET /api/admin/products — list with pagination
 export async function GET(req: NextRequest) {
@@ -89,8 +89,14 @@ export async function POST(req: NextRequest) {
 }
 
 function numericProduct(p: Record<string, unknown>) {
+  const images = Array.isArray(p.images) ? p.images.filter((src): src is string => typeof src === 'string') : []
+  const displayImage = images.find(src => !src.includes('source.unsplash.com')) ?? null
+
   return {
     ...p,
+    images,
+    displayImage,
+    imageStatus: displayImage ? 'ready' : 'needs_image',
     price: p.price ? Number(p.price) : undefined,
     comparePrice: p.comparePrice ? Number(p.comparePrice) : undefined,
     rating: p.rating ? Number(p.rating) : 0,

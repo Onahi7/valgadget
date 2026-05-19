@@ -17,6 +17,10 @@ import { SpecsEditor, type ProductSpec } from '@/components/admin/specs-editor'
 import { CategorySelect } from '@/components/admin/category-select'
 import { ConditionSelect, getConditionFromTags, updateConditionInTags } from '@/components/admin/condition-select'
 
+function isTrustedImage(url: string) {
+  return !url.includes('source.unsplash.com')
+}
+
 export default function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
@@ -358,7 +362,15 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                       <Star className="w-2 h-2" /> Main
                     </span>
                   )}
-                  <img src={url} alt={`Product image ${idx + 1}`} className="w-full h-full object-cover" />
+                  {isTrustedImage(url) ? (
+                    <img src={url} alt={`Product image ${idx + 1}`} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full flex-col items-center justify-center gap-1 px-3 text-center">
+                      <ImagePlus className="h-6 w-6 text-muted-foreground/40" />
+                      <span className="text-xs font-medium text-muted-foreground">Needs image</span>
+                      <span className="text-[10px] leading-tight text-muted-foreground/70">Old seed URL can be deleted and replaced.</span>
+                    </div>
+                  )}
                   <button
                     type="button"
                     disabled={deletingImageUrl === url || uploading}

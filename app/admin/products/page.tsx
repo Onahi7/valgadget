@@ -13,6 +13,10 @@ import { categoryService, type Category } from '@/lib/services/category.service'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
+function getDisplayImage(product: Product) {
+  return product.displayImage ?? product.images?.find(src => src && !src.includes('source.unsplash.com')) ?? null
+}
+
 export default function AdminProductsPage() {
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
@@ -87,11 +91,12 @@ export default function AdminProductsPage() {
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
         {[
           { label: 'Total', value: products.length, icon: Package },
           { label: 'Active', value: products.filter(p => p.isActive).length, icon: Package },
           { label: 'Out of Stock', value: products.filter(p => p.stock === 0).length, icon: Package },
+          { label: 'Needs Image', value: products.filter(p => !getDisplayImage(p)).length, icon: Package },
         ].map(({ label, value }) => (
           <div key={label} className="bg-card border border-border rounded-lg px-4 py-3 text-center">
             <p className="text-xl font-bold font-mono">{value}</p>
@@ -129,15 +134,18 @@ export default function AdminProductsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(p => (
+                {filtered.map(p => {
+                  const displayImage = getDisplayImage(p)
+
+                  return (
                   <tr key={p.id} className="border-b border-border/50 hover:bg-accent/20 transition-colors">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-lg overflow-hidden bg-surface border border-border shrink-0">
-                          {p.images?.[0] ? (
-                            <Image src={p.images[0]} alt={p.name} width={40} height={40} className="object-cover w-full h-full" unoptimized />
+                          {displayImage ? (
+                            <Image src={displayImage} alt={p.name} width={40} height={40} className="object-cover w-full h-full" unoptimized />
                           ) : (
-                            <div className="flex h-full w-full items-center justify-center text-[10px] text-muted-foreground">No image</div>
+                            <div className="flex h-full w-full items-center justify-center px-1 text-center text-[9px] leading-tight text-muted-foreground">Needs image</div>
                           )}
                         </div>
                         <div>
@@ -152,8 +160,8 @@ export default function AdminProductsPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 font-bold">
-                      ₦{p.price.toLocaleString()}
-                      {p.comparePrice && <span className="text-xs text-muted-foreground line-through ml-1">₦{Number(p.comparePrice).toLocaleString()}</span>}
+                      NGN {p.price.toLocaleString()}
+                      {p.comparePrice && <span className="text-xs text-muted-foreground line-through ml-1">NGN {Number(p.comparePrice).toLocaleString()}</span>}
                     </td>
                     <td className="px-4 py-3">
                       <span className={cn('font-mono text-xs font-bold', p.stock === 0 && 'text-destructive', p.stock > 0 && p.stock <= 5 && 'text-amber-600')}>
@@ -170,6 +178,7 @@ export default function AdminProductsPage() {
                       <div className="flex flex-wrap gap-1">
                         {p.featured && <Badge className="text-[10px] bg-primary/10 text-primary border-primary/20 border">Featured</Badge>}
                         {p.isNew && <Badge className="text-[10px] bg-green-100 text-green-700 border-green-200 border">New</Badge>}
+                        {!displayImage && <Badge className="text-[10px] bg-amber-100 text-amber-700 border-amber-200 border">Needs image</Badge>}
                         {!p.isActive && <Badge className="text-[10px] bg-muted text-muted-foreground border">Inactive</Badge>}
                         {p.stock === 0 && <Badge className="text-[10px] bg-red-100 text-red-700 border-red-200 border">OOS</Badge>}
                       </div>
@@ -193,7 +202,8 @@ export default function AdminProductsPage() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
           </div>

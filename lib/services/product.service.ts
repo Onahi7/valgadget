@@ -42,6 +42,8 @@ export interface Product {
   comparePrice?: number
   cost?: number          // admin only
   images: string[]
+  displayImage?: string | null
+  imageStatus?: 'ready' | 'needs_image'
   categoryId: string
   category?: { id: string; name: string; slug: string }
   stock: number

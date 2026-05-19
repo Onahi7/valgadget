@@ -23,6 +23,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
   const discount = product.comparePrice
     ? Math.round(((product.comparePrice - product.price) / product.comparePrice) * 100)
     : null
+  const imageSrc = product.images.find(src => !src.includes('source.unsplash.com')) ?? '/placeholder-product.svg'
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -94,7 +95,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
       {/* Image */}
       <Link href={`/products/${product.slug}`} className="block aspect-square overflow-hidden bg-surface">
         <Image
-          src={product.images[0] ?? '/placeholder-product.svg'}
+          src={imageSrc}
           alt={product.name}
           width={400}
           height={400}
@@ -142,10 +143,10 @@ export function ProductCard({ product, className }: ProductCardProps) {
         {/* Price + Add to cart */}
         <div className="flex items-center justify-between mt-3 gap-2">
           <div className="flex items-baseline gap-2">
-            <span className="font-bold text-foreground">₦{product.price.toLocaleString()}</span>
+            <span className="font-bold text-foreground">NGN {product.price.toLocaleString()}</span>
             {product.comparePrice && (
               <span className="text-xs text-muted-foreground line-through">
-                ₦{product.comparePrice.toLocaleString()}
+                NGN {product.comparePrice.toLocaleString()}
               </span>
             )}
           </div>
