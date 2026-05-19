@@ -240,26 +240,6 @@ export default function AdminSettingsPage() {
                   </div>
                   <Switch checked={getBool('alertNewOrder', true)} onCheckedChange={v => set('alertNewOrder', v)} />
                 </div>
-                <div className="flex items-center justify-between p-4 border border-border rounded-md">
-                  <div>
-                    <p className="text-sm font-medium">Low Stock Alert</p>
-                    <p className="text-xs text-muted-foreground">Alert when product stock falls below threshold.</p>
-                  </div>
-                  <Switch checked={getBool('alertLowStock', true)} onCheckedChange={v => set('alertLowStock', v)} />
-                </div>
-                {getBool('alertLowStock', true) && (
-                  <div className="flex items-center gap-3 p-4 border border-border rounded-md">
-                    <p className="text-sm font-medium flex-1">Low Stock Threshold</p>
-                    <Input
-                      className="w-24 text-right"
-                      type="number"
-                      min={1}
-                      value={get('lowStockThreshold', '5')}
-                      onChange={e => set('lowStockThreshold', e.target.value)}
-                    />
-                    <span className="text-sm text-muted-foreground">units</span>
-                  </div>
-                )}
               </div>
             </div>
           )}

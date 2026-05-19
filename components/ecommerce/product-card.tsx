@@ -28,10 +28,9 @@ export function ProductCard({ product, className }: ProductCardProps) {
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (product.stock === 0) return
     addToCart({
       id: product.id, name: product.name, slug: product.slug,
-      images: product.images, price: product.price, stock: product.stock, sku: product.sku,
+      images: product.images, price: product.price, sku: product.sku,
     })
     toast.success('Added to cart', { description: product.name })
   }
@@ -65,16 +64,6 @@ export function ProductCard({ product, className }: ProductCardProps) {
         {discount && (
           <Badge variant="secondary" className="text-[10px] font-mono uppercase tracking-wider border-0">
             -{discount}%
-          </Badge>
-        )}
-        {product.stock > 0 && product.stock <= 5 && (
-          <Badge variant="destructive" className="text-[10px] font-mono uppercase tracking-wider border-0 animate-pulse">
-            Only {product.stock} left!
-          </Badge>
-        )}
-        {product.stock === 0 && (
-          <Badge variant="outline" className="text-[10px] font-mono uppercase tracking-wider">
-            Sold Out
           </Badge>
         )}
       </div>
@@ -152,7 +141,6 @@ export function ProductCard({ product, className }: ProductCardProps) {
           </div>
           <Button
             size="sm"
-            disabled={product.stock === 0}
             onClick={handleAddToCart}
             className="h-8 px-3 text-xs bg-primary text-primary-foreground hover:bg-primary/90 shrink-0"
           >

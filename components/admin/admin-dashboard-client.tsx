@@ -44,13 +44,12 @@ export function AdminDashboardClient() {
   const customersTotal = stats?.customers.total ?? 0
   const affiliatesTotal = stats?.affiliates.total ?? 0
   const productsTotal = stats?.products.total ?? 0
-  const lowStock = stats?.products.lowStock ?? 0
 
   const statCards = [
     { label: 'Total Revenue', value: formatNaira(revenueTotal), sub: `${ordersPending} pending`, icon: DollarSign, color: 'bg-green-50 text-green-600 dark:bg-green-950' },
     { label: 'Orders', value: ordersTotal.toLocaleString(), sub: `${ordersPending} pending`, icon: ShoppingCart, color: 'bg-blue-50 text-blue-600 dark:bg-blue-950' },
     { label: 'Customers', value: customersTotal.toLocaleString(), sub: `${affiliatesTotal} affiliates`, icon: Users, color: 'bg-violet-50 text-violet-600 dark:bg-violet-950' },
-    { label: 'Products', value: productsTotal.toLocaleString(), sub: `${lowStock} low stock`, icon: ShoppingBag, color: 'bg-amber-50 text-amber-600 dark:bg-amber-950' },
+    { label: 'Products', value: productsTotal.toLocaleString(), sub: `${stats?.products.active ?? 0} active`, icon: ShoppingBag, color: 'bg-amber-50 text-amber-600 dark:bg-amber-950' },
   ]
 
   return (
@@ -88,7 +87,7 @@ export function AdminDashboardClient() {
               { label: 'Processing', count: stats?.orders.processing ?? 0, color: 'bg-blue-500' },
               { label: 'Total', count: ordersTotal, color: 'bg-primary' },
               { label: 'Revenue', count: null, value: formatNaira(revenueTotal), color: 'bg-green-500' },
-              { label: 'Low Stock', count: lowStock, color: 'bg-red-500' },
+              { label: 'Products', count: productsTotal, color: 'bg-orange-500' },
               { label: 'Affiliates', count: affiliatesTotal, color: 'bg-violet-500' },
             ].map(item => (
               <div key={item.label} className="rounded-lg bg-muted/40 p-3 text-center">

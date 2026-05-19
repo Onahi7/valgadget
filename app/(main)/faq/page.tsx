@@ -86,24 +86,19 @@ const faqs: FAQ[] = [
     answer: 'If the return is due to our error (wrong item, defective product), we cover return shipping. For other returns, customers are responsible for return shipping costs.',
   },
 
-  // Products & Stock
+  // Products & Availability
   {
-    category: 'Products & Stock',
+    category: 'Products & Availability',
     question: 'Are your products authentic?',
     answer: 'Yes! All our products are 100% authentic and sourced directly from authorized distributors and manufacturers. We guarantee the authenticity of every item we sell.',
   },
   {
-    category: 'Products & Stock',
-    question: 'When will out-of-stock items be available?',
-    answer: 'Restock times vary by product. You can sign up for email notifications on product pages to be alerted when items are back in stock.',
-  },
-  {
-    category: 'Products & Stock',
+    category: 'Products & Availability',
     question: 'Do you offer product warranties?',
     answer: 'Yes! Most electronics and appliances come with manufacturer warranties. Warranty details are listed on each product page. We also offer extended warranty options at checkout.',
   },
   {
-    category: 'Products & Stock',
+    category: 'Products & Availability',
     question: 'Can I pre-order upcoming products?',
     answer: 'Yes! When available, pre-orders can be placed on product pages. You\'ll only be charged when the item ships, and you\'ll receive it on or shortly after the release date.',
   },
@@ -149,7 +144,7 @@ const categoryIcons: Record<string, any> = {
   'Orders & Checkout': Package,
   'Shipping & Delivery': Truck,
   'Returns & Refunds': RotateCcw,
-  'Products & Stock': Shield,
+  'Products & Availability': Shield,
   'Account & Security': Shield,
   'Promotions & Coupons': CreditCard,
 }

@@ -91,11 +91,10 @@ export default function AdminProductsPage() {
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[
           { label: 'Total', value: products.length, icon: Package },
           { label: 'Active', value: products.filter(p => p.isActive).length, icon: Package },
-          { label: 'Out of Stock', value: products.filter(p => p.stock === 0).length, icon: Package },
           { label: 'Needs Image', value: products.filter(p => !getDisplayImage(p)).length, icon: Package },
         ].map(({ label, value }) => (
           <div key={label} className="bg-card border border-border rounded-lg px-4 py-3 text-center">
@@ -127,7 +126,6 @@ export default function AdminProductsPage() {
                   <th className="text-left px-4 py-3 font-medium">Product</th>
                   <th className="text-left px-4 py-3 font-medium">Category</th>
                   <th className="text-left px-4 py-3 font-medium">Price</th>
-                  <th className="text-left px-4 py-3 font-medium">Stock</th>
                   <th className="text-left px-4 py-3 font-medium">Rating</th>
                   <th className="text-left px-4 py-3 font-medium">Status</th>
                   <th className="text-right px-4 py-3 font-medium">Actions</th>
@@ -164,11 +162,6 @@ export default function AdminProductsPage() {
                       {p.comparePrice && <span className="text-xs text-muted-foreground line-through ml-1">NGN {Number(p.comparePrice).toLocaleString()}</span>}
                     </td>
                     <td className="px-4 py-3">
-                      <span className={cn('font-mono text-xs font-bold', p.stock === 0 && 'text-destructive', p.stock > 0 && p.stock <= 5 && 'text-amber-600')}>
-                        {p.stock}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
                         <Star className="w-3.5 h-3.5 fill-primary text-primary" />
                         <span className="text-xs font-medium">{p.rating}</span>
@@ -180,7 +173,6 @@ export default function AdminProductsPage() {
                         {p.isNew && <Badge className="text-[10px] bg-green-100 text-green-700 border-green-200 border">New</Badge>}
                         {!displayImage && <Badge className="text-[10px] bg-amber-100 text-amber-700 border-amber-200 border">Needs image</Badge>}
                         {!p.isActive && <Badge className="text-[10px] bg-muted text-muted-foreground border">Inactive</Badge>}
-                        {p.stock === 0 && <Badge className="text-[10px] bg-red-100 text-red-700 border-red-200 border">OOS</Badge>}
                       </div>
                     </td>
                     <td className="px-4 py-3">

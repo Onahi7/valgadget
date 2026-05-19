@@ -417,7 +417,7 @@ export default async function HomePage() {
 
       <ProductShelf eyebrow="Price deals" title="Price Deals" href="/shop?sort=popular" products={priceDeals} />
       <ProductShelf eyebrow="Popular now" title="Trending Products" href="/shop?sort=popular" products={trending} />
-      <ProductShelf eyebrow="Fresh stock" title="New Products" href="/shop?sort=newest" products={newest} />
+      <ProductShelf eyebrow="Fresh arrivals" title="New Products" href="/shop?sort=newest" products={newest} />
       <ProductShelf eyebrow="Customer signals" title="Top Rated Products" href="/shop?sort=rating" products={topRated} />
 
       {activeRaffles.length > 0 ? (

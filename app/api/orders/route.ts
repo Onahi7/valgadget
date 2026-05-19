@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
 
       // Fetch products and build line items.
       const productIds = items.map(i => i.productId)
-      const found = await tx.select({ id: products.id, name: products.name, sku: products.sku, price: products.price, stock: products.stock, images: products.images })
+      const found = await tx.select({ id: products.id, name: products.name, sku: products.sku, price: products.price, images: products.images })
         .from(products).where(inArray(products.id, productIds))
 
       const orderItems: OrderItem[] = []
@@ -113,7 +113,6 @@ export async function POST(req: NextRequest) {
       for (const lineItem of items) {
         const p = found.find(f => f.id === lineItem.productId)
         if (!p) throw new ApiFailure(`Product ${lineItem.productId} not found.`, 422)
-        if (p.stock < lineItem.qty) throw new ApiFailure(`Insufficient stock for ${p.name}. Only ${p.stock} left.`, 422)
 
         const unitPrice = Number(p.price)
         orderItems.push({ productId: p.id, name: p.name, sku: p.sku, price: unitPrice, qty: lineItem.qty, image: (p.images as string[])[0] })
@@ -134,18 +133,6 @@ export async function POST(req: NextRequest) {
       }
       const tax = 0 // No VAT added (prices are tax-inclusive)
       const total = subtotal + shipping + tax
-
-      // Atomic stock deduction only succeeds if stock is still available.
-      for (const item of orderItems) {
-        const [updated] = await tx.update(products)
-          .set({ stock: sql`${products.stock} - ${item.qty}`, updatedAt: new Date() })
-          .where(and(eq(products.id, item.productId), sql`${products.stock} >= ${item.qty}`))
-          .returning({ id: products.id })
-
-        if (!updated) {
-          throw new ApiFailure(`Insufficient stock for ${item.name}. Please refresh your cart.`, 409)
-        }
-      }
 
       const [createdOrder] = await tx.insert(orders).values({
         reference: generateReference(),

@@ -328,7 +328,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                 size="sm"
                 disabled={order.status === 'refunded'}
                 onClick={() => {
-                  if (confirm('Are you sure you want to refund this order? Stock will be restored.')) {
+                  if (confirm('Are you sure you want to refund this order?')) {
                     updateStatus('refunded')
                   }
                 }}

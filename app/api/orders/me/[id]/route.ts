@@ -1,9 +1,8 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
-import { orders, products } from '@/lib/server/schema'
+import { orders } from '@/lib/server/schema'
 import { requireAuth, apiOk, apiError } from '@/lib/server/auth-helpers'
-import { and, eq, sql } from 'drizzle-orm'
-import type { OrderItem } from '@/lib/server/schema'
+import { and, eq } from 'drizzle-orm'
 
 export async function GET(
   req: NextRequest,
@@ -53,14 +52,6 @@ export async function PATCH(
       return apiError('Cannot cancel a confirmed/shipped/delivered order. Please contact support.', 400)
     }
 
-    // Restore stock (only if not already cancelled — idempotent guard above ensures this)
-    const items = (order.items ?? []) as OrderItem[]
-    for (const item of items) {
-      await db.update(products)
-        .set({ stock: sql`${products.stock} + ${item.qty}`, updatedAt: new Date() })
-        .where(eq(products.id, item.productId))
-    }
-
     // Atomic update — only cancels if status is still pending (prevents race with admin cancel)
     const [cancelled] = await db.update(orders)
       .set({ status: 'cancelled', updatedAt: new Date() })
@@ -75,3 +66,4 @@ export async function PATCH(
     return apiError('Failed to cancel order.', 500)
   }
 }
+

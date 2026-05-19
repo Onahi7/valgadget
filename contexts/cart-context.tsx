@@ -4,7 +4,7 @@ import React, { createContext, useCallback, useContext, useEffect, useReducer } 
 import type { Product } from '@/lib/services/product.service'
 
 export interface CartItem {
-  product: Pick<Product, 'id' | 'name' | 'slug' | 'images' | 'price' | 'stock' | 'sku'>
+  product: Pick<Product, 'id' | 'name' | 'slug' | 'images' | 'price' | 'sku'>
   quantity: number
 }
 
@@ -33,12 +33,12 @@ function cartReducer(state: CartState, action: CartAction): CartState {
           ...state,
           items: state.items.map(i =>
             i.product.id === action.product.id
-              ? { ...i, quantity: Math.min(i.quantity + qty, i.product.stock) }
+              ? { ...i, quantity: i.quantity + qty }
               : i
           ),
         }
       }
-      return { ...state, items: [...state.items, { product: action.product, quantity: Math.min(qty, action.product.stock) }] }
+      return { ...state, items: [...state.items, { product: action.product, quantity: qty }] }
     }
     case 'REMOVE':
       return { ...state, items: state.items.filter(i => i.product.id !== action.productId) }
@@ -50,7 +50,7 @@ function cartReducer(state: CartState, action: CartAction): CartState {
         ...state,
         items: state.items.map(i =>
           i.product.id === action.productId
-            ? { ...i, quantity: Math.min(action.quantity, i.product.stock) }
+            ? { ...i, quantity: action.quantity }
             : i
         ),
       }

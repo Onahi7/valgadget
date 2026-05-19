@@ -12,7 +12,6 @@ export async function GET(request: NextRequest) {
   const search    = searchParams.get('search')?.toLowerCase().trim()
   const minPrice  = searchParams.get('minPrice') ? Number(searchParams.get('minPrice')) : undefined
   const maxPrice  = searchParams.get('maxPrice') ? Number(searchParams.get('maxPrice')) : undefined
-  const inStock   = searchParams.get('inStock') === 'true'
   const featured  = searchParams.get('featured') === 'true'
   const isNew     = searchParams.get('isNew') === 'true'
   const sort      = searchParams.get('sort') ?? 'newest'
@@ -39,7 +38,6 @@ export async function GET(request: NextRequest) {
   }
   if (minPrice !== undefined) conditions.push(gte(products.price, String(minPrice)))
   if (maxPrice !== undefined) conditions.push(lte(products.price, String(maxPrice)))
-  if (inStock)  conditions.push(gte(products.stock, 1))
   if (featured) conditions.push(eq(products.featured, true))
   if (isNew)    conditions.push(eq(products.isNew, true))
 

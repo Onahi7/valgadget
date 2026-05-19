@@ -56,7 +56,7 @@ export async function comparePassword(plain: string, hash: string): Promise<bool
 export function getBearerToken(req: NextRequest): string | null {
   const auth = req.headers.get('authorization') ?? ''
   if (auth.toLowerCase().startsWith('bearer ')) return auth.slice(7).trim()
-  return null
+  return req.cookies.get('vg_token')?.value ?? null
 }
 
 export async function getRequestUser(req: NextRequest): Promise<TokenPayload | null> {

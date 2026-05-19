@@ -1,9 +1,8 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
-import { orders, products } from '@/lib/server/schema'
+import { orders } from '@/lib/server/schema'
 import { requireAuth, apiOk, apiError } from '@/lib/server/auth-helpers'
-import { and, eq, sql } from 'drizzle-orm'
-import type { OrderItem } from '@/lib/server/schema'
+import { and, eq } from 'drizzle-orm'
 
 export async function PATCH(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await requireAuth(req)
@@ -22,13 +21,6 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
     if (order.status === 'cancelled') return apiError('Order already cancelled.', 400)
     if (order.status === 'confirmed' || order.status === 'shipped' || order.status === 'delivered') {
       return apiError('Cannot cancel a confirmed/shipped/delivered order. Please contact support.', 400)
-    }
-
-    const items = (order.items ?? []) as OrderItem[]
-    for (const item of items) {
-      await db.update(products)
-        .set({ stock: sql`${products.stock} + ${item.qty}`, updatedAt: new Date() })
-        .where(eq(products.id, item.productId))
     }
 
     const [cancelled] = await db.update(orders)

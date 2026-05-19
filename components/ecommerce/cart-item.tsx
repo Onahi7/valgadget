@@ -44,16 +44,15 @@ export function CartItem({ item }: CartItemProps) {
             </span>
             <button
               onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
-              disabled={item.quantity >= item.product.stock}
               aria-label="Increase quantity"
-              className="px-2 py-1.5 hover:bg-accent transition-colors text-muted-foreground hover:text-foreground disabled:opacity-40"
+              className="px-2 py-1.5 hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
             >
               <Plus className="w-3 h-3" />
             </button>
           </div>
           <div className="flex items-center gap-3">
             <span className="font-bold text-sm">
-              ₦{(item.product.price * item.quantity).toLocaleString()}
+              NGN {(item.product.price * item.quantity).toLocaleString()}
             </span>
             <Button
               variant="ghost"

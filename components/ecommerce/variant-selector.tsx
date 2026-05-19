@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Badge } from '@/components/ui/badge'
 
 export interface ProductVariant {
   id: string
@@ -61,7 +60,7 @@ export function VariantSelector({ variants, selectedVariant, onSelect, basePrice
   const isOptionAvailable = (type: string, value: string) => {
     const testAttributes = { ...selectedAttributes, [type]: value }
     return variants.some(v => {
-      return Object.entries(testAttributes).every(([key, val]) => v.attributes[key] === val) && v.stock > 0
+      return Object.entries(testAttributes).every(([key, val]) => v.attributes[key] === val)
     })
   }
 
@@ -123,23 +122,15 @@ export function VariantSelector({ variants, selectedVariant, onSelect, basePrice
         <div className="bg-muted/50 rounded-lg p-4 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">Selected Variant</span>
-            {selectedVariant.stock <= 5 && selectedVariant.stock > 0 && (
-              <Badge variant="destructive" className="animate-pulse">
-                Only {selectedVariant.stock} left!
-              </Badge>
-            )}
           </div>
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">SKU: {selectedVariant.sku}</span>
             {selectedVariant.price && selectedVariant.price !== basePrice && (
               <span className="text-lg font-bold text-primary">
-                ₦{selectedVariant.price.toLocaleString()}
+                NGN {selectedVariant.price.toLocaleString()}
               </span>
             )}
           </div>
-          {selectedVariant.stock === 0 && (
-            <p className="text-sm text-destructive font-medium">Out of stock</p>
-          )}
         </div>
       )}
     </div>

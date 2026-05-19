@@ -30,7 +30,7 @@ export default function NewProductPage() {
   const [croppedBlobs, setCroppedBlobs] = useState<{ blob: Blob; name: string }[]>([])
   const [form, setForm] = useState({
     name: '', description: '', shortDescription: '', price: '', comparePrice: '',
-    sku: '', stock: '0', categoryId: '', tags: '', featured: false, isNew: true, isActive: true,
+    sku: '', categoryId: '', tags: '', featured: false, isNew: true, isActive: true,
   })
 
   useEffect(() => {
@@ -95,7 +95,7 @@ export default function NewProductPage() {
         price: Number(form.price),
         comparePrice: form.comparePrice ? Number(form.comparePrice) : undefined,
         sku: form.sku.trim(),
-        stock: Number(form.stock) || 0,
+        stock: 0,
         categoryId: form.categoryId || '',
         tags: updateConditionInTags(form.tags.split(',').map(t => t.trim()).filter(Boolean), condition),
         featured: form.featured,
@@ -228,15 +228,11 @@ export default function NewProductPage() {
           </div>
 
           <div className="bg-card border border-border rounded-lg p-5 space-y-4">
-            <h2 className="font-semibold text-sm">Inventory</h2>
-            <div className="grid grid-cols-2 gap-3">
+            <h2 className="font-semibold text-sm">Product Code</h2>
+            <div className="grid gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="sku">SKU *</Label>
                 <Input id="sku" value={form.sku} onChange={e => set('sku', e.target.value)} required />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="stock">Stock Qty</Label>
-                <Input id="stock" type="number" min="0" value={form.stock} onChange={e => set('stock', e.target.value)} />
               </div>
             </div>
           </div>

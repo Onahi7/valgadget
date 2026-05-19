@@ -117,7 +117,6 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
 
   const isWishlisted = has(product.id)
   const effectivePrice = selectedVariant?.price ?? product.price
-  const effectiveStock = selectedVariant?.stock ?? product.stock
   const featureSpecs = (product.specs ?? []).slice(0, 4)
   const detailSpecs = [
     ...(product.specs ?? []),
@@ -125,11 +124,10 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
     { label: 'Category', value: product.category?.name ?? 'Unknown' },
     { label: 'Rating', value: `${product.rating}/5` },
     { label: 'Reviews', value: String(product.reviewCount) },
-    { label: 'In Stock', value: String(effectiveStock) },
   ]
 
   const handleAddToCart = () => {
-    addToCart({ id: product.id, name: product.name, slug: product.slug, images: product.images, price: effectivePrice, stock: effectiveStock, sku: product.sku }, qty)
+    addToCart({ id: product.id, name: product.name, slug: product.slug, images: product.images, price: effectivePrice, sku: product.sku }, qty)
     toast.success('Added to cart', { description: `${product.name} ×${qty}` })
   }
 
@@ -169,11 +167,6 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
               priority
               unoptimized
             />
-            {product.stock === 0 && (
-              <div className="absolute inset-0 bg-background/60 flex items-center justify-center">
-                <Badge variant="outline" className="text-sm font-bold px-4 py-1.5">Sold Out</Badge>
-              </div>
-            )}
           </div>
           {product.images.length > 1 && (
             <div className="flex gap-2 overflow-x-auto pb-1">
@@ -265,28 +258,23 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
                 </button>
                 <span className="px-4 py-2 text-sm font-medium tabular-nums min-w-12 text-center">{qty}</span>
                 <button
-                  onClick={() => setQty(q => Math.min(effectiveStock, q + 1))}
-                  disabled={qty >= effectiveStock}
-                  className="px-3 py-2.5 hover:bg-accent transition-colors disabled:opacity-40"
+                  onClick={() => setQty(q => q + 1)}
+                  className="px-3 py-2.5 hover:bg-accent transition-colors"
                   aria-label="Increase quantity"
                 >
                   <Plus className="w-3.5 h-3.5" />
                 </button>
               </div>
-              <span className="text-xs text-muted-foreground">
-                  {effectiveStock > 0 ? `${effectiveStock} in stock` : 'Out of stock'}
-              </span>
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row">
               <Button
                 size="lg"
-                disabled={effectiveStock === 0}
                 onClick={handleAddToCart}
                 className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
               >
                 <ShoppingCart className="w-4 h-4 mr-2" />
-                {effectiveStock === 0 ? 'Out of Stock' : 'Add to Cart'}
+                Add to Cart
               </Button>
               <Button
                 size="lg"

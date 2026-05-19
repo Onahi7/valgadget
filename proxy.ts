@@ -28,7 +28,7 @@ async function verifyToken(token: string) {
 }
 
 export async function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl
+  const { pathname, search } = request.nextUrl
   
   // Get token from cookie (preferred) or Authorization header
   const cookieToken = request.cookies.get('vg_token')?.value
@@ -48,7 +48,7 @@ export async function proxy(request: NextRequest) {
   if (isProtectedPath && !user) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
-    url.searchParams.set('returnUrl', pathname)
+    url.searchParams.set('returnUrl', `${pathname}${search}`)
     return NextResponse.redirect(url)
   }
   
