@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, ShoppingBag, ShoppingCart, Users, Tag, Ticket,
@@ -8,7 +9,6 @@ import {
   Star, Percent,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { BrandMark } from '@/components/layout/brand-mark'
 
 export const NAV_GROUPS = [
   {
@@ -57,7 +57,7 @@ export function AdminSidebar() {
     <aside className="hidden md:flex w-60 shrink-0 border-r border-border bg-card flex-col h-full overflow-y-auto">
       {/* Brand */}
       <div className="flex items-center gap-3 px-5 py-[18px] border-b border-border">
-        <BrandMark size="sm" href="/admin" className="min-w-0" />
+        <Image src="/logo.png" alt="Val Gadgets" width={100} height={40} className="h-9 w-auto object-contain" priority />
         <p className="text-[10px] text-muted-foreground font-mono uppercase tracking-widest">Admin</p>
       </div>
 

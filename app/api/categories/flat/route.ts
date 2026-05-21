@@ -24,7 +24,7 @@ export async function GET() {
           OR p.category_id IN (SELECT c2.id FROM categories c2 WHERE c2.parent_id = categories.id)
         )
     )`,
-  }).from(categories).where(eq(categories.isActive, true)).orderBy(asc(categories.sortOrder), asc(categories.name))
+  }).from(categories).where(eq(categories.isActive, true)).orderBy(asc(categories.sortOrder))
 
   return apiOk(await withCategoryDisplayImages(data))
 }

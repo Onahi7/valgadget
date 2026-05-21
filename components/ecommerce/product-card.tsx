@@ -1,9 +1,8 @@
 'use client'
 
-import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Heart, ImageIcon, ShoppingCart, Star } from 'lucide-react'
+import { Heart, ShoppingCart, Star } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useCart } from '@/contexts/cart-context'
@@ -20,12 +19,11 @@ interface ProductCardProps {
 export function ProductCard({ product, className }: ProductCardProps) {
   const { addToCart } = useCart()
   const { toggle, has } = useWishlist()
-  const [imageFailed, setImageFailed] = useState(false)
   const isWishlisted = has(product.id)
   const discount = product.comparePrice
     ? Math.round(((product.comparePrice - product.price) / product.comparePrice) * 100)
     : null
-  const imageSrc = product.images.find(src => src && !src.includes('source.unsplash.com'))
+  const imageSrc = product.images.find(src => !src.includes('source.unsplash.com')) ?? '/placeholder-product.svg'
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -84,23 +82,15 @@ export function ProductCard({ product, className }: ProductCardProps) {
       </button>
 
       {/* Image */}
-      <Link href={`/products/${product.slug}`} className="block aspect-square overflow-hidden bg-muted">
-        {imageSrc && !imageFailed ? (
-          <Image
-            src={imageSrc}
-            alt={product.name}
-            width={400}
-            height={400}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            unoptimized
-            onError={() => setImageFailed(true)}
-          />
-        ) : (
-          <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-muted-foreground">
-            <ImageIcon className="h-8 w-8 opacity-45" />
-            <span className="text-xs font-medium">Image pending</span>
-          </div>
-        )}
+      <Link href={`/products/${product.slug}`} className="block aspect-square overflow-hidden bg-surface">
+        <Image
+          src={imageSrc}
+          alt={product.name}
+          width={400}
+          height={400}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          unoptimized
+        />
       </Link>
 
       {/* Content */}
@@ -140,11 +130,11 @@ export function ProductCard({ product, className }: ProductCardProps) {
         )}
 
         {/* Price + Add to cart */}
-        <div className="mt-3 flex flex-col gap-3 min-[430px]:flex-row min-[430px]:items-center min-[430px]:justify-between">
-          <div className="min-w-0">
-            <span className="block truncate font-bold text-foreground">NGN {product.price.toLocaleString()}</span>
+        <div className="flex items-center justify-between mt-3 gap-2">
+          <div className="flex items-baseline gap-2">
+            <span className="font-bold text-foreground">NGN {product.price.toLocaleString()}</span>
             {product.comparePrice && (
-              <span className="block truncate text-xs text-muted-foreground line-through">
+              <span className="text-xs text-muted-foreground line-through">
                 NGN {product.comparePrice.toLocaleString()}
               </span>
             )}
@@ -152,7 +142,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
           <Button
             size="sm"
             onClick={handleAddToCart}
-            className="h-8 w-full shrink-0 px-3 text-xs bg-primary text-primary-foreground hover:bg-primary/90 min-[430px]:w-auto"
+            className="h-8 px-3 text-xs bg-primary text-primary-foreground hover:bg-primary/90 shrink-0"
           >
             <ShoppingCart className="w-3.5 h-3.5 mr-1" aria-hidden />
             Add

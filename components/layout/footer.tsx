@@ -1,6 +1,6 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { Twitter } from 'lucide-react'
-import { BrandMark } from '@/components/layout/brand-mark'
 
 const FOOTER_LINKS = {
   shop: [
@@ -48,7 +48,9 @@ export function Footer() {
         <div className="py-16 grid grid-cols-2 md:grid-cols-5 gap-8">
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
-            <BrandMark context="dark" size="sm" />
+            <Link href="/" className="flex items-center">
+              <Image src="/logo.png" alt="Val Gadgets" width={140} height={50} className="h-12 w-auto object-contain" />
+            </Link>
             <p className="mt-4 text-sm text-secondary-foreground/60 leading-relaxed max-w-[200px]">
               Your number 1 gadget plug. Solution to every gadget need — with nationwide delivery across Nigeria.
             </p>

@@ -4,11 +4,9 @@ import {
   ArrowRight,
   BatteryCharging,
   Headphones,
-  ImageIcon,
   Monitor,
   Search,
   ShieldCheck,
-  ShoppingBag,
   Smartphone,
   Speaker,
   Truck,
@@ -132,23 +130,13 @@ const productSelection = {
 }
 
 function isDisplayableImage(src?: string | null) {
-  return Boolean(src && !src.includes('source.unsplash.com'))
+  if (!src) return false
+  return !src.includes('source.unsplash.com')
 }
 
 function displayImages(images?: string[] | null) {
-  return (images ?? []).filter(isDisplayableImage)
-}
-
-function ImagePending({ dark = false }: { dark?: boolean }) {
-  return (
-    <div className={cn(
-      'absolute inset-0 flex flex-col items-center justify-center gap-2',
-      dark ? 'bg-black/35 text-white/75' : 'bg-muted text-muted-foreground',
-    )}>
-      <ImageIcon className="h-8 w-8 opacity-60" />
-      <span className="text-xs font-medium">Image pending</span>
-    </div>
-  )
+  const usable = (images ?? []).filter(isDisplayableImage)
+  return usable.length ? usable : ['/placeholder-product.svg']
 }
 
 function normalizeProduct(row: typeof productSelection extends infer T ? any : never): Product {
@@ -254,23 +242,15 @@ async function getHomeData() {
     updatedAt: category.updatedAt instanceof Date ? category.updatedAt.toISOString() : String(category.updatedAt),
   }))
 
-  const tileConfigBySlug = new Map(CATEGORY_TILES.map(config => [config.slug, config]))
-  const categoryTiles = normalizedCategories
-    .filter(category => !category.parentId)
-    .slice(0, 8)
-    .map((category, index) => {
-      const config = tileConfigBySlug.get(category.slug) ?? {
-        slug: category.slug,
-        title: category.name,
-        label: 'Category',
-        description: category.description || 'Browse available products in this department.',
-        icon: ShoppingBag,
-        color: ['bg-blue-600', 'bg-emerald-600', 'bg-orange-600', 'bg-violet-600', 'bg-rose-600', 'bg-cyan-600', 'bg-slate-700', 'bg-teal-600'][index % 8],
-      }
-      const categoryProductImage = productByCategory.get(category.id)?.find(product => isDisplayableImage(product.images[0]))?.images[0]
-      const image = categoryProductImage || (isDisplayableImage(category.image) ? category.image : undefined)
-      return { ...config, category, image }
-    })
+  const categoryMap = new Map(normalizedCategories.map(category => [category.slug, category]))
+  const categoryTiles = CATEGORY_TILES.reduce<CategoryTile[]>((items, config) => {
+    const category = categoryMap.get(config.slug)
+    if (!category) return items
+    const categoryProductImage = productByCategory.get(category.id)?.find(product => isDisplayableImage(product.images[0]))?.images[0]
+    const image = categoryProductImage || (isDisplayableImage(category.image) ? category.image : '/placeholder-product.svg')
+    items.push({ ...config, category, image })
+    return items
+  }, [])
 
   const priceDeals = trending
     .filter(product => typeof product.comparePrice === 'number' && product.comparePrice > product.price)
@@ -308,7 +288,7 @@ function ProductShelf({
   return (
     <section className="border-t border-border bg-background py-10">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="mb-5 flex items-start justify-between gap-4 sm:items-end">
+        <div className="mb-5 flex items-end justify-between gap-4">
           <div>
             {eyebrow ? <p className="mb-1 text-xs font-mono uppercase tracking-widest text-primary">{eyebrow}</p> : null}
             <h2 className="text-2xl font-bold tracking-tight">{title}</h2>
@@ -319,7 +299,7 @@ function ProductShelf({
             </Link>
           </Button>
         </div>
-        <div className="grid grid-cols-1 gap-4 min-[420px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           {products.map(product => (
             <ProductCard key={product.id} product={product} />
           ))}
@@ -339,16 +319,16 @@ export default async function HomePage() {
       <section className="border-b border-border bg-muted/20">
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
-            <div className="relative overflow-hidden rounded-lg border border-border bg-card p-5 sm:p-8 lg:min-h-[360px]">
+            <div className="relative overflow-hidden rounded-lg border border-border bg-card p-6 sm:p-8 lg:min-h-[360px]">
               <div className="relative z-10 max-w-xl">
                 <Badge className="mb-4 border-primary/20 bg-primary/10 text-primary">Browse, Pay, Relax</Badge>
-                <h1 className="text-3xl font-bold tracking-tight sm:text-5xl">
+                <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
                   Thousands of electronics, phones, laptops and gadgets
                 </h1>
                 <p className="mt-4 max-w-lg text-base leading-7 text-muted-foreground">
                   Shop phones, speakers, monitors, rechargeable fans, smartwatches and daily electronics from one clean storefront.
                 </p>
-                <div className="mt-6 flex flex-col gap-3 min-[420px]:flex-row">
+                <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                   <Button size="lg" asChild className="rounded-full px-8">
                     <Link href="/shop">
                       Start Shopping <ArrowRight className="ml-2 h-4 w-4" />
@@ -374,7 +354,7 @@ export default async function HomePage() {
                     <h2 className="mt-1 line-clamp-2 text-lg font-bold">{product.name}</h2>
                     <p className="mt-2 text-sm font-semibold">NGN {product.price.toLocaleString()}</p>
                   </div>
-                  {product.images[0] ? <Image src={product.images[0]} alt={product.name} fill className="object-contain object-right-bottom p-4" unoptimized /> : <ImagePending />}
+                  {product.images[0] ? <Image src={product.images[0]} alt={product.name} fill className="object-contain object-right-bottom p-4" unoptimized /> : null}
                 </Link>
               ))}
             </div>
@@ -400,7 +380,7 @@ export default async function HomePage() {
 
       <section className="py-10">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="mb-5 flex items-start justify-between gap-4 sm:items-end">
+          <div className="mb-5 flex items-end justify-between gap-4">
             <div>
               <p className="mb-1 text-xs font-mono uppercase tracking-widest text-primary">Shop by department</p>
               <h2 className="text-2xl font-bold tracking-tight">Browse Categories</h2>
@@ -411,12 +391,6 @@ export default async function HomePage() {
               </Link>
             </Button>
           </div>
-          {categoryTiles.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-border bg-card p-8 text-center">
-              <p className="font-semibold">No active categories yet</p>
-              <p className="mt-1 text-sm text-muted-foreground">Add or activate categories from the admin catalog.</p>
-            </div>
-          ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {categoryTiles.map((tile, index) => (
               <Link
@@ -424,7 +398,7 @@ export default async function HomePage() {
                 href={`/shop?category=${tile.category.slug}`}
                 className={cn('group relative min-h-[220px] overflow-hidden rounded-lg border border-border bg-card', index === 0 && 'lg:col-span-2')}
               >
-                {tile.image ? <Image src={tile.image} alt={tile.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" unoptimized /> : <ImagePending dark />}
+                {tile.image ? <Image src={tile.image} alt={tile.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" unoptimized /> : null}
                 <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-black/10" />
                 <div className="relative flex h-full flex-col justify-end p-5 text-white">
                   <span className={cn('mb-4 flex h-11 w-11 items-center justify-center rounded-md text-white', tile.color)}>
@@ -438,7 +412,6 @@ export default async function HomePage() {
               </Link>
             ))}
           </div>
-          )}
         </div>
       </section>
 
@@ -450,7 +423,7 @@ export default async function HomePage() {
       {activeRaffles.length > 0 ? (
         <section className="border-t border-border bg-muted/20 py-10">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="mb-5 flex items-start justify-between gap-4 sm:items-end">
+            <div className="mb-5 flex items-end justify-between gap-4">
               <div>
                 <p className="mb-1 text-xs font-mono uppercase tracking-widest text-primary">Extra offers</p>
                 <h2 className="text-2xl font-bold tracking-tight">Live Raffles</h2>
