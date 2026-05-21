@@ -1,14 +1,12 @@
 import Link from 'next/link'
-import Image from 'next/image'
 import { ArrowLeft } from 'lucide-react'
+import { BrandMark } from '@/components/layout/brand-mark'
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <header className="px-6 py-4 flex items-center justify-between border-b border-border/50">
-        <Link href="/" className="inline-flex items-center">
-          <Image src="/logo.png" alt="Val Gadgets" width={140} height={50} className="h-10 w-auto object-contain" priority />
-        </Link>
+        <BrandMark size="sm" />
         <Link
           href="/"
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"

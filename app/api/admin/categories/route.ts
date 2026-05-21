@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
 import { categories } from '@/lib/server/schema'
 import { requireAuth, apiOk, apiError } from '@/lib/server/auth-helpers'
-import { desc, sql } from 'drizzle-orm'
+import { asc, sql } from 'drizzle-orm'
 import { withCategoryDisplayImages } from '@/lib/server/category-images'
 
 export async function GET(req: NextRequest) {
@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
           or p.category_id in (select c2.id from categories c2 where c2.parent_id = ${categories.id})
         )
     )`,
-  }).from(categories).orderBy(desc(categories.sortOrder), desc(categories.createdAt))
+  }).from(categories).orderBy(asc(categories.sortOrder), asc(categories.name))
   return apiOk(await withCategoryDisplayImages(data))
 }
 

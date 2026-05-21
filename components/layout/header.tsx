@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState, useEffect, useRef } from 'react'
 import {
@@ -19,6 +18,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { useCart } from '@/contexts/cart-context'
 import { useWishlist } from '@/contexts/wishlist-context'
 import { cn } from '@/lib/utils'
+import { BrandMark } from '@/components/layout/brand-mark'
 
 const NAV_LINKS = [
   { label: 'Shop', href: '/shop' },
@@ -69,11 +69,9 @@ export function Header() {
       {/* Top bar */}
       <div className="border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-4 h-16">
+          <div className="flex h-16 items-center gap-2 sm:gap-4">
             {/* Logo */}
-            <Link href="/" className="flex items-center shrink-0">
-              <Image src="/logo.png" alt="Val Gadgets" width={160} height={56} className="h-12 w-auto object-contain" priority />
-            </Link>
+            <BrandMark className="max-w-[170px] shrink-0 sm:max-w-[210px]" />
 
             {/* Search bar — center, prominent */}
             <form
@@ -99,7 +97,7 @@ export function Header() {
             </form>
 
             {/* Right actions */}
-            <div className="flex items-center gap-1 shrink-0 ml-auto sm:ml-0">
+            <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:ml-0 sm:gap-1">
               {/* Mobile search */}
               <Link href="/shop" aria-label="Search" className="sm:hidden">
                 <Button variant="ghost" size="icon">
@@ -107,7 +105,7 @@ export function Header() {
                 </Button>
               </Link>
 
-              <Link href="/wishlist" aria-label={`Wishlist (${wishlistCount} items)`} className="relative">
+              <Link href="/wishlist" aria-label={`Wishlist (${wishlistCount} items)`} className="relative hidden min-[380px]:block">
                 <Button variant="ghost" size="icon">
                   <Heart className="w-4 h-4" />
                   {wishlistCount > 0 && (

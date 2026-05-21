@@ -36,6 +36,33 @@ function getDisplayImage(category: Category) {
   return category.displayImage ?? (category.image && !category.image.includes('source.unsplash.com') ? category.image : null)
 }
 
+function sortCategories(categories: Category[]) {
+  const byParent = new Map<string, Category[]>()
+  const roots: Category[] = []
+
+  for (const category of categories) {
+    if (category.parentId) {
+      const group = byParent.get(category.parentId) ?? []
+      group.push(category)
+      byParent.set(category.parentId, group)
+    } else {
+      roots.push(category)
+    }
+  }
+
+  const sortGroup = (items: Category[]) =>
+    items.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.name.localeCompare(b.name))
+
+  const ordered: Category[] = []
+  const visit = (category: Category) => {
+    ordered.push(category)
+    for (const child of sortGroup(byParent.get(category.id) ?? [])) visit(child)
+  }
+
+  for (const root of sortGroup(roots)) visit(root)
+  return ordered
+}
+
 function toPayload(form: CategoryForm): CreateCategoryPayload {
   return {
     name: form.name.trim(),
@@ -65,12 +92,7 @@ export default function AdminCategoriesPage() {
     try {
       const result = await categoryService.getAdminAll()
       if (Array.isArray(result)) {
-        const ordered = [...result].sort((a, b) => {
-          const sortDelta = (b.sortOrder ?? 0) - (a.sortOrder ?? 0)
-          if (sortDelta !== 0) return sortDelta
-          return a.name.localeCompare(b.name)
-        })
-        setCategories(ordered)
+        setCategories(sortCategories(result as Category[]))
       }
     } finally {
       setLoading(false)
@@ -164,15 +186,13 @@ export default function AdminCategoriesPage() {
       if (editingId) {
         const updated = await categoryService.update(editingId, payload)
         setCategories(prev =>
-          prev
-            .map(category => (category.id === editingId ? { ...category, ...(updated as Category) } : category))
-            .sort((a, b) => (b.sortOrder ?? 0) - (a.sortOrder ?? 0) || a.name.localeCompare(b.name))
+          sortCategories(prev.map(category => (category.id === editingId ? { ...category, ...(updated as Category) } : category)))
         )
         toast.success('Category updated')
       } else {
         const created = await categoryService.create(payload)
         setCategories(prev =>
-          [...prev, created as Category].sort((a, b) => (b.sortOrder ?? 0) - (a.sortOrder ?? 0) || a.name.localeCompare(b.name))
+          sortCategories([...prev, created as Category])
         )
         toast.success('Category created')
       }
@@ -208,7 +228,7 @@ export default function AdminCategoriesPage() {
 
     const next = reordered.map((category, position, list) => ({
       ...category,
-      sortOrder: list.length - position,
+      sortOrder: position + 1,
     }))
 
     setCategories(next)
@@ -272,7 +292,7 @@ export default function AdminCategoriesPage() {
                   .filter(category => category.id !== editingId)
                   .map(category => (
                     <option key={category.id} value={category.id}>
-                      {category.name}
+                      {category.parentId ? `- ${category.name}` : category.name}
                     </option>
                   ))}
               </select>

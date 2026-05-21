@@ -3,7 +3,7 @@
 import { useEffect, use, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { ChevronRight, Heart, Minus, Plus, ShoppingCart, Star, Truck, RotateCcw, Shield, Share2, MessageSquare } from 'lucide-react'
+import { ChevronRight, Heart, ImageIcon, Minus, Plus, ShoppingCart, Star, Truck, RotateCcw, Shield, Share2, MessageSquare } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
@@ -37,6 +37,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
   const { user } = useAuth()
   const [qty, setQty] = useState(1)
   const [activeImg, setActiveImg] = useState(0)
+  const [imageFailed, setImageFailed] = useState(false)
 
   useEffect(() => {
     let mounted = true
@@ -50,6 +51,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
         if (!mounted) return
 
         setProduct(found)
+        setActiveImg(0)
+        setImageFailed(false)
 
         // Load variants
         try {
@@ -117,6 +120,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
 
   const isWishlisted = has(product.id)
   const effectivePrice = selectedVariant?.price ?? product.price
+  const usableImages = product.images.filter(src => src && !src.includes('source.unsplash.com'))
+  const activeImage = usableImages[activeImg] ?? usableImages[0]
   const featureSpecs = (product.specs ?? []).slice(0, 4)
   const detailSpecs = [
     ...(product.specs ?? []),
@@ -158,22 +163,30 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
       <div className="grid gap-8 md:grid-cols-2 lg:gap-16">
         {/* Images */}
         <div className="flex flex-col gap-3">
-          <div className="relative aspect-square rounded-xl overflow-hidden bg-surface">
-            <Image
-              src={product.images[activeImg] ?? product.images[0]}
-              alt={product.name}
-              fill
-              className="object-cover"
-              priority
-              unoptimized
-            />
+          <div className="relative aspect-square overflow-hidden rounded-lg bg-muted">
+            {activeImage && !imageFailed ? (
+              <Image
+                src={activeImage}
+                alt={product.name}
+                fill
+                className="object-cover"
+                priority
+                unoptimized
+                onError={() => setImageFailed(true)}
+              />
+            ) : (
+              <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-muted-foreground">
+                <ImageIcon className="h-12 w-12 opacity-45" />
+                <span className="text-sm font-medium">Image pending</span>
+              </div>
+            )}
           </div>
-          {product.images.length > 1 && (
+          {usableImages.length > 1 && (
             <div className="flex gap-2 overflow-x-auto pb-1">
-              {product.images.map((img, i) => (
+              {usableImages.map((img, i) => (
                 <button
                   key={i}
-                  onClick={() => setActiveImg(i)}
+                  onClick={() => { setActiveImg(i); setImageFailed(false) }}
                   className={cn(
                     'h-16 w-16 shrink-0 rounded-md overflow-hidden border-2 transition-all',
                     i === activeImg ? 'border-primary' : 'border-transparent hover:border-border'
