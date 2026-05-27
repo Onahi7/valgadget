@@ -136,11 +136,11 @@ export function ProductCard({ product, className }: ProductCardProps) {
         <div className="mt-auto flex flex-col gap-2 pt-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
             <span className="block break-words text-sm font-bold leading-tight text-foreground sm:text-base">
-              NGN {product.price.toLocaleString()}
+              ₦{product.price.toLocaleString()}
             </span>
             {product.comparePrice && (
               <span className="block text-xs text-muted-foreground line-through">
-                NGN {product.comparePrice.toLocaleString()}
+                ₦{product.comparePrice.toLocaleString()}
               </span>
             )}
           </div>

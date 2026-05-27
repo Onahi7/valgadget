@@ -20,8 +20,10 @@ export async function GET(
     .limit(1)
 
   if (!order) return apiError('Order not found.', 404)
+
+  const { idempotencyKey, ...rest } = order
   return apiOk({
-    ...order,
+    ...rest,
     subtotal: Number(order.subtotal),
     discount: Number(order.discount),
     shipping: Number(order.shipping),

@@ -158,8 +158,8 @@ export default function AdminProductsPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 font-bold">
-                      NGN {p.price.toLocaleString()}
-                      {p.comparePrice && <span className="text-xs text-muted-foreground line-through ml-1">NGN {Number(p.comparePrice).toLocaleString()}</span>}
+                      ₦{p.price.toLocaleString()}
+                      {p.comparePrice && <span className="text-xs text-muted-foreground line-through ml-1">₦{Number(p.comparePrice).toLocaleString()}</span>}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">

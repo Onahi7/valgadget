@@ -139,12 +139,13 @@ export default function AccountDashboardPage() {
                 >
                   {/* Thumbnail */}
                   <div className="w-14 h-14 rounded-lg bg-muted overflow-hidden shrink-0">
-                    {order.items[0]?.product?.images?.[0] ? (
+                    {order.items[0]?.image ? (
                       <Image
-                        src={order.items[0].product.images[0]}
-                        alt={order.items[0].product.name}
+                        src={order.items[0].image}
+                        alt={order.items[0].name}
                         width={56} height={56}
                         className="object-cover w-full h-full"
+                        unoptimized
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
@@ -157,7 +158,7 @@ export default function AccountDashboardPage() {
                   <div className="flex-1 min-w-0">
                     <p className="font-mono text-xs text-muted-foreground">{order.reference}</p>
                     <p className="font-semibold text-sm truncate">
-                      {order.items[0]?.product?.name}
+                      {order.items[0]?.name}
                       {order.items.length > 1 && <span className="text-muted-foreground"> +{order.items.length - 1}</span>}
                     </p>
                     <p className="text-xs text-muted-foreground">

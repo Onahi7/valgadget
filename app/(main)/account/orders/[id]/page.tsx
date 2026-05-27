@@ -103,22 +103,26 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
         <div className="bg-card border border-border rounded-xl p-6 mb-6">
           <h2 className="font-bold text-sm mb-4 flex items-center gap-2"><Package className="w-4 h-4 text-primary" /> Items ({order.items.length})</h2>
           <div className="flex flex-col gap-4">
-            {order.items.map(item => (
-              <div key={item.id} className="flex gap-4 items-start">
+            {order.items.map((item, idx) => (
+              <div key={idx} className="flex gap-4 items-start">
                 <div className="w-16 h-16 rounded-lg overflow-hidden bg-surface border border-border shrink-0">
-                  <Image src={item.product.images[0]} alt={item.product.name} width={64} height={64} className="object-cover w-full h-full" unoptimized />
+                  {item.image ? (
+                    <Image src={item.image} alt={item.name} width={64} height={64} className="object-cover w-full h-full" unoptimized />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-muted text-muted-foreground text-[10px]">No img</div>
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <Link href={`/products/${item.product.slug}`} className="font-semibold text-sm hover:text-primary transition-colors line-clamp-1">{item.product.name}</Link>
-                  <p className="text-xs text-muted-foreground mt-0.5">Qty: {item.quantity} × ₦{item.unitPrice.toLocaleString()}</p>
+                  <p className="font-semibold text-sm line-clamp-1">{item.name}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Qty: {item.qty} × ₦{item.price.toLocaleString()}</p>
                 </div>
-                <span className="font-bold text-sm shrink-0">₦{item.totalPrice.toLocaleString()}</span>
+                <span className="font-bold text-sm shrink-0">₦{(item.price * item.qty).toLocaleString()}</span>
               </div>
             ))}
           </div>
           <Separator className="my-4" />
           <div className="flex flex-col gap-2 text-sm">
-            {[['Subtotal', order.subtotal], ['Shipping', order.shippingCost], ['Tax', order.tax], ['Discount', -order.discount]].map(([label, val]) => (
+            {[['Subtotal', order.subtotal], ['Shipping', order.shipping], ['Tax', order.tax], ['Discount', -order.discount]].map(([label, val]) => (
               Number(val) !== 0 && (
                 <div key={String(label)} className="flex justify-between">
                   <span className="text-muted-foreground">{label}</span>

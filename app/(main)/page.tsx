@@ -363,7 +363,7 @@ export default async function HomePage() {
                   <div className="relative z-10 max-w-[60%]">
                     <p className="text-xs font-mono uppercase tracking-widest text-primary">Featured</p>
                     <h2 className="mt-1 line-clamp-2 text-lg font-bold">{product.name}</h2>
-                    <p className="mt-2 text-sm font-semibold">NGN {product.price.toLocaleString()}</p>
+                    <p className="mt-2 text-sm font-semibold">₦{product.price.toLocaleString()}</p>
                   </div>
                   {product.images[0] ? (
                     <Image
@@ -464,7 +464,7 @@ export default async function HomePage() {
                   <div className="p-4">
                     <Badge className="mb-2 border-primary/20 bg-primary/10 text-primary">Live</Badge>
                     <h3 className="line-clamp-1 font-semibold">{raffle.title}</h3>
-                    <p className="mt-1 text-sm text-muted-foreground">Ticket: NGN {raffle.ticketPrice.toLocaleString()}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">Ticket: ₦{raffle.ticketPrice.toLocaleString()}</p>
                   </div>
                 </Link>
               ))}

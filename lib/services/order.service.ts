@@ -25,20 +25,12 @@ export interface Address {
 }
 
 export interface OrderItem {
-  id: string
   productId: string
-  product: {
-    id: string
-    name: string
-    slug: string
-    images: string[]
-    price: number
-    sku: string
-  }
-  quantity: number
-  unitPrice: number
-  totalPrice: number
-  variant?: string
+  name: string
+  sku: string
+  price: number
+  qty: number
+  image?: string
 }
 
 export interface Order {
@@ -48,7 +40,7 @@ export interface Order {
   user?: { id: string; name: string; email: string }
   items: OrderItem[]
   subtotal: number
-  shippingCost: number
+  shipping: number
   tax: number
   discount: number
   total: number
@@ -58,10 +50,10 @@ export interface Order {
   shippingAddress: Address
   trackingNumber?: string
   trackingUrl?: string
+  paymentRef?: string
   couponCode?: string
   affiliateCode?: string
   notes?: string
-  adminNotes?: string
   createdAt: string
   updatedAt: string
 }

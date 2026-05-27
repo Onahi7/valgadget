@@ -33,7 +33,7 @@ export default function OrdersPage() {
 
   const filtered = orders.filter(o =>
     o.reference.toLowerCase().includes(search.toLowerCase()) ||
-    o.items.some(i => i.product.name.toLowerCase().includes(search.toLowerCase()))
+    o.items.some(i => i.name.toLowerCase().includes(search.toLowerCase()))
   )
 
   return (
@@ -78,9 +78,13 @@ export default function OrdersPage() {
               >
                 {/* Thumbnail grid */}
                 <div className="flex gap-2 shrink-0">
-                  {order.items.slice(0, 3).map(item => (
-                    <div key={item.id} className="w-14 h-14 rounded-lg overflow-hidden bg-surface border border-border">
-                      <Image src={item.product.images[0]} alt={item.product.name} width={56} height={56} className="object-cover w-full h-full" unoptimized />
+                  {order.items.slice(0, 3).map((item, idx) => (
+                    <div key={idx} className="w-14 h-14 rounded-lg overflow-hidden bg-surface border border-border">
+                      {item.image ? (
+                        <Image src={item.image} alt={item.name} width={56} height={56} className="object-cover w-full h-full" unoptimized />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-muted-foreground text-[10px]">No img</div>
+                      )}
                     </div>
                   ))}
                   {order.items.length > 3 && (
@@ -103,7 +107,7 @@ export default function OrdersPage() {
                     </Badge>
                   </div>
                   <p className="text-sm text-muted-foreground mt-2 truncate">
-                    {order.items.map(i => i.product.name).join(', ')}
+                    {order.items.map(i => i.name).join(', ')}
                   </p>
                   <div className="flex items-center justify-between mt-3">
                     <span className="font-bold text-foreground">₦{order.total.toLocaleString()}</span>

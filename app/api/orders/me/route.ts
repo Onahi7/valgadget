@@ -42,8 +42,10 @@ export async function GET(req: NextRequest) {
 }
 
 function numericOrder(o: typeof orders.$inferSelect) {
+  // Exclude internal fields from customer-facing response
+  const { idempotencyKey, ...rest } = o
   return {
-    ...o,
+    ...rest,
     subtotal:  Number(o.subtotal),
     discount:  Number(o.discount),
     shipping:  Number(o.shipping),

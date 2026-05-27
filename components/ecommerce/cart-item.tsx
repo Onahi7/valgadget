@@ -52,7 +52,7 @@ export function CartItem({ item }: CartItemProps) {
           </div>
           <div className="flex items-center justify-between gap-3 sm:justify-end">
             <span className="break-words text-sm font-bold">
-              NGN {(item.product.price * item.quantity).toLocaleString()}
+              ₦{(item.product.price * item.quantity).toLocaleString()}
             </span>
             <Button
               variant="ghost"

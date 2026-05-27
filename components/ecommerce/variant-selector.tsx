@@ -127,7 +127,7 @@ export function VariantSelector({ variants, selectedVariant, onSelect, basePrice
             <span className="text-sm text-muted-foreground">SKU: {selectedVariant.sku}</span>
             {selectedVariant.price && selectedVariant.price !== basePrice && (
               <span className="text-lg font-bold text-primary">
-                NGN {selectedVariant.price.toLocaleString()}
+                ₦{selectedVariant.price.toLocaleString()}
               </span>
             )}
           </div>
