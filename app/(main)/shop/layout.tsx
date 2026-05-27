@@ -1,11 +1,12 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Shop',
-  description: 'Browse our full collection of phones, laptops, power banks, earbuds, solar inverters & accessories. Nationwide delivery across Nigeria.',
+  title: 'Shop All Products',
+  description: 'Browse our complete collection of phones, laptops, power banks, solar inverters, earbuds, smartwatches, and tech accessories. Free shipping on orders over ₦500,000. Nationwide delivery across Nigeria.',
   openGraph: {
-    title: 'Shop — Val Gadgets',
-    description: 'Browse our full collection of premium gadgets. Nationwide delivery across Nigeria.',
+    title: 'Shop All Products | Val Gadgets',
+    description: 'Browse our complete collection of phones, laptops, power banks, solar inverters, earbuds, smartwatches, and tech accessories.',
+    type: 'website',
   },
 }
 

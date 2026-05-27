@@ -49,7 +49,7 @@ export function Footer() {
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
             <Link href="/" className="flex items-center">
-              <Image src="/logo.png" alt="Val Gadgets" width={140} height={50} className="h-10 w-auto object-contain" />
+              <Image src="/logo.png" alt="Val Gadgets" width={160} height={56} className="h-12 w-auto object-contain" />
             </Link>
             <p className="mt-4 text-sm text-secondary-foreground/60 leading-relaxed max-w-[200px]">
               Your number 1 gadget plug. Solution to every gadget need - with nationwide delivery across Nigeria.

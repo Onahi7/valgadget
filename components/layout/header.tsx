@@ -71,7 +71,7 @@ export function Header() {
           <div className="flex items-center gap-4 h-16">
             {/* Logo */}
             <Link href="/" className="flex items-center shrink-0">
-              <Image src="/logo.png" alt="Val Gadgets" width={160} height={56} className="h-10 w-auto object-contain sm:h-11" priority />
+              <Image src="/logo.png" alt="Val Gadgets" width={180} height={63} className="h-12 w-auto object-contain sm:h-14" priority />
             </Link>
 
             {/* Search bar - center, prominent */}

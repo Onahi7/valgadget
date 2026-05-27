@@ -1,11 +1,12 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Categories',
-  description: 'Browse gadgets by category — phones, laptops, power banks, audio, smart home, accessories, and more.',
+  title: 'Product Categories',
+  description: 'Browse all product categories at Val Gadgets. Find phones, laptops, power banks, solar inverters, earbuds, smartwatches, speakers, monitors, and more tech accessories.',
   openGraph: {
-    title: 'Categories — Val Gadgets',
-    description: 'Browse gadgets by category — phones, laptops, power banks, audio, smart home, accessories.',
+    title: 'Product Categories | Val Gadgets',
+    description: 'Browse all product categories at Val Gadgets. Find phones, laptops, power banks, solar inverters, and more.',
+    type: 'website',
   },
 }
 

@@ -47,7 +47,7 @@ export async function withCategoryDisplayImages<T extends CategoryImageRow>(cate
     return {
       ...category,
       displayImage,
-      imageStatus: displayImage ? 'ready' : 'needs_image',
+      imageStatus: displayImage ? 'ready' as const : 'needs_image' as const,
     }
   })
 }
