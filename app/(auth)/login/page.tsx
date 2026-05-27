@@ -107,7 +107,7 @@ function LoginPageContent() {
               <Input
                 id="password"
                 type={showPw ? 'text' : 'password'}
-                placeholder="••••••••"
+                placeholder="Password"
                 autoComplete="current-password"
                 aria-invalid={!!errors.password}
                 className="pr-10"
@@ -115,7 +115,7 @@ function LoginPageContent() {
               />
               <button
                 type="button"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                className="absolute right-1 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                 onClick={() => setShowPw(v => !v)}
                 aria-label={showPw ? 'Hide password' : 'Show password'}
               >

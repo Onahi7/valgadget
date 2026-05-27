@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useEffect, useRef, useState } from 'react'
+import { use, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Save, Loader2, ImagePlus, X, Star } from 'lucide-react'
@@ -16,6 +16,7 @@ import { ImageCropModal } from '@/components/admin/image-crop-modal'
 import { SpecsEditor, type ProductSpec } from '@/components/admin/specs-editor'
 import { CategorySelect } from '@/components/admin/category-select'
 import { ConditionSelect, getConditionFromTags, updateConditionInTags } from '@/components/admin/condition-select'
+import { getSpecTemplateForCategory } from '@/lib/product-spec-templates'
 
 function isTrustedImage(url: string) {
   return !url.includes('source.unsplash.com')
@@ -32,6 +33,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [deletingImageUrl, setDeletingImageUrl] = useState<string | null>(null)
+  const [settingMainImageUrl, setSettingMainImageUrl] = useState<string | null>(null)
   const [specs, setSpecs] = useState<ProductSpec[]>([])
 
   const [cropModalOpen, setCropModalOpen] = useState(false)
@@ -74,6 +76,15 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
 
   const set = (field: string, value: string | boolean) =>
     setForm(prev => ({ ...prev, [field]: value }))
+
+  const selectedCategory = useMemo(
+    () => categories.find(category => category.id === form.categoryId),
+    [categories, form.categoryId],
+  )
+  const specTemplate = useMemo(
+    () => getSpecTemplateForCategory(selectedCategory, categories),
+    [categories, selectedCategory],
+  )
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -171,6 +182,25 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     }
   }
 
+  const handleSetMainImage = async (imageUrl: string) => {
+    const currentImages = ((product?.images ?? []) as string[]).filter(Boolean)
+    if (currentImages[0] === imageUrl) return
+
+    const nextImages = [imageUrl, ...currentImages.filter(url => url !== imageUrl)]
+    setSettingMainImageUrl(imageUrl)
+
+    try {
+      await productService.update(id, { images: nextImages })
+      setProduct((prev: any) => prev ? { ...prev, images: nextImages } : prev)
+      toast.success('Main product image updated')
+    } catch (err) {
+      const e = err as ApiError
+      toast.error(e.message ?? 'Failed to set main image')
+    } finally {
+      setSettingMainImageUrl(null)
+    }
+  }
+
   if (loading) return <div className="py-20 text-center text-sm text-muted-foreground">Loading…</div>
   if (!product) return <div className="py-20 text-center text-sm text-muted-foreground">Product not found</div>
 
@@ -228,7 +258,12 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                 <Label htmlFor="tags">Tags (comma-separated)</Label>
                 <Input id="tags" value={form.tags} onChange={e => set('tags', e.target.value)} placeholder="wireless, gaming, rgb" />
               </div>
-              <SpecsEditor value={specs} onChange={setSpecs} />
+              <SpecsEditor
+                value={specs}
+                onChange={setSpecs}
+                suggestedLabels={specTemplate.labels}
+                templateName={specTemplate.name}
+              />
             </div>
 
             <div className="bg-card border border-border rounded-lg p-5 space-y-4">
@@ -346,16 +381,16 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           )}
 
           {images.length > 0 && (
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
               {images.map((url: string, idx: number) => (
-                <div key={idx} className="relative group rounded-lg overflow-hidden border border-border aspect-square bg-muted">
+                <div key={idx} className="relative group aspect-square overflow-hidden rounded-lg border border-border bg-white">
                   {idx === 0 && (
                     <span className="absolute top-1 left-1 z-10 bg-primary text-primary-foreground text-[9px] font-semibold px-1.5 py-0.5 rounded flex items-center gap-0.5">
                       <Star className="w-2 h-2" /> Main
                     </span>
                   )}
                   {isTrustedImage(url) ? (
-                    <img src={url} alt={`Product image ${idx + 1}`} className="w-full h-full object-cover" />
+                    <img src={url} alt={`Product image ${idx + 1}`} className="h-full w-full object-contain p-2" />
                   ) : (
                     <div className="flex h-full w-full flex-col items-center justify-center gap-1 px-3 text-center">
                       <ImagePlus className="h-6 w-6 text-muted-foreground/40" />
@@ -363,9 +398,19 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                       <span className="text-[10px] leading-tight text-muted-foreground/70">Old seed URL can be deleted and replaced.</span>
                     </div>
                   )}
+                  {idx !== 0 && isTrustedImage(url) && (
+                    <button
+                      type="button"
+                      disabled={uploading || !!deletingImageUrl || settingMainImageUrl === url}
+                      onClick={() => handleSetMainImage(url)}
+                      className="absolute bottom-1 left-1 right-1 rounded bg-background/95 px-2 py-1 text-[10px] font-semibold text-foreground opacity-0 shadow-sm transition-opacity hover:bg-background group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-100"
+                    >
+                      {settingMainImageUrl === url ? 'Setting...' : 'Set Main'}
+                    </button>
+                  )}
                   <button
                     type="button"
-                    disabled={deletingImageUrl === url || uploading}
+                    disabled={deletingImageUrl === url || uploading || !!settingMainImageUrl}
                     onClick={() => handleDeleteImage(url)}
                     className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-100 disabled:cursor-not-allowed"
                   >

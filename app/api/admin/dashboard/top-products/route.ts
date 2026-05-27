@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
       item->>'productId' as product_id,
       sum((item->>'qty')::int) as total_sold,
       sum(((item->>'price')::numeric) * (item->>'qty')::int) as revenue
-    from ${orders}, jsonb_array_elements(${orders.items}) as item
+    from ${orders}, jsonb_array_elements(${orders.items}::jsonb) as item
     where ${orders.paymentStatus} = 'paid'
     group by item->>'productId'
     order by total_sold desc

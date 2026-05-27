@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Plus, Loader2, Upload, X, ImagePlus } from 'lucide-react'
@@ -13,6 +13,7 @@ import { ConditionSelect, updateConditionInTags } from '@/components/admin/condi
 import { ImageCropModal } from '@/components/admin/image-crop-modal'
 import { productService } from '@/lib/services/product.service'
 import { categoryService, type Category } from '@/lib/services/category.service'
+import { getSpecTemplateForCategory } from '@/lib/product-spec-templates'
 import { toast } from 'sonner'
 import type { ApiError } from '@/lib/api-client'
 
@@ -39,6 +40,15 @@ export default function NewProductPage() {
 
   const set = (field: string, value: string | boolean) =>
     setForm(prev => ({ ...prev, [field]: value }))
+
+  const selectedCategory = useMemo(
+    () => categories.find(category => category.id === form.categoryId),
+    [categories, form.categoryId],
+  )
+  const specTemplate = useMemo(
+    () => getSpecTemplateForCategory(selectedCategory, categories),
+    [categories, selectedCategory],
+  )
 
   const handleImagePick = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
@@ -183,7 +193,12 @@ export default function NewProductPage() {
               <Label htmlFor="tags">Tags (comma-separated)</Label>
               <Input id="tags" value={form.tags} onChange={e => set('tags', e.target.value)} placeholder="wireless, gaming, rgb" />
             </div>
-            <SpecsEditor value={specs} onChange={setSpecs} />
+            <SpecsEditor
+              value={specs}
+              onChange={setSpecs}
+              suggestedLabels={specTemplate.labels}
+              templateName={specTemplate.name}
+            />
           </div>
 
           <div className="bg-card border border-border rounded-lg p-5 space-y-4">
@@ -249,7 +264,7 @@ export default function NewProductPage() {
 
           <div className="bg-card border border-border rounded-lg p-5 space-y-4">
             <h2 className="font-semibold text-sm">Product Images</h2>
-            <p className="text-xs text-muted-foreground">Images are auto-cropped to 800×800px WebP</p>
+            <p className="text-xs text-muted-foreground">First uploaded image becomes the main product image. Other images become the gallery.</p>
             <div className="flex items-center gap-3">
               <input
                 id="new-product-images"
@@ -272,13 +287,18 @@ export default function NewProductPage() {
             {croppedBlobs.length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs text-muted-foreground">{croppedBlobs.length} cropped image(s) ready</p>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {croppedBlobs.map((item, idx) => (
-                    <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border border-border bg-muted group">
+                    <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border border-border bg-white group">
+                      {idx === 0 && (
+                        <span className="absolute left-1 top-1 z-10 rounded bg-primary px-1.5 py-0.5 text-[9px] font-semibold text-primary-foreground">
+                          Main
+                        </span>
+                      )}
                       <img
                         src={URL.createObjectURL(item.blob)}
                         alt={`Preview ${idx + 1}`}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-contain p-2"
                       />
                       <button
                         type="button"

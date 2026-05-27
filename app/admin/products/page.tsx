@@ -141,7 +141,7 @@ export default function AdminProductsPage() {
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-lg overflow-hidden bg-surface border border-border shrink-0">
                           {displayImage ? (
-                            <Image src={displayImage} alt={p.name} width={40} height={40} className="object-cover w-full h-full" unoptimized />
+                            <Image src={displayImage} alt={p.name} width={40} height={40} className="h-full w-full object-contain bg-white p-1" unoptimized />
                           ) : (
                             <div className="flex h-full w-full items-center justify-center px-1 text-center text-[9px] leading-tight text-muted-foreground">Needs image</div>
                           )}

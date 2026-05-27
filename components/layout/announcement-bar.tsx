@@ -4,11 +4,11 @@ import { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
 
 const ANNOUNCEMENTS = [
-  '🚚 Free shipping on orders over ₦500,000 — Nationwide delivery to all 37 states!',
-  '🎟 Live Raffles active now — Win an iPhone 15 Pro Max for just ₦2,500!',
-  '⚡ Flash deals updated daily — check the shop for today\'s best offers',
-  '🔒 100% secure checkout — Pay via card, bank transfer, or crypto',
-  '📦 Same-day dispatch on orders placed before 2PM on weekdays',
+  'Free shipping on orders over NGN 500,000 - nationwide delivery across Nigeria.',
+  'Live raffles are active now - win premium gadgets from low ticket prices.',
+  'Flash deals are updated daily - check the shop for today\'s best offers.',
+  'Secure checkout - pay with card, bank transfer, or USSD via Paystack.',
+  'Same-day dispatch on orders placed before 2PM on weekdays.',
 ]
 
 export function AnnouncementBar() {
@@ -29,14 +29,14 @@ export function AnnouncementBar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex items-center justify-center gap-3">
         <span
           key={current}
-          className="animate-fade-in text-center leading-relaxed pr-6"
+          className="animate-fade-in px-8 text-center leading-relaxed"
         >
           {ANNOUNCEMENTS[current]}
         </span>
         <button
           onClick={() => setVisible(false)}
           aria-label="Dismiss announcement"
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-secondary-foreground/50 hover:text-secondary-foreground transition-colors"
+          className="absolute right-1 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-secondary-foreground/50 transition-colors hover:bg-secondary-foreground/10 hover:text-secondary-foreground sm:right-3"
         >
           <X className="w-3.5 h-3.5" />
         </button>

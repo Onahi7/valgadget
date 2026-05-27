@@ -22,9 +22,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       </main>
       <footer className="px-6 py-4 text-center text-xs text-muted-foreground border-t border-border/50">
         &copy; {new Date().getFullYear()} Val Gadgets. All rights reserved.
-        {' · '}
+        {' | '}
         <Link href="/legal/terms" className="hover:text-foreground transition-colors">Terms</Link>
-        {' · '}
+        {' | '}
         <Link href="/legal/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
       </footer>
     </div>

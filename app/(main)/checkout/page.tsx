@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import Link from 'next/link'
 import {
-  CreditCard, Truck, CheckCircle, Bitcoin, Wallet, Copy, Send, Loader2, MapPin, Plus, BookmarkCheck, Mail,
+  CreditCard, Truck, CheckCircle, Bitcoin, Copy, Send, Loader2, MapPin, Plus, BookmarkCheck, Mail,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -129,7 +129,7 @@ function CheckoutPageContent() {
   const watchedState = watch('state')
   const watchedSaveAddress = watch('saveAddress')
   const isCrypto = false
-  const step = selectedPayment ? 'payment' : 'address'
+  const step = watchedState || selectedAddressId ? 'payment' : 'address'
 
   // Get LGAs for selected state
   const availableLGAs = watchedState ? getLGAsForState(watchedState) : []
@@ -230,7 +230,7 @@ function CheckoutPageContent() {
           guestEmail: user ? undefined : data.guestEmail,
         })
         if (intent.redirectUrl) {
-          toast.success('Redirecting to Paystack…')
+          toast.success('Redirecting to Paystack...')
           window.location.href = intent.redirectUrl
           return
         }
@@ -252,6 +252,8 @@ function CheckoutPageContent() {
     const firstMessage = Object.values(errors).find((e) => e?.message)?.message
     toast.error(firstMessage ?? 'Please complete the required checkout fields.')
   }
+
+  const checkoutReturnUrl = `/checkout${affiliateCode ? `?ref=${affiliateCode}` : ''}`
 
   const submitCryptoHash = async () => {
     if (!cryptoTxHash.trim() || !createdOrderId) return
@@ -279,7 +281,7 @@ function CheckoutPageContent() {
           <Bitcoin className="w-12 h-12 text-amber-500 mx-auto" />
           <div>
             <h2 className="text-2xl font-bold mb-1">Send {coinLabel}</h2>
-            <p className="text-muted-foreground text-sm">Order <span className="font-mono">{createdOrderRef}</span> · ₦{total.toLocaleString()}</p>
+            <p className="text-muted-foreground text-sm">Order <span className="font-mono">{createdOrderRef}</span> | ₦{total.toLocaleString()}</p>
           </div>
           <div className="bg-muted rounded-xl p-4 text-left space-y-2">
             <p className="text-xs text-muted-foreground uppercase font-semibold tracking-wide">Wallet Address</p>
@@ -299,7 +301,7 @@ function CheckoutPageContent() {
           <div className="space-y-3 text-left">
             <Label>Transaction Hash (TX ID)</Label>
             <Input
-              placeholder="0x… or txid…"
+              placeholder="0x... or txid..."
               value={cryptoTxHash}
               onChange={e => setCryptoTxHash(e.target.value)}
             />
@@ -307,7 +309,7 @@ function CheckoutPageContent() {
               <Send className="w-4 h-4" /> Confirm Payment
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground">Verification takes 1–30 minutes depending on network congestion.</p>
+          <p className="text-xs text-muted-foreground">Verification takes 1-30 minutes depending on network congestion.</p>
         </div>
       </div>
     )
@@ -320,7 +322,6 @@ function CheckoutPageContent() {
       {/* Steps indicator */}
       <div className="flex items-center mb-10">
         {(['Address', 'Payment', 'Confirmation'] as const).map((label, i) => {
-          const stepKeys = ['address', 'payment', 'confirmation'] as const
           const isCompleted = i === 0 || (i === 1 && step === 'payment')
           const isCurrent = (i === 0 && step === 'address') || (i === 1 && step === 'payment')
           return (
@@ -377,7 +378,7 @@ function CheckoutPageContent() {
               </FormField>
               <div className="mt-4 text-sm text-muted-foreground">
                 Already have an account?{' '}
-                <Link href={`/login?returnUrl=/checkout${affiliateCode ? `?ref=${affiliateCode}` : ''}`} className="text-primary hover:underline">
+                <Link href={`/login?returnUrl=${encodeURIComponent(checkoutReturnUrl)}`} className="text-primary hover:underline">
                   Sign in
                 </Link>
               </div>
@@ -412,7 +413,7 @@ function CheckoutPageContent() {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold">{addr.label} {addr.isDefault && <span className="text-xs text-muted-foreground">(Default)</span>}</p>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          {addr.fullName} · {addr.line1}, {addr.city}, {addr.state} · {addr.phone}
+                          {addr.fullName} | {addr.line1}, {addr.city}, {addr.state} | {addr.phone}
                         </p>
                       </div>
                     </label>
@@ -473,7 +474,7 @@ function CheckoutPageContent() {
                         setValue('city', '') // Reset LGA when state changes
                       }}
                     >
-                      <option value="">Select state…</option>
+                      <option value="">Select state...</option>
                       {NIGERIA_STATES_LGAS.map(loc => (
                         <option key={loc.state} value={loc.state}>{loc.state}</option>
                       ))}
@@ -485,7 +486,7 @@ function CheckoutPageContent() {
                       disabled={!watchedState}
                       className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
                     >
-                      <option value="">Select LGA…</option>
+                      <option value="">Select LGA...</option>
                       {availableLGAs.map(lga => (
                         <option key={lga} value={lga}>{lga}</option>
                       ))}
@@ -581,7 +582,7 @@ function CheckoutPageContent() {
                   <p className="text-sm font-semibold text-muted-foreground">Items ({items.length})</p>
                   {items.slice(0, 3).map((item, i) => (
                     <div key={i} className="flex justify-between text-sm">
-                      <span className="truncate flex-1">{item.product.name} × {item.quantity}</span>
+                      <span className="truncate flex-1">{item.product.name} x {item.quantity}</span>
                       <span className="font-medium ml-2">₦{(item.product.price * item.quantity).toLocaleString()}</span>
                     </div>
                   ))}
@@ -618,18 +619,18 @@ function CheckoutPageContent() {
             <Button type="submit" disabled={isSubmitting || initializingPayment} size="lg" className="w-full font-semibold">
               {initializingPayment ? (
                 <span className="flex items-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin" /> Initializing Paystack…
+                  <Loader2 className="w-4 h-4 animate-spin" /> Initializing Paystack...
                 </span>
               ) : isSubmitting ? (
                 <span className="flex items-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin" /> Processing…
+                  <Loader2 className="w-4 h-4 animate-spin" /> Processing...
                 </span>
               ) : selectedPayment === 'paystack' ? (
-                `Pay ₦${orderTotal.toLocaleString()} with Paystack →`
+                `Pay ₦${orderTotal.toLocaleString()} with Paystack`
               ) : isCrypto ? (
-                `Place Order & Pay with Crypto →`
+                `Place Order & Pay with Crypto`
               ) : (
-                `Place Order — ₦${orderTotal.toLocaleString()}`
+                `Place Order - ₦${orderTotal.toLocaleString()}`
               )}
             </Button>
           </form>

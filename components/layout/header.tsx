@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useState, useEffect, useRef } from 'react'
 import {
   ShoppingCart, Heart, User, Menu, X, Search, ChevronDown,
-  LogOut, Settings, Package, LayoutDashboard,
+  LogOut, Settings, Package, LayoutDashboard, Ticket,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -23,7 +23,6 @@ import { cn } from '@/lib/utils'
 const NAV_LINKS = [
   { label: 'Shop', href: '/shop' },
   { label: 'Categories', href: '/categories' },
-  { label: 'Raffles', href: '/raffles' },
   { label: 'About', href: '/about' },
 ]
 
@@ -72,10 +71,10 @@ export function Header() {
           <div className="flex items-center gap-4 h-16">
             {/* Logo */}
             <Link href="/" className="flex items-center shrink-0">
-              <Image src="/logo.png" alt="Val Gadgets" width={160} height={56} className="h-12 w-auto object-contain" priority />
+              <Image src="/logo.png" alt="Val Gadgets" width={160} height={56} className="h-10 w-auto object-contain sm:h-11" priority />
             </Link>
 
-            {/* Search bar — center, prominent */}
+            {/* Search bar - center, prominent */}
             <form
               onSubmit={handleSearch}
               className="hidden sm:flex flex-1 max-w-2xl mx-auto"
@@ -85,7 +84,7 @@ export function Header() {
                   ref={searchRef}
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  placeholder="Search phones, laptops, accessories…"
+                  placeholder="Search phones, laptops, accessories..."
                   className="flex-1 border-0 ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none pl-5 text-sm bg-background"
                 />
                 <button
@@ -210,7 +209,8 @@ export function Header() {
               href="/raffles"
               className="px-4 py-1.5 text-sm font-medium rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center gap-1.5"
             >
-              🎟 Live Raffles
+              <Ticket className="h-3.5 w-3.5" />
+              Live Raffles
             </Link>
           </nav>
         </div>
@@ -228,7 +228,7 @@ export function Header() {
               <Input
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Search gadgets…"
+                placeholder="Search gadgets..."
                 className="flex-1 border-0 ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none pl-4 text-sm bg-background"
               />
               <button type="submit" className="bg-primary text-primary-foreground px-4 shrink-0">

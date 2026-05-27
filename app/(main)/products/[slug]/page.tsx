@@ -117,6 +117,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
 
   const isWishlisted = has(product.id)
   const effectivePrice = selectedVariant?.price ?? product.price
+  const activeImage = product.images[activeImg] ?? product.images[0] ?? '/placeholder-product.svg'
   const featureSpecs = (product.specs ?? []).slice(0, 4)
   const detailSpecs = [
     ...(product.specs ?? []),
@@ -155,15 +156,16 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
       />
 
       {/* Main grid */}
-      <div className="grid gap-8 md:grid-cols-2 lg:gap-16">
+      <div className="grid gap-8 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16">
         {/* Images */}
-        <div className="flex flex-col gap-3">
-          <div className="relative aspect-square rounded-xl overflow-hidden bg-surface">
+        <div className="flex min-w-0 flex-col gap-3">
+          <div className="relative aspect-square max-h-[min(82vh,680px)] w-full overflow-hidden rounded-xl border border-border bg-white">
             <Image
-              src={product.images[activeImg] ?? product.images[0]}
+              src={activeImage}
               alt={product.name}
               fill
-              className="object-cover"
+              sizes="(max-width: 768px) 100vw, 50vw"
+              className="object-contain p-4 sm:p-6"
               priority
               unoptimized
             />
@@ -180,7 +182,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
                   )}
                   aria-label={`View image ${i + 1}`}
                 >
-                  <Image src={img} alt="" width={64} height={64} className="object-cover w-full h-full" unoptimized />
+                  <Image src={img} alt="" width={64} height={64} className="h-full w-full object-contain bg-white p-1" unoptimized />
                 </button>
               ))}
             </div>
@@ -188,14 +190,14 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
         </div>
 
         {/* Details */}
-        <div className="flex flex-col gap-5">
+        <div className="flex min-w-0 flex-col gap-5">
           {product.category && (
             <Link href={`/categories/${product.category.slug}`} className="text-xs font-mono uppercase tracking-widest text-primary hover:underline">
               {product.category.name}
             </Link>
           )}
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold leading-tight text-balance">{product.name}</h1>
+            <h1 className="text-2xl md:text-3xl font-bold leading-tight text-balance break-words">{product.name}</h1>
             <div className="mt-3 flex flex-wrap items-center gap-2 sm:gap-3">
               <div className="flex items-center gap-0.5" aria-label={`Rating: ${product.rating} out of 5`}>
                 {Array.from({ length: 5 }).map((_, i) => (
@@ -215,14 +217,14 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
             </p>
           )}
 
-          <p className="text-muted-foreground leading-relaxed">{product.description}</p>
+          <p className="break-words text-muted-foreground leading-relaxed">{product.description}</p>
 
           {featureSpecs.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {featureSpecs.map((spec) => (
                 <div key={`${spec.label}-${spec.value}`} className="rounded-lg border border-border bg-card px-3 py-3">
                   <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{spec.label}</p>
-                  <p className="mt-1 text-sm font-medium leading-snug">{spec.value}</p>
+                  <p className="mt-1 break-words text-sm font-medium leading-snug">{spec.value}</p>
                 </div>
               ))}
             </div>
@@ -322,16 +324,16 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
             <TabsTrigger value="specs">Specifications</TabsTrigger>
             <TabsTrigger value="reviews">Reviews ({product.reviewCount})</TabsTrigger>
           </TabsList>
-          <TabsContent value="description" className="text-muted-foreground leading-relaxed">
+          <TabsContent value="description" className="break-words text-muted-foreground leading-relaxed">
             <p>{product.description}</p>
             {product.shortDescription && <p className="mt-4">{product.shortDescription}</p>}
           </TabsContent>
           <TabsContent value="specs">
             <div className="grid sm:grid-cols-2 gap-px bg-border rounded-lg overflow-hidden text-sm">
               {detailSpecs.map(({ label, value }) => (
-                <div key={`${label}-${value}`} className="bg-card flex flex-col gap-1 px-4 py-3 sm:flex-row sm:gap-4">
+                <div key={`${label}-${value}`} className="bg-card flex min-w-0 flex-col gap-1 px-4 py-3 sm:flex-row sm:gap-4">
                   <span className="text-muted-foreground shrink-0 sm:w-28">{label}</span>
-                  <span className="font-medium">{value}</span>
+                  <span className="break-words font-medium">{value}</span>
                 </div>
               ))}
             </div>

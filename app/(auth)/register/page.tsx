@@ -28,6 +28,16 @@ const schema = z.object({
 })
 type FormValues = z.infer<typeof schema>
 
+function getSafeReturnUrl(value: string) {
+  try {
+    const decoded = decodeURIComponent(value)
+    if (!decoded.startsWith('/') || decoded.startsWith('//')) return '/'
+    return decoded
+  } catch {
+    return '/'
+  }
+}
+
 export default function RegisterPage() {
   return (
     <Suspense fallback={<RegisterPageFallback />}>
@@ -41,6 +51,7 @@ function RegisterPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const returnUrl = searchParams.get('returnUrl') ?? '/'
+  const safeReturnUrl = getSafeReturnUrl(returnUrl)
   const [showPw, setShowPw] = useState(false)
   const [apiError, setApiError] = useState<string | null>(null)
 
@@ -58,7 +69,7 @@ function RegisterPageContent() {
       // Small delay to ensure cookie is set before navigation
       await new Promise(resolve => setTimeout(resolve, 100))
       
-      router.push(decodeURIComponent(returnUrl))
+      router.push(safeReturnUrl)
     } catch (err) {
       const e = err as ApiError
       setApiError(e.message ?? 'Registration failed. Please try again.')
@@ -106,7 +117,7 @@ function RegisterPageContent() {
               />
               <button
                 type="button"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                className="absolute right-1 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                 onClick={() => setShowPw(v => !v)}
                 aria-label={showPw ? 'Hide password' : 'Show password'}
               >
@@ -161,7 +172,7 @@ function RegisterPageContent() {
 
         <p className="text-center text-sm text-muted-foreground mt-6">
           Already have an account?{' '}
-          <Link href={`/login${returnUrl !== '/' ? `?returnUrl=${returnUrl}` : ''}`} className="text-primary font-medium hover:underline">Sign in</Link>
+          <Link href={`/login${safeReturnUrl !== '/' ? `?returnUrl=${encodeURIComponent(safeReturnUrl)}` : ''}`} className="text-primary font-medium hover:underline">Sign in</Link>
         </p>
       </div>
     </div>

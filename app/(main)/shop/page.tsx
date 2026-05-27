@@ -37,8 +37,9 @@ const PAGE_SIZE = 8
 function ShopPageInner() {
   const searchParams = useSearchParams()
   const initialCategory = searchParams.get('category')
+  const initialSearch = searchParams.get('search') ?? ''
 
-  const [search, setSearch]               = useState('')
+  const [search, setSearch]               = useState(initialSearch)
   const [selectedCategory, setSelectedCategory] = useState<string | null>(initialCategory)
   const [selectedPrice, setSelectedPrice] = useState<{ min: number; max: number } | null>(null)
   const [sort, setSort]                   = useState('popular')
@@ -62,6 +63,7 @@ function ShopPageInner() {
   // Sync with URL param changes
   useEffect(() => {
     setSelectedCategory(searchParams.get('category'))
+    setSearch(searchParams.get('search') ?? '')
     setPage(1)
   }, [searchParams])
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { Plus, Trash2 } from 'lucide-react'
+import { ListPlus, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -10,10 +10,14 @@ export type ProductSpec = { label: string; value: string }
 type Props = {
   value: ProductSpec[]
   onChange: (next: ProductSpec[]) => void
+  suggestedLabels?: string[]
+  templateName?: string
 }
 
-export function SpecsEditor({ value, onChange }: Props) {
+export function SpecsEditor({ value, onChange, suggestedLabels = [], templateName }: Props) {
   const specs = value.length ? value : [{ label: '', value: '' }]
+  const existingLabels = new Set(specs.map(spec => spec.label.trim().toLowerCase()).filter(Boolean))
+  const missingSuggestedLabels = suggestedLabels.filter(label => !existingLabels.has(label.toLowerCase()))
 
   const update = (index: number, field: keyof ProductSpec, nextValue: string) => {
     const next = specs.map((spec, i) => (i === index ? { ...spec, [field]: nextValue } : spec))
@@ -29,17 +33,35 @@ export function SpecsEditor({ value, onChange }: Props) {
     onChange(next.length ? next : [{ label: '', value: '' }])
   }
 
+  const addSuggestedRows = () => {
+    const base = specs.filter(spec => spec.label.trim() || spec.value.trim())
+    onChange([
+      ...base,
+      ...missingSuggestedLabels.map(label => ({ label, value: '' })),
+    ])
+  }
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div>
           <Label>Specifications</Label>
-          <p className="mt-1 text-xs text-muted-foreground">Add structured spec rows that appear on the product page.</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {templateName ? `${templateName} rows for the product page.` : 'Add structured spec rows that appear on the product page.'}
+          </p>
         </div>
-        <Button type="button" size="sm" variant="outline" className="gap-2" onClick={addRow}>
-          <Plus className="h-3.5 w-3.5" />
-          Add Spec
-        </Button>
+        <div className="flex flex-wrap justify-end gap-2">
+          {missingSuggestedLabels.length > 0 && (
+            <Button type="button" size="sm" variant="outline" className="gap-2" onClick={addSuggestedRows}>
+              <ListPlus className="h-3.5 w-3.5" />
+              Use Template
+            </Button>
+          )}
+          <Button type="button" size="sm" variant="outline" className="gap-2" onClick={addRow}>
+            <Plus className="h-3.5 w-3.5" />
+            Add Spec
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-2">

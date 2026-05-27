@@ -21,19 +21,35 @@ export function AdminDashboardClient() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [recentOrders, setOrders] = useState<RecentOrder[]>([])
   const [topProducts, setTopProducts] = useState<TopProduct[]>([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   useEffect(() => {
-    adminService.getDashboardStats()
-      .then(setStats)
-      .catch(() => console.error('Failed to fetch dashboard stats'))
+    let mounted = true
 
-    adminService.getRecentOrders(5)
-      .then(setOrders)
-      .catch(() => console.error('Failed to fetch recent orders'))
+    Promise.all([
+      adminService.getDashboardStats(),
+      adminService.getRecentOrders(5),
+      adminService.getTopProducts(5),
+    ])
+      .then(([nextStats, nextOrders, nextTopProducts]) => {
+        if (!mounted) return
+        setStats(nextStats)
+        setOrders(nextOrders)
+        setTopProducts(nextTopProducts)
+        setLoadError(null)
+      })
+      .catch(() => {
+        if (!mounted) return
+        setLoadError('Unable to load dashboard data. Refresh or check the admin API.')
+      })
+      .finally(() => {
+        if (mounted) setLoading(false)
+      })
 
-    adminService.getTopProducts(5)
-      .then(setTopProducts)
-      .catch(() => console.error('Failed to fetch top products'))
+    return () => {
+      mounted = false
+    }
   }, [])
 
   const formatNaira = (value: number) => `NGN ${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
@@ -59,6 +75,12 @@ export function AdminDashboardClient() {
         <p className="text-sm text-muted-foreground">Store performance, recent orders, and catalog health at a glance.</p>
       </div>
 
+      {loadError && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          {loadError}
+        </div>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {statCards.map(({ label, value, sub, icon: Icon, color }) => (
           <div key={label} className="rounded-lg border border-border bg-card p-5">
@@ -67,7 +89,7 @@ export function AdminDashboardClient() {
                 <Icon className="h-5 w-5" />
               </div>
             </div>
-            <p className="font-mono text-2xl font-bold">{value}</p>
+            <p className="font-mono text-2xl font-bold">{loading ? '...' : value}</p>
             <p className="mt-0.5 text-xs text-muted-foreground">
               {label} • <span className="text-foreground/70">{sub}</span>
             </p>
@@ -92,7 +114,7 @@ export function AdminDashboardClient() {
             ].map(item => (
               <div key={item.label} className="rounded-lg bg-muted/40 p-3 text-center">
                 <div className={`mx-auto mb-2 h-2 w-2 rounded-full ${item.color}`} />
-                <p className="font-mono text-lg font-bold">{item.value ?? item.count ?? 0}</p>
+                <p className="font-mono text-lg font-bold">{loading ? '...' : item.value ?? item.count ?? 0}</p>
                 <p className="text-[10px] text-muted-foreground">{item.label}</p>
               </div>
             ))}
@@ -109,8 +131,10 @@ export function AdminDashboardClient() {
             </Button>
           </div>
           <div className="flex flex-col gap-3">
-            {topProducts.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No product data yet.</p>
+            {loading ? (
+              <p className="text-sm text-muted-foreground">Loading product signals...</p>
+            ) : topProducts.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No paid product data yet.</p>
             ) : topProducts.map((product, index) => (
               <div key={product.id} className="flex items-center gap-3">
                 <span className="w-4 shrink-0 font-mono text-xs text-muted-foreground">{index + 1}</span>
@@ -147,7 +171,11 @@ export function AdminDashboardClient() {
               </tr>
             </thead>
             <tbody>
-              {recentOrders.length === 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="py-10 text-center text-sm text-muted-foreground">Loading recent orders...</td>
+                </tr>
+              ) : recentOrders.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-10 text-center text-sm text-muted-foreground">No orders yet</td>
                 </tr>

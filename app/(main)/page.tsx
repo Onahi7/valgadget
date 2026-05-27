@@ -16,6 +16,7 @@ import { and, asc, desc, eq, sql } from 'drizzle-orm'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ProductCard } from '@/components/ecommerce/product-card'
+import { HotDealsCarousel } from '@/components/ecommerce/hot-deals-carousel'
 import { db } from '@/lib/server/db'
 import { categories, products, raffles } from '@/lib/server/schema'
 import { cn } from '@/lib/utils'
@@ -319,31 +320,41 @@ export default async function HomePage() {
       <section className="border-b border-border bg-muted/20">
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
-            <div className="relative overflow-hidden rounded-lg border border-border bg-card p-6 sm:p-8 lg:min-h-[360px]">
-              <div className="relative z-10 max-w-xl">
-                <Badge className="mb-4 border-primary/20 bg-primary/10 text-primary">Browse, Pay, Relax</Badge>
-                <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
-                  Thousands of electronics, phones, laptops and gadgets
-                </h1>
-                <p className="mt-4 max-w-lg text-base leading-7 text-muted-foreground">
-                  Shop phones, speakers, monitors, rechargeable fans, smartwatches and daily electronics from one clean storefront.
-                </p>
-                <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                  <Button size="lg" asChild className="rounded-full px-8">
-                    <Link href="/shop">
-                      Start Shopping <ArrowRight className="ml-2 h-4 w-4" />
-                    </Link>
-                  </Button>
-                  <Button size="lg" variant="outline" asChild className="rounded-full px-8">
-                    <Link href="/categories">View Categories</Link>
-                  </Button>
+            <div className="overflow-hidden rounded-lg border border-border bg-card">
+              <div className="grid min-h-[360px] gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,38%)]">
+                <div className="flex min-w-0 flex-col justify-center p-6 sm:p-8">
+                  <Badge className="mb-4 w-fit border-primary/20 bg-primary/10 text-primary">Browse, Pay, Relax</Badge>
+                  <h1 className="max-w-xl text-4xl font-bold tracking-tight sm:text-5xl">
+                    Thousands of electronics, phones, laptops and gadgets
+                  </h1>
+                  <p className="mt-4 max-w-lg text-base leading-7 text-muted-foreground">
+                    Shop phones, speakers, monitors, rechargeable fans, smartwatches and daily electronics from one clean storefront.
+                  </p>
+                  <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                    <Button size="lg" asChild className="rounded-full px-8">
+                      <Link href="/shop">
+                        Start Shopping <ArrowRight className="ml-2 h-4 w-4" />
+                      </Link>
+                    </Button>
+                    <Button size="lg" variant="outline" asChild className="rounded-full px-8">
+                      <Link href="/categories">View Categories</Link>
+                    </Button>
+                  </div>
+                </div>
+                <div className="relative min-h-[240px] border-t border-border bg-white lg:border-l lg:border-t-0">
+                  {heroProduct?.images?.[0] ? (
+                    <Image
+                      src={heroProduct.images[0]}
+                      alt={heroProduct.name}
+                      fill
+                      sizes="(max-width: 1024px) 100vw, 38vw"
+                      className="object-contain p-6 sm:p-8"
+                      priority
+                      unoptimized
+                    />
+                  ) : null}
                 </div>
               </div>
-              {heroProduct?.images?.[0] ? (
-                <div className="absolute bottom-0 right-0 hidden h-full w-1/2 lg:block">
-                  <Image src={heroProduct.images[0]} alt={heroProduct.name} fill className="object-contain object-bottom p-6" unoptimized />
-                </div>
-              ) : null}
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
@@ -354,13 +365,24 @@ export default async function HomePage() {
                     <h2 className="mt-1 line-clamp-2 text-lg font-bold">{product.name}</h2>
                     <p className="mt-2 text-sm font-semibold">NGN {product.price.toLocaleString()}</p>
                   </div>
-                  {product.images[0] ? <Image src={product.images[0]} alt={product.name} fill className="object-contain object-right-bottom p-4" unoptimized /> : null}
+                  {product.images[0] ? (
+                    <Image
+                      src={product.images[0]}
+                      alt={product.name}
+                      fill
+                      sizes="(max-width: 1024px) 50vw, 32vw"
+                      className="object-contain object-right-bottom p-4"
+                      unoptimized
+                    />
+                  ) : null}
                 </Link>
               ))}
             </div>
           </div>
         </div>
       </section>
+
+      <HotDealsCarousel products={priceDeals} />
 
       <section className="border-b border-border py-6">
         <div className="mx-auto grid max-w-7xl gap-3 px-4 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-8">
@@ -415,7 +437,6 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <ProductShelf eyebrow="Price deals" title="Price Deals" href="/shop?sort=popular" products={priceDeals} />
       <ProductShelf eyebrow="Popular now" title="Trending Products" href="/shop?sort=popular" products={trending} />
       <ProductShelf eyebrow="Fresh arrivals" title="New Products" href="/shop?sort=newest" products={newest} />
       <ProductShelf eyebrow="Customer signals" title="Top Rated Products" href="/shop?sort=rating" products={topRated} />

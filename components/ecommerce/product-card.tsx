@@ -49,7 +49,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
   return (
     <article
       className={cn(
-        'group relative bg-card rounded-xl border border-border overflow-hidden',
+        'group relative flex h-full min-w-0 flex-col overflow-hidden rounded-lg border border-border bg-card',
         'hover:border-primary/40 hover:shadow-lg transition-all duration-200',
         className
       )}
@@ -73,7 +73,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
         onClick={handleWishlist}
         aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
         className={cn(
-          'absolute top-3 right-3 z-10 p-1.5 rounded-full bg-background/80 backdrop-blur-sm',
+          'absolute top-2 right-2 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-background/85 backdrop-blur-sm sm:top-3 sm:right-3',
           'opacity-0 group-hover:opacity-100 transition-all duration-200 hover:scale-110',
           isWishlisted && 'opacity-100 text-destructive'
         )}
@@ -82,29 +82,32 @@ export function ProductCard({ product, className }: ProductCardProps) {
       </button>
 
       {/* Image */}
-      <Link href={`/products/${product.slug}`} className="block aspect-square overflow-hidden bg-surface">
+      <Link
+        href={`/products/${product.slug}`}
+        className="relative block aspect-square w-full overflow-hidden bg-white"
+      >
         <Image
           src={imageSrc}
           alt={product.name}
-          width={400}
-          height={400}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          fill
+          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+          className="object-contain p-3 transition-transform duration-300 group-hover:scale-[1.03] sm:p-4"
           unoptimized
         />
       </Link>
 
       {/* Content */}
-      <div className="p-4">
+      <div className="flex min-w-0 flex-1 flex-col p-3 sm:p-4">
         {product.category && (
           <Link
             href={`/categories/${product.category.slug}`}
-            className="text-[11px] font-mono uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors"
+            className="line-clamp-1 text-[10px] font-mono uppercase tracking-widest text-muted-foreground transition-colors hover:text-primary sm:text-[11px]"
           >
             {product.category.name}
           </Link>
         )}
         <Link href={`/products/${product.slug}`} className="block mt-1">
-          <h3 className="font-semibold text-sm leading-snug text-foreground group-hover:text-primary transition-colors line-clamp-2">
+          <h3 className="line-clamp-2 min-h-[2.5rem] text-sm font-semibold leading-snug text-foreground transition-colors group-hover:text-primary sm:min-h-[2.625rem] sm:text-[15px]">
             {product.name}
           </h3>
         </Link>
@@ -130,11 +133,13 @@ export function ProductCard({ product, className }: ProductCardProps) {
         )}
 
         {/* Price + Add to cart */}
-        <div className="flex items-center justify-between mt-3 gap-2">
-          <div className="flex items-baseline gap-2">
-            <span className="font-bold text-foreground">NGN {product.price.toLocaleString()}</span>
+        <div className="mt-auto flex flex-col gap-2 pt-3 sm:flex-row sm:items-end sm:justify-between">
+          <div className="min-w-0">
+            <span className="block break-words text-sm font-bold leading-tight text-foreground sm:text-base">
+              NGN {product.price.toLocaleString()}
+            </span>
             {product.comparePrice && (
-              <span className="text-xs text-muted-foreground line-through">
+              <span className="block text-xs text-muted-foreground line-through">
                 NGN {product.comparePrice.toLocaleString()}
               </span>
             )}
@@ -142,7 +147,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
           <Button
             size="sm"
             onClick={handleAddToCart}
-            className="h-8 px-3 text-xs bg-primary text-primary-foreground hover:bg-primary/90 shrink-0"
+            className="h-8 w-full shrink-0 px-3 text-xs bg-primary text-primary-foreground hover:bg-primary/90 sm:w-auto"
           >
             <ShoppingCart className="w-3.5 h-3.5 mr-1" aria-hidden />
             Add

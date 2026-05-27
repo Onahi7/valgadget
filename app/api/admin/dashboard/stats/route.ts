@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
-import { users, orders, products, raffleEntries, raffles, affiliatePayouts } from '@/lib/server/schema'
+import { users, orders, products, raffleEntries, raffles } from '@/lib/server/schema'
 import { requireAuth, apiOk } from '@/lib/server/auth-helpers'
 import { count, sum, sql, eq } from 'drizzle-orm'
 
@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
   const lastMonthStart = startOfMonth(new Date(now.getFullYear(), now.getMonth() - 1, 1))
   const lastMonthEnd = monthStart
 
-  const [[userStats], [orderStats], [productStats], [raffleStats], [affiliatePending]] = await Promise.all([
+  const [[userStats], [orderStats], [productStats], [raffleStats]] = await Promise.all([
     db.select({
       total: count(),
       customers: sql<number>`sum(case when ${users.role} = 'customer' then 1 else 0 end)::int`,
@@ -60,10 +60,6 @@ export async function GET(req: NextRequest) {
       .from(raffles)
       .leftJoin(raffleEntries, eq(raffles.id, raffleEntries.raffleId)),
 
-    db.select({
-      pendingCount: sql<number>`sum(case when ${affiliatePayouts.status} in ('pending', 'processing') then 1 else 0 end)::int`,
-      pendingAmount: sql<string>`coalesce(sum(case when ${affiliatePayouts.status} in ('pending', 'processing') then ${affiliatePayouts.amount} else 0 end), '0')`,
-    }).from(affiliatePayouts),
   ])
 
   const [activeCustomers] = await db.select({
@@ -106,8 +102,8 @@ export async function GET(req: NextRequest) {
     },
     affiliates: {
       total: userStats?.affiliates ?? 0,
-      pendingPayouts: affiliatePending?.pendingCount ?? 0,
-      pendingAmount: Number(affiliatePending?.pendingAmount ?? 0),
+      pendingPayouts: 0,
+      pendingAmount: 0,
     },
     raffles: {
       active: raffleStats?.activeRaffles ?? 0,
