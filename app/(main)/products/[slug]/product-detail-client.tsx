@@ -134,8 +134,20 @@ export function ProductDetailClient({ slug, initialProduct }: ProductDetailClien
     { label: 'Reviews', value: String(product.reviewCount) },
   ]
 
+  const handleShare = async () => {
+    const url = typeof window !== 'undefined' ? window.location.href : ''
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: product.name, text: `Check out ${product.name} on ValGadget`, url })
+      } catch { /* user cancelled */ }
+    } else {
+      await navigator.clipboard.writeText(url)
+      toast.success('Link copied to clipboard!')
+    }
+  }
+
   const handleAddToCart = () => {
-    addToCart({ id: product.id, name: product.name, slug: product.slug, images: product.images, price: effectivePrice, sku: product.sku }, qty)
+    addToCart({ id: product.id, name: product.name, slug: product.slug, images: product.images, price: effectivePrice, sku: product.sku, stock: product.stock }, qty)
     toast.success('Added to cart', { description: `${product.name} ×${qty}` })
   }
 
@@ -267,8 +279,9 @@ export function ProductDetailClient({ slug, initialProduct }: ProductDetailClien
                 </button>
                 <span className="px-4 py-2 text-sm font-medium tabular-nums min-w-12 text-center">{qty}</span>
                 <button
-                  onClick={() => setQty(q => q + 1)}
-                  className="px-3 py-2.5 hover:bg-accent transition-colors"
+                  onClick={() => setQty(q => Math.min(product.stock, q + 1))}
+                  disabled={qty >= product.stock}
+                  className="px-3 py-2.5 hover:bg-accent transition-colors disabled:opacity-40"
                   aria-label="Increase quantity"
                 >
                   <Plus className="w-3.5 h-3.5" />
@@ -294,7 +307,7 @@ export function ProductDetailClient({ slug, initialProduct }: ProductDetailClien
               >
                 <Heart className={cn('w-4 h-4', isWishlisted && 'fill-current')} />
               </Button>
-              <Button size="lg" variant="outline" aria-label="Share product" className="sm:flex-none">
+              <Button size="lg" variant="outline" aria-label="Share product" className="sm:flex-none" onClick={handleShare}>
                 <Share2 className="w-4 h-4" />
               </Button>
             </div>

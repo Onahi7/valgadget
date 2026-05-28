@@ -1,12 +1,17 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
 import { raffles, raffleEntries } from '@/lib/server/schema'
-import { requireAuth, apiOk, apiError } from '@/lib/server/auth-helpers'
+import { requireAuth, apiOk, apiError, apiRateLimited } from '@/lib/server/auth-helpers'
 import { eq, sql, and } from 'drizzle-orm'
+import { rateLimit, rateLimitPresets, getRateLimitKey } from '@/lib/server/rate-limiter'
 
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await requireAuth(req)
   if ('status' in auth) return auth
+
+  // Rate limit: 10 entries per minute per user
+  const rl = rateLimit(`raffle-enter:${auth.user.sub}`, { windowSeconds: 60, max: 10 })
+  if (!rl.success) return apiRateLimited(rl.resetAt)
 
   const { id } = await context.params
 

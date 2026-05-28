@@ -83,7 +83,7 @@ export function ChatWidget() {
     setStarting(true)
     try {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-      const token = localStorage.getItem('token')
+      const token = localStorage.getItem('vg_token')
       if (token) headers['Authorization'] = `Bearer ${token}`
 
       const res = await fetch('/api/chat', {
@@ -114,7 +114,7 @@ export function ChatWidget() {
     setSending(true)
 
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-    const token = localStorage.getItem('token')
+    const token = localStorage.getItem('vg_token')
     if (token) headers['Authorization'] = `Bearer ${token}`
 
     try {

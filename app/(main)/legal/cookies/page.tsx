@@ -3,6 +3,15 @@ import type { Metadata } from 'next'
 export const metadata: Metadata = {
   title: 'Cookie Policy',
   description: 'ValGadget cookie policy — how we use cookies and similar technologies.',
+  openGraph: {
+    title: 'Cookie Policy | Val Gadgets',
+    description: 'ValGadget cookie policy — how we use cookies and similar technologies.',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Cookie Policy | Val Gadgets',
+    description: 'ValGadget cookie policy — how we use cookies and similar technologies.',
+  },
 }
 
 export default function CookiePolicyPage() {

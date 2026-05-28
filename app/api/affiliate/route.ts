@@ -3,6 +3,7 @@ import { db } from '@/lib/server/db'
 import { affiliateClicks, orders, users } from '@/lib/server/schema'
 import { requireAuth, apiOk, apiError } from '@/lib/server/auth-helpers'
 import { eq, count, sum, sql } from 'drizzle-orm'
+import { rateLimit, rateLimitPresets, getRateLimitKey } from '@/lib/server/rate-limiter'
 
 export async function GET(req: NextRequest) {
   const auth = await requireAuth(req, ['affiliate', 'admin'])
@@ -54,6 +55,10 @@ export async function GET(req: NextRequest) {
 
 /** Track an affiliate link click */
 export async function POST(req: NextRequest) {
+  // Rate limit: 30 clicks per minute per IP
+  const rl = rateLimit(`affiliate-click:${getRateLimitKey(req)}`, { windowSeconds: 60, max: 30 })
+  if (!rl.success) return apiOk({ message: 'Click tracked.' }) // silent — don't break user flow
+
   try {
     const { code, referrer } = await req.json()
     if (!code) return apiError('Affiliate code is required.')

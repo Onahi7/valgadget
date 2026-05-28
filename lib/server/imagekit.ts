@@ -49,6 +49,22 @@ export async function deleteFile(fileId: string): Promise<void> {
   await getIK().files.delete(fileId)
 }
 
+/** Extract ImageKit fileId from a URL (format: https://endpoint/{fileId}/{filename}) */
+export function extractFileId(url: string): string | null {
+  if (!urlEndpoint || !url.startsWith(urlEndpoint)) return null
+  const path = url.slice(urlEndpoint.length).replace(/^\//, '')
+  const slashIndex = path.indexOf('/')
+  return slashIndex > 0 ? path.slice(0, slashIndex) : path.split('?')[0] || null
+}
+
+/** Delete a file from ImageKit by its URL */
+export async function deleteFileByUrl(url: string): Promise<void> {
+  const fileId = extractFileId(url)
+  if (fileId) {
+    try { await deleteFile(fileId) } catch { /* best effort */ }
+  }
+}
+
 /**
  * Build a responsive transformed URL from an ImageKit base URL.
  * e.g. transformUrl(url, { width: 400, height: 400, quality: 80 })

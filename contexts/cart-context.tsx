@@ -4,7 +4,7 @@ import React, { createContext, useCallback, useContext, useEffect, useReducer } 
 import type { Product } from '@/lib/services/product.service'
 
 export interface CartItem {
-  product: Pick<Product, 'id' | 'name' | 'slug' | 'images' | 'price' | 'sku'>
+  product: Pick<Product, 'id' | 'name' | 'slug' | 'images' | 'price' | 'sku' | 'stock'>
   quantity: number
 }
 

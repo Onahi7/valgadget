@@ -3,7 +3,7 @@ import { db } from '@/lib/server/db'
 import { products } from '@/lib/server/schema'
 import { requireAuth, apiOk, apiError } from '@/lib/server/auth-helpers'
 import { eq } from 'drizzle-orm'
-import { uploadFile } from '@/lib/server/imagekit'
+import { uploadFile, deleteFileByUrl } from '@/lib/server/imagekit'
 
 // POST /api/admin/products/[id]/images - upload one or more product images
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
@@ -61,6 +61,10 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ id: 
     const updatedImages = existingImages.filter((url) => url !== imageUrl)
 
     await db.update(products).set({ images: updatedImages, updatedAt: new Date() }).where(eq(products.id, id))
+
+    // Clean up from ImageKit (best effort)
+    await deleteFileByUrl(imageUrl)
+
     return apiOk({ images: updatedImages, message: 'Image deleted' })
   } catch (err) {
     console.error('[delete product image]', err)

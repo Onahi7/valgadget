@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
 
 const ANNOUNCEMENTS = [
@@ -14,13 +14,18 @@ const ANNOUNCEMENTS = [
 export function AnnouncementBar() {
   const [visible, setVisible] = useState(true)
   const [current, setCurrent] = useState(0)
+  const intervalRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
-    const id = setInterval(() => {
+    if (!visible) {
+      if (intervalRef.current) clearInterval(intervalRef.current)
+      return
+    }
+    intervalRef.current = setInterval(() => {
       setCurrent(c => (c + 1) % ANNOUNCEMENTS.length)
     }, 4000)
-    return () => clearInterval(id)
-  }, [])
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
+  }, [visible])
 
   if (!visible) return null
 

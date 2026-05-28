@@ -3,6 +3,15 @@ import type { Metadata } from 'next'
 export const metadata: Metadata = {
   title: 'Terms of Service',
   description: 'ValGadget terms of service — the rules and guidelines governing the use of our website and services.',
+  openGraph: {
+    title: 'Terms of Service | Val Gadgets',
+    description: 'ValGadget terms of service — the rules and guidelines governing the use of our website and services.',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Terms of Service | Val Gadgets',
+    description: 'ValGadget terms of service — the rules and guidelines governing the use of our website and services.',
+  },
 }
 
 export default function TermsOfServicePage() {

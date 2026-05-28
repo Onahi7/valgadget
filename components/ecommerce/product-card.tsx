@@ -31,6 +31,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
     addToCart({
       id: product.id, name: product.name, slug: product.slug,
       images: product.images, price: product.price, sku: product.sku,
+      stock: product.stock,
     })
     toast.success('Added to cart', { description: product.name })
   }

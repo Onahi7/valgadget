@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
 import { categories } from '@/lib/server/schema'
 import { requireAuth, apiOk, apiError } from '@/lib/server/auth-helpers'
-import { desc, sql } from 'drizzle-orm'
+import { desc, sql, eq } from 'drizzle-orm'
 import { withCategoryDisplayImages } from '@/lib/server/category-images'
 
 export async function GET(req: NextRequest) {
@@ -43,7 +43,14 @@ export async function POST(req: NextRequest) {
     const { name, description, image, icon, parentId, isActive = true, sortOrder = 0 } = body
     if (!name) return apiError('name is required.')
 
-    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+    let slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+
+    // Ensure slug is unique
+    const [existing] = await db.select({ slug: categories.slug }).from(categories).where(eq(categories.slug, slug)).limit(1)
+    if (existing) {
+      const timestamp = Date.now().toString(36)
+      slug = `${slug}-${timestamp}`
+    }
 
     const result = await db.insert(categories).values({ name, slug, description, image, icon, parentId, isActive, sortOrder }).returning()
     const cat = (result as unknown as any[])?.[0]

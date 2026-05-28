@@ -48,6 +48,10 @@ type FormValues = z.infer<typeof addressSchema>
 
 const PAYMENT_METHODS = [
   { id: 'paystack',   label: 'Pay with Paystack',        icon: CreditCard, desc: 'Cards, bank transfer, USSD & more' },
+  { id: 'bitcoin',    label: 'Pay with Bitcoin',          icon: Bitcoin,    desc: 'Send BTC to our wallet' },
+  { id: 'ethereum',   label: 'Pay with Ethereum',         icon: Bitcoin,    desc: 'Send ETH to our wallet' },
+  { id: 'usdt_trc20', label: 'Pay with USDT (TRC-20)',    icon: Bitcoin,    desc: 'Send USDT via Tron network' },
+  { id: 'usdt_erc20', label: 'Pay with USDT (ERC-20)',    icon: Bitcoin,    desc: 'Send USDT via Ethereum network' },
 ]
 
 const CRYPTO_ADDRESSES: Record<string, string> = {
@@ -111,13 +115,13 @@ function CheckoutPageContent() {
           }
         }
       })
-      .catch(() => {})
+      .catch(() => { toast.error('Failed to load saved addresses. You can still enter a new one.') })
   }, [showNewAddressForm, user])
 
   useEffect(() => {
     fetch('/api/shipping-rates').then(r => r.json()).then(j => {
       if (j.data) setShippingRates(j.data)
-    }).catch(() => {})
+    }).catch(() => { toast.error('Failed to load shipping rates.') })
   }, [])
 
   const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm<FormValues>({
@@ -128,7 +132,7 @@ function CheckoutPageContent() {
   const selectedPayment = watch('paymentMethod')
   const watchedState = watch('state')
   const watchedSaveAddress = watch('saveAddress')
-  const isCrypto = false
+  const isCrypto = ['bitcoin', 'ethereum', 'usdt_trc20', 'usdt_erc20'].includes(selectedPayment)
   const step = watchedState || selectedAddressId ? 'payment' : 'address'
 
   // Get LGAs for selected state
@@ -211,7 +215,7 @@ function CheckoutPageContent() {
           city: data.city, state: data.state, postalCode: data.postalCode ?? '',
           country: data.country, phone: data.phone,
         },
-        paymentMethod: 'paystack',
+        paymentMethod: isCrypto ? 'crypto' : 'paystack',
         affiliateCode,
         guestEmail: user ? undefined : data.guestEmail,
       })
@@ -236,6 +240,13 @@ function CheckoutPageContent() {
         }
         setInitializingPayment(false)
         toast.error('Paystack init failed')
+        return
+      }
+
+      // Crypto payment — show wallet address panel
+      if (isCrypto) {
+        setInitializingPayment(false)
+        toast.success('Order placed! Send crypto to the wallet address below.')
         return
       }
 

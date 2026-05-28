@@ -43,9 +43,10 @@ export function CartItem({ item }: CartItemProps) {
               {item.quantity}
             </span>
             <button
-              onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
+              onClick={() => updateQuantity(item.product.id, Math.min(item.product.stock, item.quantity + 1))}
+              disabled={item.quantity >= item.product.stock}
               aria-label="Increase quantity"
-              className="px-2 py-1.5 hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+              className="px-2 py-1.5 hover:bg-accent transition-colors text-muted-foreground hover:text-foreground disabled:opacity-40"
             >
               <Plus className="w-3 h-3" />
             </button>

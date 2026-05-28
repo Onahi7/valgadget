@@ -15,13 +15,20 @@ export async function POST(request: NextRequest) {
     if (!token) return apiError('Verification token is required.')
 
     const [user] = await db
-      .select({ id: users.id, isVerified: users.isVerified })
+      .select({ id: users.id, isVerified: users.isVerified, createdAt: users.createdAt })
       .from(users)
       .where(eq(users.verifyToken, token))
       .limit(1)
 
     if (!user) return apiError('Invalid or expired verification link.', 400)
     if (user.isVerified) return apiOk({ message: 'Email already verified.' })
+
+    // Expire tokens older than 24 hours
+    const createdAt = user.createdAt instanceof Date ? user.createdAt : new Date(user.createdAt)
+    const hoursSinceCreation = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60)
+    if (hoursSinceCreation > 24) {
+      return apiError('This verification link has expired. Please request a new one.', 400)
+    }
 
     await db
       .update(users)

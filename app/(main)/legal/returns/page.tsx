@@ -3,6 +3,15 @@ import type { Metadata } from 'next'
 export const metadata: Metadata = {
   title: 'Return Policy',
   description: 'ValGadget return policy — our guidelines for returns, exchanges, and refunds.',
+  openGraph: {
+    title: 'Return Policy | Val Gadgets',
+    description: 'ValGadget return policy — our guidelines for returns, exchanges, and refunds.',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Return Policy | Val Gadgets',
+    description: 'ValGadget return policy — our guidelines for returns, exchanges, and refunds.',
+  },
 }
 
 export default function ReturnPolicyPage() {

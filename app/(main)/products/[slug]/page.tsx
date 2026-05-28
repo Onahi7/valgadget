@@ -88,5 +88,37 @@ export default async function ProductDetailPage({ params }: PageProps) {
   const { slug } = await params
   const product = await getProduct(slug)
 
-  return <ProductDetailClient slug={slug} initialProduct={product} />
+  const jsonLd = product ? {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: product.name,
+    description: product.shortDescription || product.description?.slice(0, 500),
+    image: product.images,
+    sku: product.sku,
+    brand: { '@type': 'Brand', name: 'ValGadget' },
+    offers: {
+      '@type': 'Offer',
+      priceCurrency: 'NGN',
+      price: product.price,
+      availability: product.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+      url: `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://valgadgets.com'}/products/${product.slug}`,
+    },
+    aggregateRating: product.reviewCount > 0 ? {
+      '@type': 'AggregateRating',
+      ratingValue: product.rating,
+      reviewCount: product.reviewCount,
+    } : undefined,
+  } : null
+
+  return (
+    <>
+      {jsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      )}
+      <ProductDetailClient slug={slug} initialProduct={product} />
+    </>
+  )
 }
