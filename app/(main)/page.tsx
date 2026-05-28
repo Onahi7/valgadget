@@ -312,7 +312,6 @@ function ProductShelf({
 
 export default async function HomePage() {
   const { categoryTiles, featured, priceDeals, trending, newest, topRated, raffles: activeRaffles } = await getHomeData()
-  const heroProduct = featured[0] ?? trending[0]
   const sideProducts = (featured.length > 1 ? featured.slice(1, 3) : trending.slice(1, 3))
 
   return (
@@ -321,38 +320,23 @@ export default async function HomePage() {
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
             <div className="overflow-hidden rounded-lg border border-border bg-card">
-              <div className="grid min-h-[360px] gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,38%)]">
-                <div className="flex min-w-0 flex-col justify-center p-6 sm:p-8">
-                  <Badge className="mb-4 w-fit border-primary/20 bg-primary/10 text-primary">Browse, Pay, Relax</Badge>
-                  <h1 className="max-w-xl text-4xl font-bold tracking-tight sm:text-5xl">
-                    Thousands of electronics, phones, laptops and gadgets
-                  </h1>
-                  <p className="mt-4 max-w-lg text-base leading-7 text-muted-foreground">
-                    Shop phones, speakers, monitors, rechargeable fans, smartwatches and daily electronics from one clean storefront.
-                  </p>
-                  <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                    <Button size="lg" asChild className="rounded-full px-8">
-                      <Link href="/shop">
-                        Start Shopping <ArrowRight className="ml-2 h-4 w-4" />
-                      </Link>
-                    </Button>
-                    <Button size="lg" variant="outline" asChild className="rounded-full px-8">
-                      <Link href="/categories">View Categories</Link>
-                    </Button>
-                  </div>
-                </div>
-                <div className="relative min-h-[240px] border-t border-border bg-white lg:border-l lg:border-t-0">
-                  {heroProduct?.images?.[0] ? (
-                    <Image
-                      src={heroProduct.images[0]}
-                      alt={heroProduct.name}
-                      fill
-                      sizes="(max-width: 1024px) 100vw, 38vw"
-                      className="object-contain p-6 sm:p-8"
-                      priority
-                      unoptimized
-                    />
-                  ) : null}
+              <div className="flex min-h-[280px] flex-col justify-center p-6 sm:p-8">
+                <Badge className="mb-4 w-fit border-primary/20 bg-primary/10 text-primary">Browse, Pay, Relax</Badge>
+                <h1 className="max-w-xl text-4xl font-bold tracking-tight sm:text-5xl">
+                  Thousands of electronics, phones, laptops and gadgets
+                </h1>
+                <p className="mt-4 max-w-lg text-base leading-7 text-muted-foreground">
+                  Shop phones, speakers, monitors, rechargeable fans, smartwatches and daily electronics from one clean storefront.
+                </p>
+                <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                  <Button size="lg" asChild className="rounded-full px-8">
+                    <Link href="/shop">
+                      Start Shopping <ArrowRight className="ml-2 h-4 w-4" />
+                    </Link>
+                  </Button>
+                  <Button size="lg" variant="outline" asChild className="rounded-full px-8">
+                    <Link href="/categories">View Categories</Link>
+                  </Button>
                 </div>
               </div>
             </div>
