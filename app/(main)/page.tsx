@@ -4,9 +4,8 @@ import { ArrowRight } from 'lucide-react'
 import { and, asc, desc, eq, sql, inArray } from 'drizzle-orm'
 import { Button } from '@/components/ui/button'
 import { ProductShelf } from '@/components/ecommerce/product-shelf'
-import { SectionCover } from '@/components/ecommerce/section-cover'
 import { CategoryIconGrid, type CategoryIcon } from '@/components/ecommerce/category-icon-grid'
-import { TrustBar } from '@/components/layout/trust-bar'
+import { BrandLogos } from '@/components/ecommerce/brand-logos'
 import { db } from '@/lib/server/db'
 import { categories, products, raffles } from '@/lib/server/schema'
 import type { Category } from '@/lib/services/category.service'
@@ -244,12 +243,25 @@ async function getHomeData() {
       href: `/categories/${c.slug}`,
     }))
 
+  // Extract unique brands from products
+  const brandSet = new Set<string>()
+  trending.forEach(p => { if (p.brand) brandSet.add(p.brand) })
+  newest.forEach(p => { if (p.brand) brandSet.add(p.brand) })
+  featured.forEach(p => { if (p.brand) brandSet.add(p.brand) })
+  const brands = Array.from(brandSet)
+    .slice(0, 12)
+    .map(name => ({
+      name,
+      slug: name.toLowerCase().replace(/\s+/g, '-'),
+    }))
+
   const priceDeals = trending
     .filter(product => typeof product.comparePrice === 'number' && product.comparePrice > product.price)
     .slice(0, 8)
 
   return {
     categoryIcons,
+    brands,
     featured: featured.length ? featured : trending.slice(0, 4),
     priceDeals: priceDeals.length ? priceDeals : trending.slice(0, 8),
     trending: trending.slice(0, 8),
@@ -266,100 +278,146 @@ async function getHomeData() {
 }
 
 export default async function HomePage() {
-  const { categoryIcons, featured, priceDeals, trending, newest, topRated, sectionData, raffles: activeRaffles } =
+  const { categoryIcons, brands, featured, priceDeals, trending, newest, topRated, sectionData, raffles: activeRaffles } =
     await getHomeData()
 
   return (
     <div className="animate-page-reveal bg-background">
-      {/* ── BEAT 1: HERO (HEAVY) ────────────────────────────────────── */}
-      <section className="border-b border-border">
-        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-          <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-            <div className="relative overflow-hidden rounded-lg bg-gradient-to-br from-primary/10 via-primary/5 to-background p-6 sm:p-10">
-              <p className="mb-3 text-xs font-mono uppercase tracking-widest text-primary">Browse, Pay, Relax</p>
-              <h1 className="max-w-xl text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
-                Premium electronics, phones, laptops and gadgets
-              </h1>
-              <p className="mt-3 max-w-lg text-base leading-7 text-muted-foreground sm:mt-4">
-                Phones, speakers, monitors, rechargeable fans and smartwatches from one clean storefront.
-              </p>
-              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                <Button size="lg" asChild className="rounded-full px-8">
-                  <Link href="/shop">
-                    Start Shopping <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-                </Button>
-                <Button size="lg" variant="outline" asChild className="rounded-full px-8">
-                  <Link href="/categories">View Categories</Link>
-                </Button>
-              </div>
+      {/* ── SHOP BY CATEGORIES ────────────────────────────────────── */}
+      <CategoryIconGrid categories={categoryIcons} />
+
+      {/* ── OUR TOP BRANDS ────────────────────────────────────────── */}
+      <BrandLogos brands={brands} />
+
+      {/* ── CATEGORY SECTIONS (Tech Direct pattern) ──────────────── */}
+      {sectionData.map(section => (
+        <section key={section.slug} className="border-t border-border py-10">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="mb-5 flex items-end justify-between gap-4">
+              <h2 className="text-2xl font-bold">{section.title}</h2>
+              <Link
+                href={section.viewAllHref}
+                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                View All
+                <ArrowRight className="ml-1 inline-block h-3.5 w-3.5" />
+              </Link>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-              {featured.slice(0, 2).map(product => (
-                <Link
-                  key={product.id}
-                  href={`/products/${product.slug}`}
-                  className="relative min-h-[160px] overflow-hidden rounded-lg border border-border bg-card p-5"
-                >
-                  <div className="relative z-10 max-w-[60%]">
-                    <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">Featured</p>
-                    <h2 className="mt-1 line-clamp-2 text-base font-bold">{product.name}</h2>
-                    <p className="mt-2 text-sm font-semibold">₦{product.price.toLocaleString()}</p>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+              {section.products.slice(0, 6).map(product => (
+                <div key={product.id} className="text-sm">
+                  <Link href={`/products/${product.slug}`} className="block">
+                    <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-white">
+                      <Image
+                        src={product.images[0] ?? '/placeholder-product.svg'}
+                        alt={product.name}
+                        fill
+                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 16vw"
+                        className="object-contain p-3"
+                        unoptimized
+                      />
+                    </div>
+                  </Link>
+                  <div className="mt-2">
+                    {product.brand && (
+                      <p className="text-[10px] text-muted-foreground">{product.brand}</p>
+                    )}
+                    <Link href={`/products/${product.slug}`}>
+                      <h3 className="line-clamp-2 text-xs font-medium leading-snug">{product.name}</h3>
+                    </Link>
+                    <p className="mt-1 text-xs font-semibold">₦{product.price.toLocaleString()}</p>
                   </div>
-                  {product.images[0] ? (
-                    <Image
-                      src={product.images[0]}
-                      alt={product.name}
-                      fill
-                      sizes="(max-width: 1024px) 50vw, 32vw"
-                      className="object-contain object-right-bottom p-4"
-                      unoptimized
-                    />
-                  ) : null}
-                </Link>
+                </div>
               ))}
             </div>
+          </div>
+        </section>
+      ))}
+
+      {/* ── NEW PRODUCTS ─────────────────────────────────────────── */}
+      <ProductShelf title="New Products" href="/shop?sort=newest" products={newest} columns={4} />
+
+      {/* ── FEATURED PRODUCTS ────────────────────────────────────── */}
+      <ProductShelf title="Featured Products" href="/shop?sort=popular" products={featured} columns={4} />
+
+      {/* ── CURRENT TOP SELLERS ──────────────────────────────────── */}
+      <ProductShelf title="Current Top Sellers" href="/shop?sort=popular" products={trending} columns={4} />
+
+      {/* ── SUBCATEGORY BANNER CARDS (Tech Direct pattern) ───────── */}
+      <section className="border-t border-border py-10">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {[
+              { label: 'Speakers', slug: 'speakers', image: 'https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?auto=format&fit=crop&w=800&q=80' },
+              { label: 'Rechargeable Fans', slug: 'rechargeable-fans', image: 'https://images.unsplash.com/photo-1585771724684-38269d6639fd?auto=format&fit=crop&w=800&q=80' },
+              { label: 'Monitors', slug: 'monitors', image: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=800&q=80' },
+            ].map(card => (
+              <Link
+                key={card.slug}
+                href={`/categories/${card.slug}`}
+                className="group relative overflow-hidden rounded-lg bg-muted"
+              >
+                <div className="relative aspect-[4/3] w-full overflow-hidden">
+                  <Image
+                    src={card.image}
+                    alt={card.label}
+                    fill
+                    sizes="(max-width: 640px) 100vw, 33vw"
+                    className="object-cover transition-transform duration-500 group-hover:scale-105"
+                    unoptimized
+                  />
+                </div>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                <div className="absolute bottom-0 left-0 p-4">
+                  <h3 className="text-sm font-bold uppercase tracking-wide text-white">{card.label}</h3>
+                  <span className="mt-1 inline-flex items-center text-xs font-medium text-white/80 group-hover:text-white">
+                    Shop Now
+                    <ArrowRight className="ml-1 h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+          <div className="mt-4 text-right">
+            <Link
+              href="/categories"
+              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              View All Categories
+              <ArrowRight className="ml-1 inline-block h-3.5 w-3.5" />
+            </Link>
           </div>
         </div>
       </section>
 
-      {/* ── BEAT 2: SHOP BY CATEGORIES (MEDIUM) ────────────────────── */}
-      <CategoryIconGrid categories={categoryIcons} />
-
-      {/* ── BEAT 3: TRENDING PRODUCTS (MEDIUM-HEAVY) ───────────────── */}
-      <ProductShelf title="Trending Products" href="/shop?sort=popular" products={trending} columns={4} />
-
-      {/* ── BEAT 4: TRUST BAR (LIGHT — REST BEAT) ─────────────────── */}
-      <TrustBar />
-
-      {/* ── BEAT 5: NEW PRODUCTS (MEDIUM) ─────────────────────────── */}
-      <ProductShelf title="New Products" href="/shop?sort=newest" products={newest} columns={4} />
-
-      {/* ── BEATS 6–9: SECTION COVERS (HEAVY) ──────────────────────── */}
-      {sectionData.map(section => (
-        <SectionCover
-          key={section.slug}
-          title={section.title}
-          coverImage={section.coverImage}
-          viewAllHref={section.viewAllHref}
-          products={section.products}
-          subcategories={section.subcategories.map(sub => ({
-            label: sub.label,
-            href: `/categories/${sub.slug}`,
-            image: sub.image ?? undefined,
-          }))}
-        />
-      ))}
-
-      {/* ── BEAT 10: TOP RATED (MEDIUM) ───────────────────────────── */}
+      {/* ── TOP RATED ────────────────────────────────────────────── */}
       <ProductShelf title="Top Rated Products" href="/shop?sort=rating" products={topRated} columns={4} />
 
-      {/* ── BEAT 11: LIVE RAFFLES (MEDIUM) ─────────────────────────── */}
+      {/* ── RECOMMENDED FOR YOU ──────────────────────────────────── */}
+      <ProductShelf title="Recommended For You" href="/shop" products={priceDeals.length ? priceDeals : trending.slice(0, 8)} columns={4} />
+
+      {/* ── NEWSLETTER CTA (Tech Direct pattern) ─────────────────── */}
+      <section className="border-t border-border py-12 bg-muted/30">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-2xl font-bold">Discover What's New</h2>
+          <p className="mt-2 text-sm text-muted-foreground">Subscribe to our newsletter for the latest deals and updates</p>
+          <div className="mt-6 flex max-w-md mx-auto gap-2">
+            <input
+              type="email"
+              placeholder="Your email address"
+              className="flex-1 rounded-md border border-border bg-card px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+            <Button>Subscribe</Button>
+          </div>
+        </div>
+      </section>
+
+      {/* ── LIVE RAFFLES (keep our unique feature) ────────────────── */}
       {activeRaffles.length > 0 ? (
         <section className="border-t border-border py-12">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="mb-5 flex items-end justify-between gap-4">
-              <h2 className="text-2xl font-bold tracking-tight">Live Raffles</h2>
+              <h2 className="text-2xl font-bold">Live Raffles</h2>
               <Link
                 href="/raffles"
                 className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"

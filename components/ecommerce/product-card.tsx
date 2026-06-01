@@ -105,16 +105,13 @@ export function ProductCard({ product, className }: ProductCardProps) {
 
       {/* Content */}
       <div className="flex min-w-0 flex-1 flex-col p-3 sm:p-4">
-        {product.category && (
-          <Link
-            href={`/categories/${product.category.slug}`}
-            className="line-clamp-1 text-[10px] font-mono uppercase tracking-widest text-muted-foreground transition-colors hover:text-primary sm:text-[11px]"
-          >
-            {product.category.name}
-          </Link>
+        {product.brand && (
+          <p className="line-clamp-1 text-[10px] text-muted-foreground sm:text-[11px]">
+            {product.brand}
+          </p>
         )}
         <Link href={`/products/${product.slug}`} className="block mt-1">
-          <h3 className="line-clamp-2 min-h-[2.5rem] text-sm font-semibold leading-snug text-foreground transition-colors group-hover:text-primary sm:min-h-[2.625rem] sm:text-[15px]">
+          <h3 className="line-clamp-2 min-h-[2.5rem] text-sm font-medium leading-snug text-foreground transition-colors group-hover:text-primary sm:min-h-[2.625rem] sm:text-[15px]">
             {product.name}
           </h3>
         </Link>
@@ -142,12 +139,12 @@ export function ProductCard({ product, className }: ProductCardProps) {
         {/* Price + Add to cart */}
         <div className="mt-auto flex flex-col gap-2 pt-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
-            <span className="block break-words text-sm font-bold leading-tight text-foreground sm:text-base">
-              ₦{product.price.toLocaleString()}
+            <span className="block break-words text-sm font-semibold leading-tight text-foreground sm:text-base">
+              ₦{product.price.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} NGN
             </span>
             {product.comparePrice && (
               <span className="block text-xs text-muted-foreground line-through">
-                ₦{product.comparePrice.toLocaleString()}
+                ₦{product.comparePrice.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} NGN
               </span>
             )}
           </div>

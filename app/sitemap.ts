@@ -3,6 +3,8 @@ import { db } from '@/lib/server/db'
 import { products, categories } from '@/lib/server/schema'
 import { eq } from 'drizzle-orm'
 
+export const dynamic = 'force-dynamic'
+
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://valgadgets.com'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {

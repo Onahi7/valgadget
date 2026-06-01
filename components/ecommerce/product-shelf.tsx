@@ -41,12 +41,12 @@ export function ProductShelf({
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {showHeader && (
           <div className="mb-5 flex items-end justify-between gap-4">
-            <h2 className="text-2xl font-bold tracking-tight">{title}</h2>
+            <h2 className="text-2xl font-bold">{title}</h2>
             <Link
               href={href}
               className="shrink-0 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
-              View all
+              View All
               <ArrowRight className="ml-1 inline-block h-3.5 w-3.5" />
             </Link>
           </div>

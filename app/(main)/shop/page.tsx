@@ -1,272 +1,304 @@
-'use client'
+import Image from 'next/image'
+import Link from 'next/link'
+import { ArrowRight } from 'lucide-react'
+import { and, asc, desc, eq, sql, inArray } from 'drizzle-orm'
+import { ProductShelf } from '@/components/ecommerce/product-shelf'
+import { CategoryIconGrid, type CategoryIcon } from '@/components/ecommerce/category-icon-grid'
+import { db } from '@/lib/server/db'
+import { categories, products } from '@/lib/server/schema'
+import type { Product } from '@/lib/services/product.service'
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { Filter as FilterIcon, Search, X } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from '@/components/ui/sheet'
-import { Breadcrumbs } from '@/components/ui/breadcrumbs'
-import { ProductCardSkeleton } from '@/components/ecommerce/product-card-skeleton'
-import { ProductGrid } from '@/components/ecommerce/product-grid'
-import { FilterSidebar, ActiveFilterChips, type Facets, type ActiveFilters } from '@/components/ecommerce/filter-sidebar'
-import { VgPagination } from '@/components/ui/vg-pagination'
-import { useDebounce } from '@/hooks/use-debounce'
-import { productService, type Product } from '@/lib/services/product.service'
-import { categoryService } from '@/lib/services/category.service'
+export const dynamic = 'force-dynamic'
 
-const SORT_OPTIONS = [
-  { value: 'popular', label: 'Most Popular' },
-  { value: 'newest', label: 'Newest First' },
-  { value: 'price_asc', label: 'Price: Low to High' },
-  { value: 'price_desc', label: 'Price: High to Low' },
-  { value: 'rating', label: 'Highest Rated' },
-] as const
-
-const PAGE_SIZE = 12
-
-const EMPTY_FILTERS: ActiveFilters = {
-  brands: [],
-  inStock: false,
-  tags: [],
+const productSelection = {
+  id: products.id,
+  name: products.name,
+  slug: products.slug,
+  description: products.description,
+  shortDescription: products.shortDescription,
+  specs: products.specs,
+  price: products.price,
+  comparePrice: products.comparePrice,
+  images: products.images,
+  categoryId: products.categoryId,
+  stock: products.stock,
+  sku: products.sku,
+  rating: products.rating,
+  reviewCount: products.reviewCount,
+  tags: products.tags,
+  featured: products.featured,
+  isNew: products.isNew,
+  isActive: products.isActive,
+  brand: products.brand,
+  createdAt: products.createdAt,
+  updatedAt: products.updatedAt,
+  category: { id: categories.id, name: categories.name, slug: categories.slug },
 }
 
-function ShopPageInner() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const categorySlug = searchParams.get('category') ?? undefined
+function isDisplayableImage(src?: string | null) {
+  if (!src) return false
+  return !src.includes('source.unsplash.com')
+}
 
-  // Form state
-  const [search, setSearch] = useState(searchParams.get('search') ?? '')
-  const [filters, setFilters] = useState<ActiveFilters>(EMPTY_FILTERS)
-  const [sort, setSort] = useState<(typeof SORT_OPTIONS)[number]['value']>('popular')
-  const [page, setPage] = useState(1)
+function displayImages(images?: string[] | null) {
+  const usable = (images ?? []).filter(isDisplayableImage)
+  return usable.length ? usable : ['/placeholder-product.svg']
+}
 
-  // Data
-  const [products, setProducts] = useState<Product[]>([])
-  const [total, setTotal] = useState(0)
-  const [totalPages, setTotalPages] = useState(1)
-  const [facets, setFacets] = useState<Facets | null>(null)
-  const [categoryName, setCategoryName] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [filterOpen, setFilterOpen] = useState(false)
+function normalizeProduct(row: any): Product {
+  return {
+    ...row,
+    price: Number(row.price),
+    comparePrice: row.comparePrice ? Number(row.comparePrice) : undefined,
+    rating: row.rating ? Number(row.rating) : 0,
+    categoryId: row.categoryId ?? '',
+    tags: row.tags ?? [],
+    images: displayImages(row.images),
+    specs: row.specs ?? [],
+    brand: row.brand ?? undefined,
+    createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
+    updatedAt: row.updatedAt instanceof Date ? row.updatedAt.toISOString() : String(row.updatedAt),
+  }
+}
 
-  const debouncedSearch = useDebounce(search, 400)
-  const resetPage = useCallback(() => setPage(1), [])
+async function getProducts({
+  where,
+  orderBy,
+  limit = 8,
+}: {
+  where?: ReturnType<typeof and>
+  orderBy: ReturnType<typeof desc> | ReturnType<typeof asc>
+  limit?: number
+}) {
+  const rows = await db
+    .select(productSelection)
+    .from(products)
+    .leftJoin(categories, eq(products.categoryId, categories.id))
+    .where(where ?? eq(products.isActive, true))
+    .orderBy(orderBy)
+    .limit(limit)
 
-  // Sync from URL
-  useEffect(() => {
-    setSearch(searchParams.get('search') ?? '')
-    setPage(1)
-  }, [searchParams])
+  return rows.map(normalizeProduct)
+}
 
-  // Load category name
-  useEffect(() => {
-    if (!categorySlug) {
-      setCategoryName(null)
-      return
-    }
-    categoryService.getBySlug(categorySlug).then(c => {
-      setCategoryName(c?.name ?? null)
-    }).catch(() => setCategoryName(null))
-  }, [categorySlug])
+async function getShopData() {
+  const activeProducts = eq(products.isActive, true)
 
-  // Load facets
-  useEffect(() => {
-    productService.getFacets(categorySlug).then(setFacets).catch(() => setFacets(null))
-  }, [categorySlug])
-
-  // Load products
-  useEffect(() => {
-    setLoading(true)
-    productService
-      .getAll({
-        page,
-        limit: PAGE_SIZE,
-        category: categorySlug,
-        search: debouncedSearch || undefined,
-        minPrice: filters.priceMin,
-        maxPrice: filters.priceMax,
-        sort,
-        inStock: filters.inStock || undefined,
-        brand: filters.brands.length ? filters.brands.join(',') : undefined,
-        tags: filters.tags.length ? filters.tags.join(',') : undefined,
+  const [categoryRows, newest, featured, topSellers, topRated] = await Promise.all([
+    db
+      .select({
+        id: categories.id,
+        name: categories.name,
+        slug: categories.slug,
+        description: categories.description,
+        image: categories.image,
+        coverImage: categories.coverImage,
+        icon: categories.icon,
+        parentId: categories.parentId,
+        isActive: categories.isActive,
+        sortOrder: categories.sortOrder,
+        createdAt: categories.createdAt,
+        updatedAt: categories.updatedAt,
+        productCount: sql<number>`(
+          SELECT count(*)::int
+          FROM products p
+          WHERE p.is_active = true
+            AND (
+              p.category_id = categories.id
+              OR p.category_id IN (SELECT c2.id FROM categories c2 WHERE c2.parent_id = categories.id)
+            )
+        )`,
       })
-      .then(res => {
-        const r = res as any
-        if (r?.data) {
-          setProducts(r.data)
-          setTotal(r.total)
-          setTotalPages(r.totalPages)
+      .from(categories)
+      .where(eq(categories.isActive, true))
+      .orderBy(asc(categories.sortOrder)),
+    getProducts({ where: activeProducts, orderBy: desc(products.createdAt), limit: 8 }),
+    getProducts({ where: and(activeProducts, eq(products.featured, true)), orderBy: desc(products.createdAt), limit: 8 }),
+    getProducts({ where: activeProducts, orderBy: desc(products.reviewCount), limit: 8 }),
+    getProducts({ where: activeProducts, orderBy: desc(products.rating), limit: 8 }),
+  ])
+
+  // Category icon grid: pick top-level categories with images
+  const categoryIcons: CategoryIcon[] = categoryRows
+    .filter(c => !c.parentId && c.image && c.productCount > 0)
+    .slice(0, 12)
+    .map(c => ({
+      slug: c.slug,
+      name: c.name,
+      image: c.image!,
+      href: `/categories/${c.slug}`,
+    }))
+
+  // Get category sections with products (Tech Direct pattern)
+  const categorySections = await Promise.all(
+    categoryRows
+      .filter(c => !c.parentId && c.productCount > 0)
+      .slice(0, 6)
+      .map(async cat => {
+        const children = await db
+          .select({ id: categories.id })
+          .from(categories)
+          .where(eq(categories.parentId, cat.id))
+        const categoryIds = [cat.id, ...children.map(c => c.id)]
+
+        const prods = await getProducts({
+          where: inArray(products.categoryId, categoryIds),
+          orderBy: desc(products.createdAt),
+          limit: 6,
+        })
+
+        return {
+          title: cat.name,
+          href: `/categories/${cat.slug}`,
+          products: prods,
         }
       })
-      .finally(() => setLoading(false))
-  }, [categorySlug, debouncedSearch, page, filters, sort])
-
-  const clearFilters = useCallback(() => {
-    setFilters(EMPTY_FILTERS)
-    setPage(1)
-  }, [])
-
-  const handleRemove = useCallback((key: keyof ActiveFilters, value?: string) => {
-    setFilters(prev => {
-      if (key === 'brands' && value) {
-        return { ...prev, brands: prev.brands.filter(b => b !== value) }
-      }
-      if (key === 'tags' && value) {
-        return { ...prev, tags: prev.tags.filter(t => t !== value) }
-      }
-      if (key === 'inStock') return { ...prev, inStock: false }
-      if (key === 'priceMin') return { ...prev, priceMin: undefined }
-      if (key === 'priceMax') return { ...prev, priceMax: undefined }
-      return prev
-    })
-    setPage(1)
-  }, [])
-
-  const breadcrumbItems = useMemo(() => {
-    const items: { label: string; href?: string }[] = [{ label: 'Shop', href: '/shop' }]
-    if (categoryName) items.push({ label: categoryName })
-    return items
-  }, [categoryName])
-
-  return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 animate-page-reveal">
-      <Breadcrumbs items={breadcrumbItems} className="mb-4" />
-
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-          {categoryName ?? 'All Products'}
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {loading ? 'Loading...' : `${total} ${total === 1 ? 'product' : 'products'}`}
-        </p>
-      </div>
-
-      <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center">
-        <div className="relative w-full max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search products..."
-            value={search}
-            onChange={e => {
-              setSearch(e.target.value)
-              resetPage()
-            }}
-            className="pl-9"
-          />
-        </div>
-
-        {/* Mobile filter trigger */}
-        <Sheet open={filterOpen} onOpenChange={setFilterOpen}>
-          <SheetTrigger asChild>
-            <Button variant="outline" size="sm" className="lg:hidden">
-              <FilterIcon className="mr-2 h-4 w-4" />
-              Filter and sort
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="w-full max-w-sm overflow-y-auto sm:max-w-md">
-            <SheetHeader>
-              <SheetTitle>Filter</SheetTitle>
-            </SheetHeader>
-            <div className="mt-4">
-              <FilterSidebar
-                facets={facets}
-                filters={filters}
-                onChange={(f) => { setFilters(f); setPage(1) }}
-                onClear={clearFilters}
-              />
-            </div>
-          </SheetContent>
-        </Sheet>
-
-        <div className="flex items-center gap-2 lg:ml-auto">
-          <span className="hidden text-xs uppercase tracking-wide text-muted-foreground lg:inline">Sort by:</span>
-          <select
-            value={sort}
-            onChange={e => {
-              setSort(e.target.value as typeof sort)
-              setPage(1)
-            }}
-            className="h-10 rounded-md border border-border bg-card px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            {SORT_OPTIONS.map(option => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      <ActiveFilterChips
-        filters={filters}
-        facets={facets}
-        onRemove={handleRemove}
-        onClear={clearFilters}
-      />
-
-      <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
-        {/* Desktop sidebar */}
-        <FilterSidebar
-          facets={facets}
-          filters={filters}
-          onChange={(f) => { setFilters(f); setPage(1) }}
-          onClear={clearFilters}
-          className="hidden lg:block"
-        />
-
-        <div>
-          {loading ? (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4">
-              {Array.from({ length: PAGE_SIZE }).map((_, i) => (
-                <ProductCardSkeleton key={i} />
-              ))}
-            </div>
-          ) : (
-            <ProductGrid products={products} />
-          )}
-
-          {totalPages > 1 && !loading && (
-            <div className="mt-10">
-              <VgPagination
-                page={page}
-                totalPages={totalPages}
-                onPageChange={nextPage => {
-                  setPage(nextPage)
-                  window.scrollTo(0, 0)
-                }}
-              />
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
   )
+
+  // Get subcategory banner cards
+  const subcategoryBanners = [
+    { label: 'Speakers', slug: 'speakers', image: 'https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?auto=format&fit=crop&w=800&q=80' },
+    { label: 'Rechargeable Fans', slug: 'rechargeable-fans', image: 'https://images.unsplash.com/photo-1585771724684-38269d6639fd?auto=format&fit=crop&w=800&q=80' },
+    { label: 'Monitors', slug: 'monitors', image: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=800&q=80' },
+  ]
+
+  return {
+    categoryIcons,
+    categorySections,
+    subcategoryBanners,
+    newest,
+    featured,
+    topSellers,
+    topRated,
+  }
 }
 
-export default function ShopPage() {
+export default async function ShopPage() {
+  const { categoryIcons, categorySections, subcategoryBanners, newest, featured, topSellers, topRated } =
+    await getShopData()
+
   return (
-    <Suspense
-      fallback={
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-          <div className="h-8 w-32 bg-muted animate-pulse rounded mb-2" />
-          <div className="h-4 w-48 bg-muted animate-pulse rounded mb-8" />
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="h-64 bg-muted animate-pulse rounded-xl" />
+    <div className="animate-page-reveal bg-background">
+      {/* ── SHOP BY CATEGORIES ────────────────────────────────────── */}
+      <CategoryIconGrid categories={categoryIcons} />
+
+      {/* ── CATEGORY SECTIONS (Tech Direct pattern) ──────────────── */}
+      {categorySections.map(section => (
+        <section key={section.href} className="border-t border-border py-10">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="mb-5 flex items-end justify-between gap-4">
+              <h2 className="text-2xl font-bold">{section.title}</h2>
+              <Link
+                href={section.href}
+                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                View All
+                <ArrowRight className="ml-1 inline-block h-3.5 w-3.5" />
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+              {section.products.slice(0, 6).map(product => (
+                <div key={product.id} className="text-sm">
+                  <Link href={`/products/${product.slug}`} className="block">
+                    <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-white">
+                      <Image
+                        src={product.images[0] ?? '/placeholder-product.svg'}
+                        alt={product.name}
+                        fill
+                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 16vw"
+                        className="object-contain p-3"
+                        unoptimized
+                      />
+                    </div>
+                  </Link>
+                  <div className="mt-2">
+                    {product.brand && (
+                      <p className="text-[10px] text-muted-foreground">{product.brand}</p>
+                    )}
+                    <Link href={`/products/${product.slug}`}>
+                      <h3 className="line-clamp-2 text-xs font-medium leading-snug">{product.name}</h3>
+                    </Link>
+                    <p className="mt-1 text-xs font-semibold">₦{product.price.toLocaleString()}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      ))}
+
+      {/* ── NEW PRODUCTS ─────────────────────────────────────────── */}
+      <ProductShelf title="New Products" href="/shop?sort=newest" products={newest} columns={4} />
+
+      {/* ── FEATURED PRODUCTS ────────────────────────────────────── */}
+      <ProductShelf title="Featured Products" href="/shop?sort=popular" products={featured} columns={4} />
+
+      {/* ── SUBCATEGORY BANNER CARDS (Tech Direct pattern) ───────── */}
+      <section className="border-t border-border py-10">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {subcategoryBanners.map(card => (
+              <Link
+                key={card.slug}
+                href={`/categories/${card.slug}`}
+                className="group relative overflow-hidden rounded-lg bg-muted"
+              >
+                <div className="relative aspect-[4/3] w-full overflow-hidden">
+                  <Image
+                    src={card.image}
+                    alt={card.label}
+                    fill
+                    sizes="(max-width: 640px) 100vw, 33vw"
+                    className="object-cover transition-transform duration-500 group-hover:scale-105"
+                    unoptimized
+                  />
+                </div>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                <div className="absolute bottom-0 left-0 p-4">
+                  <h3 className="text-sm font-bold uppercase tracking-wide text-white">{card.label}</h3>
+                  <span className="mt-1 inline-flex items-center text-xs font-medium text-white/80 group-hover:text-white">
+                    Shop Now
+                    <ArrowRight className="ml-1 h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+                  </span>
+                </div>
+              </Link>
             ))}
           </div>
+          <div className="mt-4 text-right">
+            <Link
+              href="/categories"
+              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              View All Categories
+              <ArrowRight className="ml-1 inline-block h-3.5 w-3.5" />
+            </Link>
+          </div>
         </div>
-      }
-    >
-      <ShopPageInner />
-    </Suspense>
+      </section>
+
+      {/* ── CURRENT TOP SELLERS ──────────────────────────────────── */}
+      <ProductShelf title="Current Top Sellers" href="/shop?sort=popular" products={topSellers} columns={4} />
+
+      {/* ── TOP RATED ────────────────────────────────────────────── */}
+      <ProductShelf title="Top Rated Products" href="/shop?sort=rating" products={topRated} columns={4} />
+
+      {/* ── NEWSLETTER CTA (Tech Direct pattern) ─────────────────── */}
+      <section className="border-t border-border py-12 bg-muted/30">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-2xl font-bold">Discover What's New</h2>
+          <p className="mt-2 text-sm text-muted-foreground">Subscribe to our newsletter for the latest deals and updates</p>
+          <div className="mt-6 flex max-w-md mx-auto gap-2">
+            <input
+              type="email"
+              placeholder="Your email address"
+              className="flex-1 rounded-md border border-border bg-card px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+            <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+              Subscribe
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
   )
 }
