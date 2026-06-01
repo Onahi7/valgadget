@@ -104,6 +104,32 @@ async function main() {
       END $$;
     `
 
+    // ── Migration 0007: Homepage section cover images ─────────────────────
+    // Adds a separate cover_image column for the full-bleed Tech Direct style
+    // section banners on the homepage. Existing `image` remains the category
+    // icon/thumbnail.
+    await sql`ALTER TABLE categories ADD COLUMN IF NOT EXISTS cover_image TEXT;`
+
+    // Add a `brand` column to products so the faceted filter sidebar can
+    // group products by manufacturer. Backfill from tags where the first
+    // tag matches a known brand pattern (uppercase letters only).
+    await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS brand VARCHAR(100);`
+    await sql`CREATE INDEX IF NOT EXISTS products_brand_idx ON products(brand) WHERE brand IS NOT NULL;`
+
+    // Backfill brand from the first tag that looks like a brand name
+    await sql`
+      UPDATE products
+      SET brand = UPPER(t.tag)
+      FROM (
+        SELECT id, json_array_elements_text(tags) AS tag
+        FROM products
+        WHERE brand IS NULL
+          AND json_array_length(tags) > 0
+      ) AS t
+      WHERE products.id = t.id
+        AND t.tag ~ '^[A-Z][A-Z0-9 &.-]{1,30}$';
+    `
+
     console.log('All migrations applied successfully.')
   } catch (err) {
     console.error('Migration failed:', err)

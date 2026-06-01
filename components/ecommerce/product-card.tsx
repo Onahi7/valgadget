@@ -28,6 +28,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
+    if (product.stock <= 0) return
     addToCart({
       id: product.id, name: product.name, slug: product.slug,
       images: product.images, price: product.price, sku: product.sku,
@@ -57,7 +58,12 @@ export function ProductCard({ product, className }: ProductCardProps) {
     >
       {/* Badges */}
       <div className="absolute top-3 left-3 z-10 flex flex-col gap-1.5">
-        {product.isNew && (
+        {product.stock <= 0 && (
+          <Badge variant="secondary" className="text-[10px] font-mono uppercase tracking-wider bg-muted text-muted-foreground border-0">
+            Sold out
+          </Badge>
+        )}
+        {product.isNew && product.stock > 0 && (
           <Badge className="text-[10px] font-mono uppercase tracking-wider bg-primary text-primary-foreground border-0">
             New
           </Badge>
@@ -148,10 +154,11 @@ export function ProductCard({ product, className }: ProductCardProps) {
           <Button
             size="sm"
             onClick={handleAddToCart}
-            className="h-8 w-full shrink-0 px-3 text-xs bg-primary text-primary-foreground hover:bg-primary/90 sm:w-auto"
+            disabled={product.stock <= 0}
+            className="h-8 w-full shrink-0 px-3 text-xs bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground sm:w-auto"
           >
             <ShoppingCart className="w-3.5 h-3.5 mr-1" aria-hidden />
-            Add
+            {product.stock <= 0 ? 'Sold out' : 'Add'}
           </Button>
         </div>
       </div>

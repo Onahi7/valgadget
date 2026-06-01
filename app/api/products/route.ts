@@ -14,6 +14,8 @@ export async function GET(request: NextRequest) {
   const maxPrice  = searchParams.get('maxPrice') ? Number(searchParams.get('maxPrice')) : undefined
   const featured  = searchParams.get('featured') === 'true'
   const isNew     = searchParams.get('isNew') === 'true'
+  const inStock   = searchParams.get('inStock') === 'true'
+  const brand     = searchParams.get('brand') ?? undefined
   const sort      = searchParams.get('sort') ?? 'newest'
 
   const conditions: SQL[] = [eq(products.isActive, true)]
@@ -40,6 +42,15 @@ export async function GET(request: NextRequest) {
   if (maxPrice !== undefined) conditions.push(lte(products.price, String(maxPrice)))
   if (featured) conditions.push(eq(products.featured, true))
   if (isNew)    conditions.push(eq(products.isNew, true))
+  if (inStock)  conditions.push(gte(products.stock, 1))
+  if (brand) {
+    const brandList = brand.split(',').map(b => b.trim()).filter(Boolean)
+    if (brandList.length === 1) {
+      conditions.push(eq(products.brand, brandList[0]))
+    } else if (brandList.length > 1) {
+      conditions.push(inArray(products.brand, brandList))
+    }
+  }
 
   const where = and(...conditions)
 
@@ -61,6 +72,7 @@ export async function GET(request: NextRequest) {
     stock: products.stock, sku: products.sku, rating: products.rating,
     reviewCount: products.reviewCount, tags: products.tags,
     featured: products.featured, isNew: products.isNew, isActive: products.isActive,
+    brand: products.brand,
     createdAt: products.createdAt, updatedAt: products.updatedAt,
     category: { id: categories.id, name: categories.name, slug: categories.slug },
   })

@@ -44,7 +44,7 @@ export function isApiError(e: unknown): e is ApiError {
 
 // ─── Core request ─────────────────────────────────────────────────────────────
 
-type Params = Record<string, string | number | boolean | undefined | null>
+type Params = Record<string, string | number | boolean | string[] | undefined | null>
 
 interface ApiEnvelope<T> {
   data?: T
@@ -73,7 +73,12 @@ async function request<T>(
     const searchParams = new URLSearchParams()
     for (const [key, value] of Object.entries(params)) {
       if (value === undefined || value === null) continue
-      searchParams.append(key, String(value))
+      if (Array.isArray(value)) {
+        if (value.length === 0) continue
+        searchParams.append(key, value.join(','))
+      } else {
+        searchParams.append(key, String(value))
+      }
     }
     const qs = searchParams.toString()
     if (qs) url += `?${qs}`

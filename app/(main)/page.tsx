@@ -1,109 +1,76 @@
 import Image from 'next/image'
 import Link from 'next/link'
-import {
-  ArrowRight,
-  BatteryCharging,
-  Headphones,
-  Monitor,
-  Search,
-  ShieldCheck,
-  Smartphone,
-  Speaker,
-  Truck,
-  Watch,
-} from 'lucide-react'
-import { and, asc, desc, eq, sql } from 'drizzle-orm'
+import { ArrowRight } from 'lucide-react'
+import { and, asc, desc, eq, sql, inArray } from 'drizzle-orm'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { ProductCard } from '@/components/ecommerce/product-card'
-import { HotDealsCarousel } from '@/components/ecommerce/hot-deals-carousel'
+import { ProductShelf } from '@/components/ecommerce/product-shelf'
+import { SectionCover } from '@/components/ecommerce/section-cover'
+import { CategoryIconGrid, type CategoryIcon } from '@/components/ecommerce/category-icon-grid'
+import { TrustBar } from '@/components/layout/trust-bar'
 import { db } from '@/lib/server/db'
 import { categories, products, raffles } from '@/lib/server/schema'
-import { cn } from '@/lib/utils'
 import type { Category } from '@/lib/services/category.service'
 import type { Product } from '@/lib/services/product.service'
 
 export const dynamic = 'force-dynamic'
 
-type CategoryTileConfig = {
-  slug: string
-  title: string
-  label: string
-  description: string
-  icon: typeof Smartphone
-  color: string
-}
-
 type CategoryWithCount = Category & { productCount: number }
 
-type CategoryTile = CategoryTileConfig & {
-  category: CategoryWithCount
-  image?: string
-}
-
-type HomeRaffle = {
-  id: string
+/**
+ * Featured section covers on the homepage. Each one picks 6 products from
+ * the named category and shows 3 subcategories below.
+ */
+const SECTION_COVERS: {
+  slug: string
   title: string
-  image?: string | null
-  ticketPrice: number
-}
-
-const CATEGORY_TILES: CategoryTileConfig[] = [
-  {
-    slug: 'iphones-uk-used',
-    title: 'UK Used iPhones',
-    label: 'Phones',
-    description: 'Clean iPhone options with popular storage choices.',
-    icon: Smartphone,
-    color: 'bg-blue-600',
-  },
-  {
-    slug: 'android-phones-tablets',
-    title: 'Android Phones & Tablets',
-    label: 'Android',
-    description: 'Redmi, Xiaomi and tablets for work and daily use.',
-    icon: Smartphone,
-    color: 'bg-emerald-600',
-  },
+  viewAllHref: string
+  coverImage: string
+  subcategories: { label: string; slug: string }[]
+}[] = [
   {
     slug: 'speakers',
-    title: 'Speakers',
-    label: 'Audio',
-    description: 'Portable speakers from everyday to party-ready sizes.',
-    icon: Speaker,
-    color: 'bg-orange-600',
+    title: 'Speakers & Sound',
+    viewAllHref: '/categories/speakers',
+    coverImage: 'https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?auto=format&fit=crop&w=1600&q=80',
+    subcategories: [
+      { label: 'Speakers', slug: 'speakers' },
+      { label: 'Headphones', slug: 'headphones' },
+      { label: 'Earbuds', slug: 'earbuds' },
+    ],
   },
   {
-    slug: 'monitors',
-    title: 'Monitors',
-    label: 'Displays',
-    description: 'Slim monitors for home, office and gaming setups.',
-    icon: Monitor,
-    color: 'bg-violet-600',
-  },
-  {
-    slug: 'smartwatches',
-    title: 'Smartwatches',
-    label: 'Wearables',
-    description: 'Apple Watch and smartwatch options for daily tracking.',
-    icon: Watch,
-    color: 'bg-rose-600',
+    slug: 'iphones-uk-used',
+    title: 'iPhones & Premium Smartphones',
+    viewAllHref: '/categories/iphones-uk-used',
+    coverImage: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=1600&q=80',
+    subcategories: [
+      { label: 'UK Used iPhones', slug: 'iphones-uk-used' },
+      { label: 'Android Phones & Tablets', slug: 'android-phones-tablets' },
+      { label: 'Smartwatches', slug: 'smartwatches' },
+    ],
   },
   {
     slug: 'rechargeable-fans',
-    title: 'Rechargeable Fans',
-    label: 'Power',
-    description: 'Rechargeable fans for home and office comfort.',
-    icon: BatteryCharging,
-    color: 'bg-cyan-600',
+    title: 'Rechargeable Fans & Home Comfort',
+    viewAllHref: '/categories/rechargeable-fans',
+    coverImage: 'https://images.unsplash.com/photo-1585771724684-38269d6639fd?auto=format&fit=crop&w=1600&q=80',
+    subcategories: [
+      { label: 'Rechargeable Fans', slug: 'rechargeable-fans' },
+      { label: 'Home Appliances', slug: 'home-appliances-comfort' },
+      { label: 'Powerbanks', slug: 'powerbanks' },
+    ],
   },
-]
-
-const SERVICE_POINTS = [
-  { icon: Truck, title: 'Nationwide Delivery', text: 'Dispatch and delivery across Nigeria.' },
-  { icon: ShieldCheck, title: 'Secure Checkout', text: 'Protected payment and order flow.' },
-  { icon: Search, title: 'Easy Product Search', text: 'Find items by category, model or price.' },
-  { icon: Headphones, title: 'Responsive Support', text: 'Get help choosing the right product.' },
+  {
+    slug: 'monitors',
+    title: 'Monitors & Computing',
+    viewAllHref: '/categories/monitors',
+    coverImage: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=1600&q=80',
+    subcategories: [
+      { label: 'Monitors', slug: 'monitors' },
+      { label: 'Laptops & Monitors', slug: 'laptops-monitors' },
+      { label: 'Computer Peripherals', slug: 'computer-peripherals' },
+    ],
+  },
 ]
 
 const productSelection = {
@@ -125,6 +92,7 @@ const productSelection = {
   featured: products.featured,
   isNew: products.isNew,
   isActive: products.isActive,
+  brand: products.brand,
   createdAt: products.createdAt,
   updatedAt: products.updatedAt,
   category: { id: categories.id, name: categories.name, slug: categories.slug },
@@ -140,7 +108,7 @@ function displayImages(images?: string[] | null) {
   return usable.length ? usable : ['/placeholder-product.svg']
 }
 
-function normalizeProduct(row: typeof productSelection extends infer T ? any : never): Product {
+function normalizeProduct(row: any): Product {
   return {
     ...row,
     price: Number(row.price),
@@ -150,6 +118,7 @@ function normalizeProduct(row: typeof productSelection extends infer T ? any : n
     tags: row.tags ?? [],
     images: displayImages(row.images),
     specs: row.specs ?? [],
+    brand: row.brand ?? undefined,
     createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
     updatedAt: row.updatedAt instanceof Date ? row.updatedAt.toISOString() : String(row.updatedAt),
   }
@@ -186,6 +155,7 @@ async function getHomeData() {
         slug: categories.slug,
         description: categories.description,
         image: categories.image,
+        coverImage: categories.coverImage,
         icon: categories.icon,
         parentId: categories.parentId,
         isActive: categories.isActive,
@@ -205,9 +175,9 @@ async function getHomeData() {
       .from(categories)
       .where(eq(categories.isActive, true))
       .orderBy(asc(categories.sortOrder)),
-    getProducts({ where: and(activeProducts, eq(products.featured, true)), orderBy: desc(products.createdAt), limit: 8 }),
-    getProducts({ where: activeProducts, orderBy: desc(products.reviewCount), limit: 16 }),
-    getProducts({ where: activeProducts, orderBy: desc(products.createdAt), limit: 8 }),
+    getProducts({ where: and(activeProducts, eq(products.featured, true)), orderBy: desc(products.createdAt), limit: 4 }),
+    getProducts({ where: activeProducts, orderBy: desc(products.reviewCount), limit: 8 }),
+    getProducts({ where: activeProducts, orderBy: desc(products.createdAt), limit: 4 }),
     getProducts({ where: activeProducts, orderBy: desc(products.rating), limit: 8 }),
     db
       .select({
@@ -222,131 +192,118 @@ async function getHomeData() {
       .limit(3),
   ])
 
-  const allForImages = [...featured, ...trending, ...newest, ...topRated]
-  const productByCategory = new Map<string, Product[]>()
+  // Resolve section cover products by category slug (including children)
+  const sectionData = await Promise.all(
+    SECTION_COVERS.map(async cover => {
+      // Look up the category + its children
+      const [parent] = await db
+        .select({ id: categories.id })
+        .from(categories)
+        .where(eq(categories.slug, cover.slug))
+        .limit(1)
 
-  for (const product of allForImages) {
-    const group = productByCategory.get(product.categoryId) ?? []
-    group.push(product)
-    productByCategory.set(product.categoryId, group)
-  }
+      let categoryIds: string[] = []
+      if (parent) {
+        const children = await db
+          .select({ id: categories.id })
+          .from(categories)
+          .where(eq(categories.parentId, parent.id))
+        categoryIds = [parent.id, ...children.map(c => c.id)]
+      }
 
-  const normalizedCategories: CategoryWithCount[] = categoryRows.map(category => ({
-    ...category,
-    description: category.description ?? undefined,
-    image: category.image ?? undefined,
-    icon: category.icon ?? undefined,
-    parentId: category.parentId ?? undefined,
-    sortOrder: category.sortOrder ?? undefined,
-    productCount: Number(category.productCount ?? 0),
-    createdAt: category.createdAt instanceof Date ? category.createdAt.toISOString() : String(category.createdAt),
-    updatedAt: category.updatedAt instanceof Date ? category.updatedAt.toISOString() : String(category.updatedAt),
-  }))
+      const prods = categoryIds.length
+        ? await getProducts({
+            where: inArray(products.categoryId, categoryIds),
+            orderBy: desc(products.createdAt),
+            limit: 6,
+          })
+        : []
 
-  const categoryMap = new Map(normalizedCategories.map(category => [category.slug, category]))
-  const categoryTiles = CATEGORY_TILES.reduce<CategoryTile[]>((items, config) => {
-    const category = categoryMap.get(config.slug)
-    if (!category) return items
-    const categoryProductImage = productByCategory.get(category.id)?.find(product => isDisplayableImage(product.images[0]))?.images[0]
-    const image = categoryProductImage || (isDisplayableImage(category.image) ? category.image : '/placeholder-product.svg')
-    items.push({ ...config, category, image })
-    return items
-  }, [])
+      const subImages = await Promise.all(
+        cover.subcategories.map(async sub => {
+          const [cat] = await db
+            .select({ id: categories.id, image: categories.image, coverImage: categories.coverImage })
+            .from(categories)
+            .where(eq(categories.slug, sub.slug))
+            .limit(1)
+          return { label: sub.label, slug: sub.slug, image: cat?.coverImage ?? cat?.image }
+        })
+      )
+      return { ...cover, products: prods, subcategories: subImages }
+    })
+  )
+
+  // Category icon grid: pick top-level categories with images
+  const categoryIcons: CategoryIcon[] = categoryRows
+    .filter(c => !c.parentId && c.image && c.productCount > 0)
+    .slice(0, 12)
+    .map(c => ({
+      slug: c.slug,
+      name: c.name,
+      image: c.image!,
+      href: `/categories/${c.slug}`,
+    }))
 
   const priceDeals = trending
     .filter(product => typeof product.comparePrice === 'number' && product.comparePrice > product.price)
     .slice(0, 8)
 
   return {
-    categoryTiles,
-    featured: featured.length ? featured : trending.slice(0, 8),
+    categoryIcons,
+    featured: featured.length ? featured : trending.slice(0, 4),
     priceDeals: priceDeals.length ? priceDeals : trending.slice(0, 8),
     trending: trending.slice(0, 8),
     newest,
     topRated,
+    sectionData: sectionData.filter(s => s.products.length > 0),
     raffles: raffleRows.map(row => ({
       id: row.id,
       title: row.title,
       image: row.image,
       ticketPrice: Number(row.ticketPrice),
-    })) satisfies HomeRaffle[],
+    })),
   }
 }
 
-function ProductShelf({
-  eyebrow,
-  title,
-  href,
-  products,
-}: {
-  eyebrow?: string
-  title: string
-  href: string
-  products: Product[]
-}) {
-  if (products.length === 0) return null
-
-  return (
-    <section className="border-t border-border bg-background py-10">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="mb-5 flex items-end justify-between gap-4">
-          <div>
-            {eyebrow ? <p className="mb-1 text-xs font-mono uppercase tracking-widest text-primary">{eyebrow}</p> : null}
-            <h2 className="text-2xl font-bold tracking-tight">{title}</h2>
-          </div>
-          <Button variant="outline" size="sm" asChild className="rounded-full">
-            <Link href={href}>
-              View all <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-            </Link>
-          </Button>
-        </div>
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          {products.map(product => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
-      </div>
-    </section>
-  )
-}
-
 export default async function HomePage() {
-  const { categoryTiles, featured, priceDeals, trending, newest, topRated, raffles: activeRaffles } = await getHomeData()
-  const sideProducts = (featured.length > 1 ? featured.slice(1, 3) : trending.slice(1, 3))
+  const { categoryIcons, featured, priceDeals, trending, newest, topRated, sectionData, raffles: activeRaffles } =
+    await getHomeData()
 
   return (
     <div className="animate-page-reveal bg-background">
-      <section className="border-b border-border bg-muted/20">
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-          <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
-            <div className="overflow-hidden rounded-lg border border-border bg-card">
-              <div className="flex min-h-[280px] flex-col justify-center p-6 sm:p-8">
-                <Badge className="mb-4 w-fit border-primary/20 bg-primary/10 text-primary">Browse, Pay, Relax</Badge>
-                <h1 className="max-w-xl text-4xl font-bold tracking-tight sm:text-5xl">
-                  Thousands of electronics, phones, laptops and gadgets
-                </h1>
-                <p className="mt-4 max-w-lg text-base leading-7 text-muted-foreground">
-                  Shop phones, speakers, monitors, rechargeable fans, smartwatches and daily electronics from one clean storefront.
-                </p>
-                <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                  <Button size="lg" asChild className="rounded-full px-8">
-                    <Link href="/shop">
-                      Start Shopping <ArrowRight className="ml-2 h-4 w-4" />
-                    </Link>
-                  </Button>
-                  <Button size="lg" variant="outline" asChild className="rounded-full px-8">
-                    <Link href="/categories">View Categories</Link>
-                  </Button>
-                </div>
+      {/* ── BEAT 1: HERO (HEAVY) ────────────────────────────────────── */}
+      <section className="border-b border-border">
+        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+          <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+            <div className="relative overflow-hidden rounded-lg bg-gradient-to-br from-primary/10 via-primary/5 to-background p-6 sm:p-10">
+              <p className="mb-3 text-xs font-mono uppercase tracking-widest text-primary">Browse, Pay, Relax</p>
+              <h1 className="max-w-xl text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
+                Premium electronics, phones, laptops and gadgets
+              </h1>
+              <p className="mt-3 max-w-lg text-base leading-7 text-muted-foreground sm:mt-4">
+                Phones, speakers, monitors, rechargeable fans and smartwatches from one clean storefront.
+              </p>
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                <Button size="lg" asChild className="rounded-full px-8">
+                  <Link href="/shop">
+                    Start Shopping <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
+                <Button size="lg" variant="outline" asChild className="rounded-full px-8">
+                  <Link href="/categories">View Categories</Link>
+                </Button>
               </div>
             </div>
-
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-              {sideProducts.map(product => (
-                <Link key={product.id} href={`/products/${product.slug}`} className="relative min-h-[170px] overflow-hidden rounded-lg border border-border bg-card p-5">
+              {featured.slice(0, 2).map(product => (
+                <Link
+                  key={product.id}
+                  href={`/products/${product.slug}`}
+                  className="relative min-h-[160px] overflow-hidden rounded-lg border border-border bg-card p-5"
+                >
                   <div className="relative z-10 max-w-[60%]">
-                    <p className="text-xs font-mono uppercase tracking-widest text-primary">Featured</p>
-                    <h2 className="mt-1 line-clamp-2 text-lg font-bold">{product.name}</h2>
+                    <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">Featured</p>
+                    <h2 className="mt-1 line-clamp-2 text-base font-bold">{product.name}</h2>
                     <p className="mt-2 text-sm font-semibold">₦{product.price.toLocaleString()}</p>
                   </div>
                   {product.images[0] ? (
@@ -366,88 +323,62 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <HotDealsCarousel products={priceDeals} />
+      {/* ── BEAT 2: SHOP BY CATEGORIES (MEDIUM) ────────────────────── */}
+      <CategoryIconGrid categories={categoryIcons} />
 
-      <section className="border-b border-border py-6">
-        <div className="mx-auto grid max-w-7xl gap-3 px-4 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-8">
-          {SERVICE_POINTS.map(({ icon: Icon, title, text }) => (
-            <div key={title} className="flex items-center gap-3 rounded-lg border border-border bg-card p-4">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                <Icon className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold">{title}</p>
-                <p className="text-xs text-muted-foreground">{text}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+      {/* ── BEAT 3: TRENDING PRODUCTS (MEDIUM-HEAVY) ───────────────── */}
+      <ProductShelf title="Trending Products" href="/shop?sort=popular" products={trending} columns={4} />
 
-      <section className="py-10">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="mb-5 flex items-end justify-between gap-4">
-            <div>
-              <p className="mb-1 text-xs font-mono uppercase tracking-widest text-primary">Shop by department</p>
-              <h2 className="text-2xl font-bold tracking-tight">Browse Categories</h2>
-            </div>
-            <Button variant="outline" size="sm" asChild className="rounded-full">
-              <Link href="/categories">
-                All categories <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-              </Link>
-            </Button>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {categoryTiles.map((tile, index) => (
-              <Link
-                key={tile.category.id}
-                href={`/shop?category=${tile.category.slug}`}
-                className={cn('group relative min-h-[220px] overflow-hidden rounded-lg border border-border bg-card', index === 0 && 'lg:col-span-2')}
-              >
-                {tile.image ? <Image src={tile.image} alt={tile.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" unoptimized /> : null}
-                <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-black/10" />
-                <div className="relative flex h-full flex-col justify-end p-5 text-white">
-                  <span className={cn('mb-4 flex h-11 w-11 items-center justify-center rounded-md text-white', tile.color)}>
-                    <tile.icon className="h-5 w-5" />
-                  </span>
-                  <p className="text-xs font-mono uppercase tracking-widest text-white/70">{tile.label}</p>
-                  <h3 className="mt-1 text-xl font-bold">{tile.title}</h3>
-                  <p className="mt-2 max-w-sm text-sm text-white/75">{tile.description}</p>
-                  <p className="mt-3 text-xs text-white/70">{tile.category.productCount} products</p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* ── BEAT 4: TRUST BAR (LIGHT — REST BEAT) ─────────────────── */}
+      <TrustBar />
 
-      <ProductShelf eyebrow="Popular now" title="Trending Products" href="/shop?sort=popular" products={trending} />
-      <ProductShelf eyebrow="Fresh arrivals" title="New Products" href="/shop?sort=newest" products={newest} />
-      <ProductShelf eyebrow="Customer signals" title="Top Rated Products" href="/shop?sort=rating" products={topRated} />
+      {/* ── BEAT 5: NEW PRODUCTS (MEDIUM) ─────────────────────────── */}
+      <ProductShelf title="New Products" href="/shop?sort=newest" products={newest} columns={4} />
 
+      {/* ── BEATS 6–9: SECTION COVERS (HEAVY) ──────────────────────── */}
+      {sectionData.map(section => (
+        <SectionCover
+          key={section.slug}
+          title={section.title}
+          coverImage={section.coverImage}
+          viewAllHref={section.viewAllHref}
+          products={section.products}
+          subcategories={section.subcategories.map(sub => ({
+            label: sub.label,
+            href: `/categories/${sub.slug}`,
+            image: sub.image ?? undefined,
+          }))}
+        />
+      ))}
+
+      {/* ── BEAT 10: TOP RATED (MEDIUM) ───────────────────────────── */}
+      <ProductShelf title="Top Rated Products" href="/shop?sort=rating" products={topRated} columns={4} />
+
+      {/* ── BEAT 11: LIVE RAFFLES (MEDIUM) ─────────────────────────── */}
       {activeRaffles.length > 0 ? (
-        <section className="border-t border-border bg-muted/20 py-10">
+        <section className="border-t border-border py-12">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="mb-5 flex items-end justify-between gap-4">
-              <div>
-                <p className="mb-1 text-xs font-mono uppercase tracking-widest text-primary">Extra offers</p>
-                <h2 className="text-2xl font-bold tracking-tight">Live Raffles</h2>
-              </div>
-              <Button variant="outline" size="sm" asChild className="rounded-full">
-                <Link href="/raffles">
-                  View raffles <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-                </Link>
-              </Button>
+              <h2 className="text-2xl font-bold tracking-tight">Live Raffles</h2>
+              <Link
+                href="/raffles"
+                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                View all
+                <ArrowRight className="ml-1 inline-block h-3.5 w-3.5" />
+              </Link>
             </div>
             <div className="grid gap-4 md:grid-cols-3">
               {activeRaffles.map(raffle => (
-                <Link key={raffle.id} href={`/raffles/${raffle.id}`} className="overflow-hidden rounded-lg border border-border bg-card">
-                  <div className="relative h-44">
-                    {raffle.image ? <Image src={raffle.image} alt={raffle.title} fill className="object-cover" unoptimized /> : null}
+                <Link key={raffle.id} href={`/raffles/${raffle.id}`} className="group overflow-hidden rounded-lg border border-border bg-card transition-shadow hover:shadow-md">
+                  <div className="relative h-44 bg-muted">
+                    {raffle.image ? (
+                      <Image src={raffle.image} alt={raffle.title} fill className="object-cover" unoptimized />
+                    ) : null}
                   </div>
                   <div className="p-4">
-                    <Badge className="mb-2 border-primary/20 bg-primary/10 text-primary">Live</Badge>
-                    <h3 className="line-clamp-1 font-semibold">{raffle.title}</h3>
+                    <p className="mb-2 text-[10px] font-mono uppercase tracking-widest text-primary">Live</p>
+                    <h3 className="line-clamp-1 font-semibold group-hover:text-primary">{raffle.title}</h3>
                     <p className="mt-1 text-sm text-muted-foreground">Ticket: ₦{raffle.ticketPrice.toLocaleString()}</p>
                   </div>
                 </Link>
@@ -456,25 +387,6 @@ export default async function HomePage() {
           </div>
         </section>
       ) : null}
-
-      <section className="border-t border-border py-12">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid gap-6 rounded-lg border border-border bg-card p-6 sm:p-8 lg:grid-cols-[1fr_auto] lg:items-center">
-            <div>
-              <p className="text-xs font-mono uppercase tracking-widest text-primary">Shop with ease</p>
-              <h2 className="mt-1 text-2xl font-bold tracking-tight">Browse the full catalog and checkout in a few steps.</h2>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-                Browse departments, compare products, add to cart and complete your order from one simple storefront.
-              </p>
-            </div>
-            <Button asChild size="lg" className="rounded-full px-8">
-              <Link href="/shop">
-                Continue Shopping <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
-        </div>
-      </section>
     </div>
   )
 }

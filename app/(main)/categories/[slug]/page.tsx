@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { db } from '@/lib/server/db'
 import { categories } from '@/lib/server/schema'
-import { eq } from 'drizzle-orm'
+import { asc, eq } from 'drizzle-orm'
 import { CategoryDetailClient } from './category-detail-client'
 import { withCategoryDisplayImages } from '@/lib/server/category-images'
 
@@ -17,6 +17,7 @@ async function getCategory(slug: string) {
       slug: categories.slug,
       description: categories.description,
       image: categories.image,
+      coverImage: categories.coverImage,
       icon: categories.icon,
       parentId: categories.parentId,
       isActive: categories.isActive,
@@ -34,6 +35,7 @@ async function getCategory(slug: string) {
     ...category,
     description: category.description ?? undefined,
     image: category.image ?? undefined,
+    coverImage: category.coverImage ?? undefined,
     icon: category.icon ?? undefined,
     parentId: category.parentId ?? undefined,
     sortOrder: category.sortOrder ?? undefined,
@@ -42,6 +44,20 @@ async function getCategory(slug: string) {
   }])
 
   return categoryWithImage
+}
+
+async function getSubcategories(parentId: string) {
+  const rows = await db
+    .select({
+      id: categories.id,
+      name: categories.name,
+      slug: categories.slug,
+      image: categories.image,
+    })
+    .from(categories)
+    .where(eq(categories.parentId, parentId))
+    .orderBy(asc(categories.sortOrder))
+  return rows
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -53,7 +69,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 
   const description = category.description || `Browse ${category.name} products at Val Gadgets - Quality tech gadgets and accessories`
-  const image = category.displayImage || category.image
+  const image = category.coverImage || category.displayImage || category.image
 
   return {
     title: `${category.name} | Val Gadgets`,
@@ -76,6 +92,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function CategoryPage({ params }: PageProps) {
   const { slug } = await params
   const category = await getCategory(slug)
+  const subcategories = category ? await getSubcategories(category.id) : []
 
-  return <CategoryDetailClient slug={slug} initialCategory={category} />
+  return <CategoryDetailClient slug={slug} initialCategory={category} subcategories={subcategories} />
 }

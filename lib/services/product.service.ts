@@ -58,6 +58,7 @@ export interface Product {
   featured: boolean
   isNew: boolean
   isActive: boolean
+  brand?: string
   variants?: ProductVariant[]
   reviews?: ProductReview[]
   relatedIds?: string[]
@@ -84,6 +85,8 @@ export interface ProductFilters {
   featured?: boolean
   isNew?: boolean
   tag?: string
+  tags?: string | string[]
+  brand?: string | string[]
   inStock?: boolean
 }
 
@@ -112,6 +115,15 @@ export const productService = {
   /** Paginated, filtered product list */
   getAll: (filters?: ProductFilters) =>
     api.get<ProductsResponse>('/products', filters as Record<string, string | number | boolean | undefined | null>),
+
+  /** Filter facets (brands, price range, availability, tags) for the sidebar */
+  getFacets: (category?: string) =>
+    api.get<{
+      brands: { value: string; count: number }[]
+      priceRange: { min: number; max: number }
+      availability: { inStock: number; outOfStock: number; total: number }
+      tags: { value: string; count: number }[]
+    }>('/products/facets', { category }),
 
   /** Single product by ID */
   getById: (id: string) =>

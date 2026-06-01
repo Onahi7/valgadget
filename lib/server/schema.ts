@@ -70,6 +70,7 @@ export const categories = pgTable('categories', {
   slug:        varchar('slug', { length: 220 }).notNull().unique(),
   description: text('description'),
   image:       text('image'),
+  coverImage:  text('cover_image'),
   icon:        varchar('icon', { length: 50 }),
   parentId:    text('parent_id').references((): any => categories.id, { onDelete: 'set null' }),
   isActive:    boolean('is_active').notNull().default(true),
@@ -105,6 +106,7 @@ export const products = pgTable('products', {
   featured:         boolean('featured').notNull().default(false),
   isNew:            boolean('is_new').notNull().default(false),
   isActive:         boolean('is_active').notNull().default(true),
+  brand:            varchar('brand', { length: 100 }),
   createdAt:        timestamp('created_at').notNull().defaultNow(),
   updatedAt:        timestamp('updated_at').notNull().defaultNow(),
 }, t => [
@@ -112,6 +114,7 @@ export const products = pgTable('products', {
   index('products_category_idx').on(t.categoryId),
   index('products_featured_idx').on(t.featured),
   index('products_active_idx').on(t.isActive),
+  index('products_brand_idx').on(t.brand),
 ])
 
 // ─── Product Variants ──────────────────────────────────────────────────────
