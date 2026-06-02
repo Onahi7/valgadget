@@ -4,116 +4,111 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Tech Direct NG Color Scheme */
+  /* ValGadget Design Tokens - Bold, Tech-forward, Distinctive */
 
-  /* Background: off-white/light gray (#F5F5F5) */
-  --background: oklch(0.96 0 0);
-  --foreground: oklch(0.15 0 0);
-
-  /* Card: white (#FFFFFF) */
+  /* Brand colors: Deep charcoal + Electric orange accent */
+  --background: oklch(0.98 0 0);
+  --foreground: oklch(0.1 0 0);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.15 0 0);
+  --card-foreground: oklch(0.1 0 0);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.15 0 0);
+  --popover-foreground: oklch(0.1 0 0);
 
-  /* Primary: vivid blue (#0A6CDC) */
-  --primary: oklch(0.55 0.18 250);
+  /* Primary: Electric orange */
+  --primary: oklch(0.65 0.22 40);
   --primary-foreground: oklch(1 0 0);
 
-  /* Secondary: dark near-black (#232323) */
-  --secondary: oklch(0.15 0 0);
-  --secondary-foreground: oklch(1 0 0);
+  /* Secondary: Deep charcoal */
+  --secondary: oklch(0.12 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
 
-  /* Muted: light gray */
-  --muted: oklch(0.93 0 0);
-  --muted-foreground: oklch(0.5 0 0);
+  --muted: oklch(0.94 0 0);
+  --muted-foreground: oklch(0.48 0 0);
 
-  /* Accent: blue (same as primary for hover states) */
-  --accent: oklch(0.55 0.18 250);
-  --accent-foreground: oklch(1 0 0);
+  /* Accent: warm amber */
+  --accent: oklch(0.88 0.08 70);
+  --accent-foreground: oklch(0.12 0 0);
 
-  /* Destructive: red (#EF3626) for sale prices */
-  --destructive: oklch(0.6 0.22 25);
+  --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(1 0 0);
 
-  /* Borders: subtle black at 10% opacity */
   --border: oklch(0.88 0 0);
   --input: oklch(0.88 0 0);
-  --ring: oklch(0.55 0.18 250);
+  --ring: oklch(0.65 0.22 40);
 
   --radius: 0.375rem;
 
   /* Chart */
-  --chart-1: oklch(0.55 0.18 250);
+  --chart-1: oklch(0.65 0.22 40);
   --chart-2: oklch(0.5 0.15 200);
   --chart-3: oklch(0.7 0.18 140);
   --chart-4: oklch(0.6 0.2 300);
   --chart-5: oklch(0.75 0.15 60);
 
   /* Sidebar */
-  --sidebar: oklch(1 0 0);
-  --sidebar-foreground: oklch(0.15 0 0);
-  --sidebar-primary: oklch(0.55 0.18 250);
+  --sidebar: oklch(0.1 0 0);
+  --sidebar-foreground: oklch(0.9 0 0);
+  --sidebar-primary: oklch(0.65 0.22 40);
   --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.96 0 0);
-  --sidebar-accent-foreground: oklch(0.15 0 0);
-  --sidebar-border: oklch(0.88 0 0);
-  --sidebar-ring: oklch(0.55 0.18 250);
+  --sidebar-accent: oklch(0.18 0 0);
+  --sidebar-accent-foreground: oklch(0.9 0 0);
+  --sidebar-border: oklch(0.2 0 0);
+  --sidebar-ring: oklch(0.65 0.22 40);
 
-  /* Custom tokens */
-  --brand: oklch(0.55 0.18 250);
+  /* Custom ValGadget tokens */
+  --brand: oklch(0.65 0.22 40);
   --brand-foreground: oklch(1 0 0);
-  --brand-hover: oklch(0.48 0.18 250);
-  --surface: oklch(0.96 0 0);
+  --brand-hover: oklch(0.58 0.22 40);
+  --surface: oklch(0.97 0 0);
   --surface-elevated: oklch(1 0 0);
-  --ink: oklch(0.15 0 0);
-  --ink-muted: oklch(0.5 0 0);
+  --ink: oklch(0.1 0 0);
+  --ink-muted: oklch(0.48 0 0);
   --ink-subtle: oklch(0.72 0 0);
   --badge-success: oklch(0.55 0.15 145);
   --badge-warning: oklch(0.72 0.18 65);
-  --badge-danger: oklch(0.6 0.22 25);
+  --badge-danger: oklch(0.577 0.245 27.325);
   --badge-info: oklch(0.55 0.18 250);
 }
 
 .dark {
-  --background: oklch(0.13 0 0);
-  --foreground: oklch(0.96 0 0);
-  --card: oklch(0.16 0 0);
-  --card-foreground: oklch(0.96 0 0);
-  --popover: oklch(0.16 0 0);
-  --popover-foreground: oklch(0.96 0 0);
-  --primary: oklch(0.6 0.18 250);
-  --primary-foreground: oklch(1 0 0);
+  --background: oklch(0.1 0 0);
+  --foreground: oklch(0.95 0 0);
+  --card: oklch(0.14 0 0);
+  --card-foreground: oklch(0.95 0 0);
+  --popover: oklch(0.14 0 0);
+  --popover-foreground: oklch(0.95 0 0);
+  --primary: oklch(0.68 0.22 40);
+  --primary-foreground: oklch(0.1 0 0);
   --secondary: oklch(0.22 0 0);
-  --secondary-foreground: oklch(0.96 0 0);
+  --secondary-foreground: oklch(0.95 0 0);
   --muted: oklch(0.2 0 0);
   --muted-foreground: oklch(0.62 0 0);
-  --accent: oklch(0.6 0.18 250);
-  --accent-foreground: oklch(1 0 0);
-  --destructive: oklch(0.55 0.22 25);
-  --destructive-foreground: oklch(0.96 0 0);
-  --border: oklch(0.25 0 0);
-  --input: oklch(0.25 0 0);
-  --ring: oklch(0.6 0.18 250);
-  --chart-1: oklch(0.6 0.18 250);
+  --accent: oklch(0.22 0 0);
+  --accent-foreground: oklch(0.95 0 0);
+  --destructive: oklch(0.45 0.2 25);
+  --destructive-foreground: oklch(0.95 0 0);
+  --border: oklch(0.22 0 0);
+  --input: oklch(0.22 0 0);
+  --ring: oklch(0.68 0.22 40);
+  --chart-1: oklch(0.68 0.22 40);
   --chart-2: oklch(0.55 0.15 200);
   --chart-3: oklch(0.7 0.18 140);
   --chart-4: oklch(0.65 0.2 300);
   --chart-5: oklch(0.75 0.15 60);
-  --sidebar: oklch(0.1 0 0);
+  --sidebar: oklch(0.08 0 0);
   --sidebar-foreground: oklch(0.9 0 0);
-  --sidebar-primary: oklch(0.6 0.18 250);
-  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-primary: oklch(0.68 0.22 40);
+  --sidebar-primary-foreground: oklch(0.1 0 0);
   --sidebar-accent: oklch(0.18 0 0);
   --sidebar-accent-foreground: oklch(0.9 0 0);
-  --sidebar-border: oklch(0.25 0 0);
-  --sidebar-ring: oklch(0.6 0.18 250);
-  --brand: oklch(0.6 0.18 250);
-  --brand-foreground: oklch(1 0 0);
-  --brand-hover: oklch(0.65 0.18 250);
-  --surface: oklch(0.16 0 0);
-  --surface-elevated: oklch(0.2 0 0);
-  --ink: oklch(0.96 0 0);
+  --sidebar-border: oklch(0.2 0 0);
+  --sidebar-ring: oklch(0.68 0.22 40);
+  --brand: oklch(0.68 0.22 40);
+  --brand-foreground: oklch(0.1 0 0);
+  --brand-hover: oklch(0.72 0.22 40);
+  --surface: oklch(0.14 0 0);
+  --surface-elevated: oklch(0.18 0 0);
+  --ink: oklch(0.95 0 0);
   --ink-muted: oklch(0.62 0 0);
   --ink-subtle: oklch(0.42 0 0);
 }
@@ -171,7 +166,7 @@
     @apply bg-background text-foreground font-sans antialiased;
   }
   ::selection {
-    background: oklch(0.55 0.18 250 / 0.2);
+    background: oklch(0.65 0.22 40 / 0.2);
   }
 }
 
@@ -231,7 +226,7 @@
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: oklch(0.7 0 0); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: oklch(0.55 0.18 250); }
+::-webkit-scrollbar-thumb:hover { background: oklch(0.65 0.22 40); }
 
 /* Print styles — receipt */
 @media print {
