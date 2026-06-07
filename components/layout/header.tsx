@@ -10,12 +10,13 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
+import { TypeaheadSearch } from '@/components/ecommerce/typeahead-search'
+import { useCartDrawer } from '@/contexts/cart-drawer-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useCart } from '@/contexts/cart-context'
 import { useWishlist } from '@/contexts/wishlist-context'
@@ -40,6 +41,7 @@ export function Header() {
   const [searchQuery, setSearchQuery] = useState('')
   const [categories, setCategories] = useState<Category[]>([])
   const searchRef = useRef<HTMLInputElement>(null)
+  const { openCart } = useCartDrawer()
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 8)
@@ -86,27 +88,12 @@ export function Header() {
             </Link>
 
             {/* Search bar - center, prominent */}
-            <form
-              onSubmit={handleSearch}
-              className="hidden sm:flex flex-1 max-w-2xl mx-auto"
-            >
-              <div className="flex w-full rounded-full border-2 border-primary overflow-hidden shadow-sm">
-                <Input
-                  ref={searchRef}
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  placeholder="Search phones, laptops, accessories..."
-                  className="flex-1 border-0 ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none pl-5 text-sm bg-background"
-                />
-                <button
-                  type="submit"
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground px-5 shrink-0 flex items-center gap-2 transition-colors text-sm font-medium"
-                >
-                  <Search className="w-4 h-4" />
-                  <span className="hidden md:block">Search</span>
-                </button>
-              </div>
-            </form>
+            <div className="hidden sm:flex flex-1 max-w-2xl mx-auto">
+              <TypeaheadSearch
+                placeholder="Search phones, laptops, accessories..."
+                className="w-full"
+              />
+            </div>
 
             {/* Right actions */}
             <div className="flex items-center gap-1 shrink-0 ml-auto sm:ml-0">
@@ -128,16 +115,20 @@ export function Header() {
                 </Button>
               </Link>
 
-              <Link href="/cart" aria-label={`Cart (${itemCount} items)`} className="relative">
-                <Button variant="ghost" size="icon">
-                  <ShoppingCart className="w-4 h-4" />
-                  {itemCount > 0 && (
-                    <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[10px] bg-primary text-primary-foreground border-0">
-                      {itemCount > 9 ? '9+' : itemCount}
-                    </Badge>
-                  )}
-                </Button>
-              </Link>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={openCart}
+                aria-label={`Cart (${itemCount} items)`}
+                className="relative"
+              >
+                <ShoppingCart className="w-4 h-4" />
+                {itemCount > 0 && (
+                  <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[10px] bg-primary text-primary-foreground border-0">
+                    {itemCount > 9 ? '9+' : itemCount}
+                  </Badge>
+                )}
+              </Button>
 
               {isAuthenticated ? (
                 <DropdownMenu>
@@ -273,19 +264,12 @@ export function Header() {
           aria-label="Mobile navigation"
         >
           {/* Mobile search */}
-          <form onSubmit={handleSearch} className="px-4 mb-3">
-            <div className="flex rounded-full border-2 border-primary overflow-hidden">
-              <Input
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Search gadgets..."
-                className="flex-1 border-0 ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none pl-4 text-sm bg-background"
-              />
-              <button type="submit" className="bg-primary text-primary-foreground px-4 shrink-0">
-                <Search className="w-4 h-4" />
-              </button>
-            </div>
-          </form>
+          <div className="px-4 mb-3">
+            <TypeaheadSearch
+              placeholder="Search gadgets..."
+              onResultClick={() => setMobileOpen(false)}
+            />
+          </div>
 
           {/* Categories section */}
           <div className="px-4 mb-2">

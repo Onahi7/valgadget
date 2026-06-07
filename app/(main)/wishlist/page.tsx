@@ -3,13 +3,14 @@
 import Link from 'next/link'
 import { Heart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription, EmptyContent } from '@/components/ui/empty'
 import { ProductCard } from '@/components/ecommerce/product-card'
 import { useWishlist } from '@/contexts/wishlist-context'
 import type { Product } from '@/lib/services/product.service'
 
 export default function WishlistPage() {
-  const { items, count } = useWishlist()
+  const { items, count, hydrated } = useWishlist()
 
   const products: Product[] = items.map(item => ({
     id: item.id, name: item.name, slug: item.slug,
@@ -26,11 +27,24 @@ export default function WishlistPage() {
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Heart className="w-6 h-6 text-primary" /> Wishlist
           </h1>
-          <p className="text-muted-foreground text-sm mt-0.5">{count} saved item{count !== 1 ? 's' : ''}</p>
+          <p className="text-muted-foreground text-sm mt-0.5">
+            {hydrated ? `${count} saved item${count !== 1 ? 's' : ''}` : 'Loading…'}
+          </p>
         </div>
       </div>
 
-      {count === 0 ? (
+      {!hydrated ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="space-y-2">
+              <Skeleton className="aspect-square w-full rounded-lg" />
+              <Skeleton className="h-3 w-1/3" />
+              <Skeleton className="h-4 w-2/3" />
+              <Skeleton className="h-4 w-1/2" />
+            </div>
+          ))}
+        </div>
+      ) : count === 0 ? (
         <Empty>
           <EmptyHeader>
             <EmptyMedia variant="icon"><Heart className="size-6" /></EmptyMedia>

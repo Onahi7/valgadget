@@ -15,6 +15,9 @@ import { ProductGrid } from '@/components/ecommerce/product-grid'
 import { VariantSelector, type ProductVariant } from '@/components/ecommerce/variant-selector'
 import { ReviewForm } from '@/components/ecommerce/review-form'
 import { ReviewList, StarRating, type Review } from '@/components/ecommerce/review-list'
+import { ReviewHistogram } from '@/components/ecommerce/review-histogram'
+import { FrequentlyBoughtTogether } from '@/components/ecommerce/frequently-bought-together'
+import { StickyBuyBar } from '@/components/ecommerce/sticky-buy-bar'
 import { useCart } from '@/contexts/cart-context'
 import { useWishlist } from '@/contexts/wishlist-context'
 import { useAuth } from '@/contexts/auth-context'
@@ -360,49 +363,60 @@ export function ProductDetailClient({ slug, initialProduct }: ProductDetailClien
           </TabsContent>
           <TabsContent value="reviews">
             <div className="space-y-8">
-              {/* Rating Summary */}
-              <div className="flex flex-col gap-6 rounded-xl border bg-card p-6 sm:flex-row sm:items-center sm:gap-8">
-                <div className="text-center">
-                  <div className="text-4xl font-bold mb-2">{product.rating.toFixed(1)}</div>
-                  <StarRating rating={product.rating} showCount count={product.reviewCount} />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Based on {product.reviewCount} review{product.reviewCount !== 1 ? 's' : ''}
-                  </p>
-                  {user ? (
-                    <Dialog open={showReviewForm} onOpenChange={setShowReviewForm}>
-                      <DialogTrigger asChild>
-                        <Button>
-                          <MessageSquare className="w-4 h-4 mr-2" />
-                          Write a Review
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-2xl">
-                        <DialogHeader>
-                          <DialogTitle>Write a Review</DialogTitle>
-                        </DialogHeader>
-                        <ReviewForm
-                          productId={product.id}
-                          onSuccess={() => {
-                            setShowReviewForm(false)
-                            productService.getReviews(product.id)
-                              .then(res => setReviews(res.data))
-                              .catch(() => setReviews([]))
-                          }}
-                          onCancel={() => setShowReviewForm(false)}
-                        />
-                      </DialogContent>
-                    </Dialog>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      <Link href={`/login?returnUrl=/products/${slug}`} className="text-primary hover:underline">
-                        Sign in
-                      </Link>{' '}
-                      to write a review
-                    </p>
-                  )}
-                </div>
+              {/* Rating Histogram */}
+              {product.reviewCount > 0 ? (
+                <ReviewHistogram
+                  summary={{
+                    average: product.rating,
+                    count: product.reviewCount,
+                    distribution: reviews.reduce<Record<1 | 2 | 3 | 4 | 5, number>>(
+                      (acc, r) => {
+                        const star = Math.max(1, Math.min(5, Math.round(r.rating))) as 1 | 2 | 3 | 4 | 5
+                        acc[star] = (acc[star] ?? 0) + 1
+                        return acc
+                      },
+                      { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
+                    ),
+                  }}
+                />
+              ) : null}
+
+              {/* Write Review CTA */}
+              <div className="flex flex-col gap-2 rounded-xl border bg-card p-6 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm text-muted-foreground">
+                  {user
+                    ? 'Have you bought this product? Share your experience with other customers.'
+                    : 'Sign in to write a review.'}
+                </p>
+                {user ? (
+                  <Dialog open={showReviewForm} onOpenChange={setShowReviewForm}>
+                    <DialogTrigger asChild>
+                      <Button>
+                        <MessageSquare className="w-4 h-4 mr-2" />
+                        Write a Review
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-2xl">
+                      <DialogHeader>
+                        <DialogTitle>Write a Review</DialogTitle>
+                      </DialogHeader>
+                      <ReviewForm
+                        productId={product.id}
+                        onSuccess={() => {
+                          setShowReviewForm(false)
+                          productService.getReviews(product.id)
+                            .then(res => setReviews(res.data))
+                            .catch(() => setReviews([]))
+                        }}
+                        onCancel={() => setShowReviewForm(false)}
+                      />
+                    </DialogContent>
+                  </Dialog>
+                ) : (
+                  <Button asChild>
+                    <Link href={`/login?returnUrl=/products/${slug}`}>Sign in to review</Link>
+                  </Button>
+                )}
               </div>
 
               {/* Reviews List */}
@@ -419,6 +433,14 @@ export function ProductDetailClient({ slug, initialProduct }: ProductDetailClien
           <ProductGrid products={related} />
         </div>
       )}
+
+      {/* Frequently Bought Together */}
+      {product && related.length > 0 ? (
+        <FrequentlyBoughtTogether main={product} related={related} />
+      ) : null}
+
+      {/* Sticky mobile buy bar */}
+      {product ? <StickyBuyBar product={product} /> : null}
     </div>
   )
 }

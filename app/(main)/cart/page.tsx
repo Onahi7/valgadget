@@ -4,9 +4,9 @@ import Link from 'next/link'
 import { ShoppingBag, ArrowRight, Trash2, ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription, EmptyContent } from '@/components/ui/empty'
 import { CartItem } from '@/components/ecommerce/cart-item'
 import { CheckoutSummary } from '@/components/ecommerce/checkout-summary'
+import { EmptyState } from '@/components/ecommerce/empty-state'
 import { useCart } from '@/contexts/cart-context'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -19,7 +19,7 @@ export default function CartPage() {
 
   const handleApplyCoupon = async () => {
     if (!couponInput.trim()) return
-    
+
     setValidating(true)
     try {
       const data = await paymentService.validateCoupon(couponInput.toUpperCase(), total)
@@ -40,17 +40,14 @@ export default function CartPage() {
 
   if (itemCount === 0) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 animate-page-reveal">
-        <Empty className="py-16">
-          <EmptyHeader>
-            <EmptyMedia variant="icon"><ShoppingBag className="size-6" /></EmptyMedia>
-            <EmptyTitle>Your cart is empty</EmptyTitle>
-            <EmptyDescription>Add some awesome gear to get started.</EmptyDescription>
-          </EmptyHeader>
-          <EmptyContent>
-            <Button asChild><Link href="/shop"><ShoppingBag className="w-4 h-4 mr-2" /> Shop Now</Link></Button>
-          </EmptyContent>
-        </Empty>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 animate-page-reveal">
+        <EmptyState
+          icon={ShoppingBag}
+          title="Your cart is empty"
+          description="Looks like you haven't added anything yet. Browse our shop to find your next favorite gadget."
+          action={{ label: 'Shop Now', href: '/shop' }}
+          secondaryAction={{ label: 'Browse Categories', href: '/categories' }}
+        />
       </div>
     )
   }

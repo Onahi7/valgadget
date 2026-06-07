@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { Home, Grid3X3, ShoppingCart, User, Heart, X } from 'lucide-react'
 import { useCart } from '@/contexts/cart-context'
+import { useCartDrawer } from '@/contexts/cart-drawer-context'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { categoryService, type Category } from '@/lib/services/category.service'
@@ -12,6 +13,7 @@ import { categoryService, type Category } from '@/lib/services/category.service'
 export function MobileBottomNav() {
   const pathname = usePathname()
   const { itemCount } = useCart()
+  const { openCart } = useCartDrawer()
   const [categoriesOpen, setCategoriesOpen] = useState(false)
   const [categories, setCategories] = useState<Category[]>([])
 
@@ -98,12 +100,9 @@ export function MobileBottomNav() {
             <span className="text-[10px] font-medium leading-none mt-0.5">Shop</span>
           </button>
 
-          <Link
-            href="/cart"
-            className={cn(
-              'flex flex-col items-center justify-center gap-0.5 flex-1 py-1 rounded-lg transition-colors relative',
-              pathname === '/cart' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
-            )}
+          <button
+            onClick={openCart}
+            className="flex flex-col items-center justify-center gap-0.5 flex-1 py-1 rounded-lg transition-colors text-muted-foreground hover:text-foreground"
             aria-label="Cart"
           >
             <span className="relative">
@@ -115,7 +114,7 @@ export function MobileBottomNav() {
               )}
             </span>
             <span className="text-[10px] font-medium leading-none mt-0.5">Cart</span>
-          </Link>
+          </button>
 
           <Link
             href="/wishlist"

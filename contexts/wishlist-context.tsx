@@ -15,6 +15,7 @@ interface WishlistContextValue {
   has: (productId: string) => boolean
   count: number
   isLoading: boolean
+  hydrated: boolean
 }
 
 const WishlistContext = createContext<WishlistContextValue | null>(null)
@@ -24,6 +25,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated } = useAuth()
   const [items, setItems] = useState<WishlistProduct[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [hydrated, setHydrated] = useState(false)
   const syncedRef = useRef(false)
 
   // Load wishlist: from API if authenticated, from localStorage if guest
@@ -82,7 +84,10 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
             if (stored) setItems(JSON.parse(stored))
           } catch { /* ignore */ }
         })
-        .finally(() => setIsLoading(false))
+        .finally(() => {
+          setIsLoading(false)
+          setHydrated(true)
+        })
     } else {
       // Guest: use localStorage
       syncedRef.current = false
@@ -93,6 +98,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
       } catch {
         setItems([])
       }
+      setHydrated(true)
     }
   }, [isAuthenticated, user])
 
@@ -135,7 +141,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
   const has = useCallback((productId: string) => items.some(i => i.id === productId), [items])
 
   return (
-    <WishlistContext.Provider value={{ items, add, remove, toggle, has, count: items.length, isLoading }}>
+    <WishlistContext.Provider value={{ items, add, remove, toggle, has, count: items.length, isLoading, hydrated }}>
       {children}
     </WishlistContext.Provider>
   )
