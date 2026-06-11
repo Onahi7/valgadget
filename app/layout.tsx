@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from 'next'
 import { Inter, Space_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { Toaster } from '@/components/ui/sonner'
-import { Providers } from '@/components/providers'
 import './globals.css'
 
 const inter = Inter({
@@ -88,10 +87,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} ${spaceMono.variable} font-sans antialiased`}>
-        <Providers>
-          {children}
-          <Toaster position="top-right" richColors />
-        </Providers>
+        {children}
+        <Toaster position="top-right" richColors />
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>
