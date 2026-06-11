@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import type { Product } from '@/lib/services/product.service'
 import { FulfillmentBadge } from '@/components/ecommerce/fulfillment-badge'
+import { toCartItem, toWishlistItem } from '@/lib/cart-helpers'
 
 interface ProductCardProps {
   product: Product
@@ -36,11 +37,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
     e.stopPropagation()
     if (product.stock <= 0 || adding) return
     setAdding(true)
-    addToCart({
-      id: product.id, name: product.name, slug: product.slug,
-      images: product.images, price: product.price, sku: product.sku,
-      stock: product.stock,
-    })
+    addToCart(toCartItem(product))
     setJustAdded(true)
     setTimeout(() => setJustAdded(false), 1500)
     setTimeout(() => setAdding(false), 600)
@@ -50,11 +47,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
   const handleWishlist = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    toggle({
-      id: product.id, name: product.name, slug: product.slug,
-      images: product.images, price: product.price, comparePrice: product.comparePrice,
-      stock: product.stock, sku: product.sku,
-    })
+    toggle(toWishlistItem(product))
     toast(isWishlisted ? 'Removed from wishlist' : 'Added to wishlist')
   }
 

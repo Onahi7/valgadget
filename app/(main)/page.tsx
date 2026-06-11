@@ -8,8 +8,8 @@ import { CategoryIconGrid, type CategoryIcon } from '@/components/ecommerce/cate
 import { BrandLogos } from '@/components/ecommerce/brand-logos'
 import { db } from '@/lib/server/db'
 import { categories, products, raffles } from '@/lib/server/schema'
+import { getProducts } from '@/lib/server/product-helpers'
 import type { Category } from '@/lib/services/category.service'
-import type { Product } from '@/lib/services/product.service'
 
 export const dynamic = 'force-dynamic'
 
@@ -71,77 +71,6 @@ const SECTION_COVERS: {
     ],
   },
 ]
-
-const productSelection = {
-  id: products.id,
-  name: products.name,
-  slug: products.slug,
-  description: products.description,
-  shortDescription: products.shortDescription,
-  specs: products.specs,
-  price: products.price,
-  comparePrice: products.comparePrice,
-  images: products.images,
-  categoryId: products.categoryId,
-  stock: products.stock,
-  sku: products.sku,
-  rating: products.rating,
-  reviewCount: products.reviewCount,
-  tags: products.tags,
-  featured: products.featured,
-  isNew: products.isNew,
-  isActive: products.isActive,
-  brand: products.brand,
-  createdAt: products.createdAt,
-  updatedAt: products.updatedAt,
-  category: { id: categories.id, name: categories.name, slug: categories.slug },
-}
-
-function isDisplayableImage(src?: string | null) {
-  if (!src) return false
-  return !src.includes('source.unsplash.com')
-}
-
-function displayImages(images?: string[] | null) {
-  const usable = (images ?? []).filter(isDisplayableImage)
-  return usable.length ? usable : ['/placeholder-product.svg']
-}
-
-function normalizeProduct(row: any): Product {
-  return {
-    ...row,
-    price: Number(row.price),
-    comparePrice: row.comparePrice ? Number(row.comparePrice) : undefined,
-    rating: row.rating ? Number(row.rating) : 0,
-    categoryId: row.categoryId ?? '',
-    tags: row.tags ?? [],
-    images: displayImages(row.images),
-    specs: row.specs ?? [],
-    brand: row.brand ?? undefined,
-    createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
-    updatedAt: row.updatedAt instanceof Date ? row.updatedAt.toISOString() : String(row.updatedAt),
-  }
-}
-
-async function getProducts({
-  where,
-  orderBy,
-  limit = 8,
-}: {
-  where?: ReturnType<typeof and>
-  orderBy: ReturnType<typeof desc> | ReturnType<typeof asc>
-  limit?: number
-}) {
-  const rows = await db
-    .select(productSelection)
-    .from(products)
-    .leftJoin(categories, eq(products.categoryId, categories.id))
-    .where(where ?? eq(products.isActive, true))
-    .orderBy(orderBy)
-    .limit(limit)
-
-  return rows.map(normalizeProduct)
-}
 
 async function getHomeData() {
   const activeProducts = eq(products.isActive, true)

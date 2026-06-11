@@ -6,16 +6,7 @@ import { ShoppingBag, ShoppingCart, Users, DollarSign, ArrowUpRight, Package } f
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { adminService, type DashboardStats, type RecentOrder, type TopProduct } from '@/lib/services/admin.service'
-
-
-const STATUS_COLORS: Record<string, string> = {
-  pending: 'bg-amber-100 text-amber-700 border-amber-200',
-  confirmed: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-  processing: 'bg-blue-100 text-blue-700 border-blue-200',
-  shipped: 'bg-indigo-100 text-indigo-700 border-indigo-200',
-  delivered: 'bg-green-100 text-green-700 border-green-200',
-  cancelled: 'bg-red-100 text-red-700 border-red-200',
-}
+import { ORDER_STATUS_COLORS } from '@/lib/constants/admin-status-colors'
 
 export function AdminDashboardClient() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
@@ -195,7 +186,7 @@ export function AdminDashboardClient() {
                   </td>
                   <td className="px-4 py-3 font-bold">{formatNaira(Number(order.total))}</td>
                   <td className="px-4 py-3">
-                    <Badge className={`border text-[11px] font-medium capitalize ${STATUS_COLORS[order.status] ?? ''}`}>
+                    <Badge className={`border text-[11px] font-medium capitalize ${ORDER_STATUS_COLORS[order.status] ?? ''}`}>
                       {order.status}
                     </Badge>
                   </td>

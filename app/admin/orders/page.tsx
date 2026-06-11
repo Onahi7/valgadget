@@ -8,25 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { getToken } from '@/lib/api-client'
-
-const STATUS_COLORS: Record<string, string> = {
-  pending:    'bg-amber-100 text-amber-700 border-amber-200',
-  confirmed:  'bg-emerald-100 text-emerald-700 border-emerald-200',
-  processing: 'bg-blue-100 text-blue-700 border-blue-200',
-  shipped:    'bg-indigo-100 text-indigo-700 border-indigo-200',
-  delivered:  'bg-green-100 text-green-700 border-green-200',
-  cancelled:  'bg-red-100 text-red-700 border-red-200',
-  refunded:   'bg-gray-100 text-gray-700 border-gray-200',
-}
-
-const PAYMENT_COLORS: Record<string, string> = {
-  paid:                 'bg-green-100 text-green-700 border-green-200',
-  pending:              'bg-amber-100 text-amber-700 border-amber-200',
-  unpaid:               'bg-gray-100 text-gray-600 border-gray-200',
-  pending_verification: 'bg-blue-100 text-blue-700 border-blue-200',
-  failed:               'bg-red-100 text-red-700 border-red-200',
-  refunded:             'bg-gray-100 text-gray-700 border-gray-200',
-}
+import { ORDER_STATUS_COLORS, PAYMENT_STATUS_COLORS } from '@/lib/constants/admin-status-colors'
 
 const STATUS_OPTIONS = ['all', 'pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded']
 
@@ -173,10 +155,10 @@ export default function AdminOrdersPage() {
                   <td className="px-4 py-3 text-muted-foreground">{order.items?.length ?? 0} item{(order.items?.length ?? 0) !== 1 ? 's' : ''}</td>
                   <td className="px-4 py-3 font-bold">{formatNaira(Number(order.total))}</td>
                   <td className="px-4 py-3">
-                    <Badge className={cn('text-[11px] border capitalize', STATUS_COLORS[order.status])}>{order.status}</Badge>
+                    <Badge className={cn('text-[11px] border capitalize', ORDER_STATUS_COLORS[order.status])}>{order.status}</Badge>
                   </td>
                   <td className="px-4 py-3">
-                    <Badge className={cn('text-[11px] border capitalize', PAYMENT_COLORS[order.paymentStatus])}>{order.paymentStatus}</Badge>
+                    <Badge className={cn('text-[11px] border capitalize', PAYMENT_STATUS_COLORS[order.paymentStatus])}>{order.paymentStatus}</Badge>
                   </td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">
                     {new Date(order.createdAt).toLocaleDateString()}

@@ -1,4 +1,4 @@
-import { Truck, Zap, Package, Check } from 'lucide-react'
+import { Truck, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Product } from '@/lib/services/product.service'
 

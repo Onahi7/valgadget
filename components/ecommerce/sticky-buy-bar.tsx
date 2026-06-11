@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button'
 import { useCart } from '@/contexts/cart-context'
 import { useWishlist } from '@/contexts/wishlist-context'
 import { useCartDrawer } from '@/contexts/cart-drawer-context'
-import { formatPrice } from '@/lib/utils'
+import { cn, formatPrice } from '@/lib/utils'
 import { toast } from 'sonner'
 import type { Product } from '@/lib/services/product.service'
+import { toCartItem, toWishlistItem } from '@/lib/cart-helpers'
 
 interface StickyBuyBarProps {
   product: Product
@@ -38,20 +39,13 @@ export function StickyBuyBar({ product }: StickyBuyBarProps) {
 
   const handleAdd = () => {
     if (product.stock <= 0) return
-    addToCart({
-      id: product.id, name: product.name, slug: product.slug,
-      images: product.images, price: product.price, sku: product.sku, stock: product.stock,
-    }, qty)
+    addToCart(toCartItem(product), qty)
     toast.success('Added to cart', { description: `${qty} × ${product.name}` })
     setTimeout(() => openCart(), 300)
   }
 
   const handleWishlist = () => {
-    toggle({
-      id: product.id, name: product.name, slug: product.slug,
-      images: product.images, price: product.price, comparePrice: product.comparePrice,
-      stock: product.stock, sku: product.sku,
-    })
+    toggle(toWishlistItem(product))
     toast(isWishlisted ? 'Removed from wishlist' : 'Added to wishlist')
   }
 
@@ -115,6 +109,3 @@ export function StickyBuyBar({ product }: StickyBuyBarProps) {
     </div>
   )
 }
-
-// Need cn import for the wishlist class
-import { cn } from '@/lib/utils'

@@ -12,14 +12,7 @@ import type { Raffle } from '@/lib/services/raffle.service'
 import { getToken } from '@/lib/api-client'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
-
-const STATUS_COLORS: Record<string, string> = {
-  active:    'bg-green-100 text-green-700 border-green-200',
-  upcoming:  'bg-blue-100 text-blue-700 border-blue-200',
-  drawing:   'bg-amber-100 text-amber-700 border-amber-200',
-  completed: 'bg-muted text-muted-foreground border-border',
-  cancelled: 'bg-red-100 text-red-700 border-red-200',
-}
+import { RAFFLE_STATUS_COLORS } from '@/lib/constants/admin-status-colors'
 
 export default function AdminRafflesPage() {
   const [raffles, setRaffles] = useState<Raffle[]>([])
@@ -102,7 +95,7 @@ export default function AdminRafflesPage() {
               <div className="relative h-36 bg-surface">
                 <Image src={raffle.image} alt={raffle.title} fill className="object-cover" unoptimized />
                 <div className="absolute top-3 left-3">
-                  <Badge className={cn('border text-[11px] font-medium capitalize', STATUS_COLORS[raffle.status])}>
+                  <Badge className={cn('border text-[11px] font-medium capitalize', RAFFLE_STATUS_COLORS[raffle.status])}>
                     {raffle.status}
                   </Badge>
                 </div>

@@ -9,6 +9,7 @@ import { useCartDrawer } from '@/contexts/cart-drawer-context'
 import { formatPrice } from '@/lib/utils'
 import { toast } from 'sonner'
 import type { Product } from '@/lib/services/product.service'
+import { toCartItem } from '@/lib/cart-helpers'
 
 interface FrequentlyBoughtTogetherProps {
   main: Product
@@ -30,12 +31,7 @@ export function FrequentlyBoughtTogether({ main, related }: FrequentlyBoughtToge
 
   const addBundle = () => {
     bundle.forEach(p => {
-      if (p.stock > 0) {
-        addToCart({
-          id: p.id, name: p.name, slug: p.slug,
-          images: p.images, price: p.price, sku: p.sku, stock: p.stock,
-        })
-      }
+      if (p.stock > 0) addToCart(toCartItem(p))
     })
     toast.success('Bundle added to cart', { description: `${bundle.length} items` })
     setTimeout(() => openCart(), 300)
