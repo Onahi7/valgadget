@@ -7,7 +7,7 @@ import { ArrowLeft, Save, Loader2, ImagePlus, X, Star } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { productService, type Product } from '@/lib/services/product.service'
+import { productService, type Product, type ProductCondition } from '@/lib/services/product.service'
 import { categoryService, type Category } from '@/lib/services/category.service'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -17,6 +17,7 @@ import { SpecsEditor, type ProductSpec } from '@/components/admin/specs-editor'
 import { CategorySelect } from '@/components/admin/category-select'
 import { ConditionSelect, getConditionFromTags, updateConditionInTags } from '@/components/admin/condition-select'
 import { getSpecTemplateForCategory } from '@/lib/product-spec-templates'
+import { VariantEditor, serializeVariantDrafts, variantToDraft, type ProductVariantDraft } from '@/components/admin/variant-editor'
 
 function isTrustedImage(url: string) {
   return !url.includes('source.unsplash.com')
@@ -35,15 +36,16 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
   const [deletingImageUrl, setDeletingImageUrl] = useState<string | null>(null)
   const [settingMainImageUrl, setSettingMainImageUrl] = useState<string | null>(null)
   const [specs, setSpecs] = useState<ProductSpec[]>([])
+  const [variants, setVariants] = useState<ProductVariantDraft[]>([])
 
   const [cropModalOpen, setCropModalOpen] = useState(false)
   const [cropQueue, setCropQueue] = useState<File[]>([])
   const [currentCropFile, setCurrentCropFile] = useState<File | null>(null)
-  const [condition, setCondition] = useState('')
+  const [condition, setCondition] = useState<ProductCondition>('brand-new')
 
   const [form, setForm] = useState({
-    name: '', description: '', shortDescription: '', price: '', comparePrice: '',
-    sku: '', categoryId: '', tags: '', featured: false, isNew: false, isActive: true,
+    name: '', description: '', shortDescription: '', price: '', comparePrice: '', cost: '',
+    sku: '', barcode: '', brand: '', stock: '0', lowStockThreshold: '5', categoryId: '', tags: '', featured: false, isNew: false, isActive: true,
   })
 
   useEffect(() => {
@@ -60,7 +62,12 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           shortDescription: p.shortDescription ?? '',
           price: String(p.price),
           comparePrice: p.comparePrice ? String(p.comparePrice) : '',
+          cost: p.cost ? String(p.cost) : '',
           sku: p.sku,
+          barcode: p.barcode ?? '',
+          brand: p.brand ?? '',
+          stock: String(p.stock ?? 0),
+          lowStockThreshold: String(p.lowStockThreshold ?? 5),
           categoryId: p.categoryId,
           tags: (p.tags ?? []).join(', '),
           featured: p.featured,
@@ -68,7 +75,8 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           isActive: p.isActive,
         })
         setSpecs(Array.isArray(p.specs) ? p.specs : [])
-        setCondition(getConditionFromTags(p.tags ?? []))
+        setVariants(Array.isArray(p.variants) ? p.variants.map(variantToDraft) : [])
+        setCondition(p.condition ?? getConditionFromTags(p.tags ?? []))
       }
       if (Array.isArray(cr)) setCategories(cr as any[])
     }).finally(() => setLoading(false))
@@ -85,11 +93,23 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     () => getSpecTemplateForCategory(selectedCategory, categories),
     [categories, selectedCategory],
   )
+  const isIphoneCategory = Boolean(selectedCategory?.slug.includes('iphone') || selectedCategory?.name.toLowerCase().includes('iphone'))
+  const variantAttributes = isIphoneCategory ? ['Storage', 'Color', 'SIM'] : ['Color']
+
+  const handleCategoryChange = (categoryId: string) => {
+    set('categoryId', categoryId)
+    const category = categories.find(item => item.id === categoryId)
+    if (category?.slug === 'iphones-uk-used') setCondition('uk-used')
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.name || !form.price || !form.sku) {
       toast.error('Name, price, and SKU are required')
+      return
+    }
+    if (variants.some(variant => !variant.name.trim() || !variant.sku.trim())) {
+      toast.error('Every variant needs a name and unique SKU')
       return
     }
     setSaving(true)
@@ -100,9 +120,16 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
       specs: specs.filter(spec => spec.label.trim() && spec.value.trim()),
       price: Number(form.price),
       comparePrice: form.comparePrice ? Number(form.comparePrice) : undefined,
+      cost: form.cost ? Number(form.cost) : undefined,
       sku: form.sku.trim(),
+      barcode: form.barcode.trim() || undefined,
+      brand: form.brand.trim() || undefined,
+      stock: Number(form.stock || 0),
+      lowStockThreshold: Number(form.lowStockThreshold || 5),
       categoryId: form.categoryId || undefined,
       tags: updateConditionInTags(form.tags.split(',').map(t => t.trim()).filter(Boolean), condition),
+      condition,
+      variants: serializeVariantDrafts(variants),
       featured: form.featured,
       isNew: form.isNew,
       isActive: form.isActive,
@@ -217,7 +244,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         outputSize={800}
       />
 
-      <form onSubmit={handleSubmit} className="space-y-6 max-w-3xl">
+      <form onSubmit={handleSubmit} className="max-w-5xl space-y-6">
         <div className="flex items-center gap-3">
           <Button type="button" variant="ghost" size="icon" asChild>
             <Link href="/admin/products"><ArrowLeft className="w-4 h-4" /></Link>
@@ -289,7 +316,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           <div className="space-y-4">
             <div className="bg-card border border-border rounded-lg p-5 space-y-4">
               <h2 className="font-semibold text-sm">Pricing</h2>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-3 sm:grid-cols-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="price">Price *</Label>
                   <div className="relative">
@@ -304,15 +331,41 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                     <Input id="comparePrice" type="number" min="0" step="0.01" value={form.comparePrice} onChange={e => set('comparePrice', e.target.value)} className="pl-7" />
                   </div>
                 </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="cost">Cost Price</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₦</span>
+                    <Input id="cost" type="number" min="0" step="0.01" value={form.cost} onChange={e => set('cost', e.target.value)} className="pl-7" />
+                  </div>
+                </div>
               </div>
             </div>
 
             <div className="bg-card border border-border rounded-lg p-5 space-y-4">
-              <h2 className="font-semibold text-sm">Product Code</h2>
-              <div className="space-y-1.5">
-                <Label htmlFor="sku">SKU *</Label>
-                <Input id="sku" value={form.sku} onChange={e => set('sku', e.target.value)} required />
+              <h2 className="font-semibold text-sm">Inventory & Identification</h2>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="sku">SKU *</Label>
+                  <Input id="sku" value={form.sku} onChange={e => set('sku', e.target.value)} required />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="barcode">Barcode / IMEI reference</Label>
+                  <Input id="barcode" value={form.barcode} onChange={e => set('barcode', e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="brand">Brand</Label>
+                  <Input id="brand" value={form.brand} onChange={e => set('brand', e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="stock">Stock</Label>
+                  <Input id="stock" type="number" min="0" step="1" value={form.stock} onChange={e => set('stock', e.target.value)} disabled={variants.length > 0} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="lowStockThreshold">Low-stock alert</Label>
+                  <Input id="lowStockThreshold" type="number" min="0" step="1" value={form.lowStockThreshold} onChange={e => set('lowStockThreshold', e.target.value)} />
+                </div>
               </div>
+              {variants.length > 0 ? <p className="text-xs text-muted-foreground">Stock is calculated from active variants.</p> : null}
             </div>
 
             <div className="bg-card border border-border rounded-lg p-5 space-y-4">
@@ -320,11 +373,24 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
               <CategorySelect
                 categories={categories}
                 value={form.categoryId}
-                onChange={v => set('categoryId', v)}
+                onChange={handleCategoryChange}
               />
               <ConditionSelect value={condition} onChange={setCondition} />
+              {isIphoneCategory ? (
+                <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-primary/20 bg-primary/5 p-3">
+                  <input type="checkbox" checked={condition === 'uk-used'} onChange={event => setCondition(event.target.checked ? 'uk-used' : 'brand-new')} className="mt-0.5 h-4 w-4 accent-primary" />
+                  <span>
+                    <span className="block text-sm font-semibold">UK Used iPhone</span>
+                    <span className="block text-xs leading-5 text-muted-foreground">Shows the condition on the storefront and keeps UK-used filtering accurate.</span>
+                  </span>
+                </label>
+              ) : null}
             </div>
           </div>
+        </div>
+
+        <div className="rounded-lg border border-border bg-card p-5">
+          <VariantEditor value={variants} onChange={setVariants} suggestedAttributes={variantAttributes} />
         </div>
 
         {/* Images Section */}

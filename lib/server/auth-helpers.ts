@@ -5,6 +5,7 @@
 import { SignJWT, jwtVerify, type JWTPayload } from 'jose'
 import bcrypt from 'bcryptjs'
 import { NextRequest, NextResponse } from 'next/server'
+import crypto from 'crypto'
 
 // ─── Config ────────────────────────────────────────────────────────────────
 
@@ -114,6 +115,6 @@ export function apiRateLimited(resetAt: number): NextResponse {
 
 export function generateReference(prefix = 'VG'): string {
   const ts = Date.now().toString(36).toUpperCase()
-  const rand = Math.random().toString(36).slice(2, 6).toUpperCase()
+  const rand = crypto.randomBytes(4).toString('hex').toUpperCase()
   return `${prefix}-${ts}-${rand}`
 }

@@ -16,11 +16,13 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const files = formData.getAll('images').filter((entry): entry is File => entry instanceof File)
 
     if (!files.length) return apiError('No images provided', 400)
+    if (files.length > 10) return apiError('Upload a maximum of 10 images at a time', 400)
 
     const [product] = await db.select({ images: products.images }).from(products).where(eq(products.id, id)).limit(1)
     if (!product) return apiError('Product not found', 404)
 
     const existingImages: string[] = Array.isArray(product.images) ? (product.images as string[]) : []
+    if (existingImages.length + files.length > 20) return apiError('A product can have a maximum of 20 images', 400)
     const uploadedUrls: string[] = []
 
     for (const file of files) {
@@ -58,6 +60,7 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ id: 
     if (!product) return apiError('Product not found', 404)
 
     const existingImages: string[] = Array.isArray(product.images) ? (product.images as string[]) : []
+    if (!existingImages.includes(imageUrl)) return apiError('Image is not attached to this product', 404)
     const updatedImages = existingImages.filter((url) => url !== imageUrl)
 
     await db.update(products).set({ images: updatedImages, updatedAt: new Date() }).where(eq(products.id, id))

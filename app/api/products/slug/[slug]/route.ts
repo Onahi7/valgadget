@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
 import { products, categories } from '@/lib/server/schema'
 import { apiOk, apiError } from '@/lib/server/auth-helpers'
-import { eq } from 'drizzle-orm'
+import { eq, and } from 'drizzle-orm'
 
 export async function GET(_request: NextRequest, context: { params: Promise<{ slug: string }> }) {
   const { slug } = await context.params
@@ -15,13 +15,14 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ sl
     images: products.images, categoryId: products.categoryId,
     stock: products.stock, sku: products.sku, rating: products.rating,
     reviewCount: products.reviewCount, tags: products.tags,
+    condition: products.condition, brand: products.brand,
     featured: products.featured, isNew: products.isNew, isActive: products.isActive,
     createdAt: products.createdAt, updatedAt: products.updatedAt,
     category: { id: categories.id, name: categories.name, slug: categories.slug },
   })
     .from(products)
     .leftJoin(categories, eq(products.categoryId, categories.id))
-    .where(eq(products.slug, slug))
+    .where(and(eq(products.slug, slug), eq(products.isActive, true)))
     .limit(1)
 
   if (!product) return apiError('Product not found.', 404)

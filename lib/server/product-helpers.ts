@@ -23,6 +23,7 @@ export const productSelection = {
   rating: products.rating,
   reviewCount: products.reviewCount,
   tags: products.tags,
+  condition: products.condition,
   featured: products.featured,
   isNew: products.isNew,
   isActive: products.isActive,
@@ -56,6 +57,7 @@ export function normalizeProduct(row: Record<string, unknown>): Product {
     images: displayImages(row.images as string[] | null),
     specs: (row.specs as Product['specs']) ?? [],
     brand: (row.brand as string) ?? undefined,
+    condition: (row.condition as Product['condition']) ?? 'brand-new',
     createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
     updatedAt: row.updatedAt instanceof Date ? row.updatedAt.toISOString() : String(row.updatedAt),
   } as Product

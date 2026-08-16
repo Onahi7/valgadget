@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
 import { orders, users } from '@/lib/server/schema'
 import { requireAuth, apiOk, apiError } from '@/lib/server/auth-helpers'
+import { numericOrder } from '@/lib/server/order-helpers'
 import { desc, eq, ilike, sql, and, type SQL } from 'drizzle-orm'
 
 // GET /api/admin/orders — paginated list with optional status/search filter
@@ -59,13 +60,4 @@ export async function GET(req: NextRequest) {
   })
 }
 
-function numericOrder(o: typeof orders.$inferSelect) {
-  return {
-    ...o,
-    subtotal: Number(o.subtotal),
-    discount: Number(o.discount),
-    shipping: Number(o.shipping),
-    tax:      Number(o.tax),
-    total:    Number(o.total),
-  }
-}
+

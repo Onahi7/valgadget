@@ -66,7 +66,7 @@ export function SpecsEditor({ value, onChange, suggestedLabels = [], templateNam
 
       <div className="space-y-2">
         {specs.map((spec, index) => (
-          <div key={`${index}-${spec.label}-${spec.value}`} className="grid gap-2 rounded-lg border border-border p-3 sm:grid-cols-[minmax(0,180px)_minmax(0,1fr)_auto]">
+          <div key={index} className="grid gap-2 rounded-lg border border-border p-3 sm:grid-cols-[minmax(0,180px)_minmax(0,1fr)_auto]">
             <Input
               value={spec.label}
               onChange={(e) => update(index, 'label', e.target.value)}

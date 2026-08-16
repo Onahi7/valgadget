@@ -1,15 +1,23 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
-import { products, categories } from '@/lib/server/schema'
+import { products, categories, productVariants } from '@/lib/server/schema'
 import { requireAuth, apiOk, apiError } from '@/lib/server/auth-helpers'
 import { eq } from 'drizzle-orm'
+import {
+  nullableValue,
+  normalizeProductCondition,
+  postgresErrorCode,
+  updateAdminProductSchema,
+  validationErrors,
+  withConditionTag,
+} from '@/lib/server/admin-product'
 
 export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await requireAuth(req, ['admin'])
   if ('status' in auth) return auth
 
   const { id } = await context.params
-  const [product] = await db.select({
+  const productQuery = db.select({
     id: products.id,
     name: products.name,
     slug: products.slug,
@@ -27,11 +35,14 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     rating: products.rating,
     reviewCount: products.reviewCount,
     tags: products.tags,
+    condition: products.condition,
     featured: products.featured,
     isNew: products.isNew,
     isActive: products.isActive,
     createdAt: products.createdAt,
     updatedAt: products.updatedAt,
+    brand: products.brand,
+    barcode: products.barcode,
     category: { id: categories.id, name: categories.name, slug: categories.slug },
   })
     .from(products)
@@ -39,8 +50,20 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     .where(eq(products.id, id))
     .limit(1)
 
+  const variantsQuery = db.select().from(productVariants)
+    .where(eq(productVariants.productId, id))
+    .orderBy(productVariants.sortOrder)
+
+  const [[product], variantRows] = await Promise.all([productQuery, variantsQuery])
+
   if (!product) return apiError('Product not found.', 404)
-  return apiOk(numericProduct(product))
+  return apiOk({
+    ...numericProduct(product),
+    variants: variantRows.map(variant => ({
+      ...variant,
+      price: variant.price ? Number(variant.price) : undefined,
+    })),
+  })
 }
 
 export async function PUT(req: NextRequest, context: { params: Promise<{ id: string }> }) {
@@ -49,36 +72,87 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
 
   const { id } = await context.params
   try {
-    const body = await req.json()
-    const { name, description, shortDescription, specs, price, comparePrice, cost, categoryId, stock, sku, tags, featured, isNew, isActive, images } = body
+    const parsed = updateAdminProductSchema.safeParse(await req.json())
+    if (!parsed.success) return apiError('Please correct the highlighted product fields.', 422, validationErrors(parsed.error))
 
-    const slug = name
-      ? name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
-      : undefined
+    const input = parsed.data
+    const [existing] = await db.select({
+      id: products.id,
+      price: products.price,
+      comparePrice: products.comparePrice,
+      tags: products.tags,
+      condition: products.condition,
+    }).from(products).where(eq(products.id, id)).limit(1)
+    if (!existing) return apiError('Product not found.', 404)
 
-    const [updated] = await db.update(products).set({
-      ...(name        && { name, slug }),
-      ...(description !== undefined && { description }),
-      ...(shortDescription !== undefined && { shortDescription }),
-      ...(specs !== undefined && { specs }),
-      ...(price       !== undefined && { price: String(price) }),
-      ...(comparePrice !== undefined && { comparePrice: comparePrice ? String(comparePrice) : null }),
-      ...(cost        !== undefined && { cost: cost ? String(cost) : null }),
-      ...(categoryId  !== undefined && { categoryId }),
-      ...(stock       !== undefined && { stock }),
-      ...(sku         !== undefined && { sku }),
-      ...(tags        !== undefined && { tags }),
-      ...(featured    !== undefined && { featured }),
-      ...(isNew       !== undefined && { isNew }),
-      ...(isActive    !== undefined && { isActive }),
-      ...(images      !== undefined && { images }),
-      updatedAt: new Date(),
-    }).where(eq(products.id, id)).returning()
+    if (input.categoryId) {
+      const [category] = await db.select({ id: categories.id }).from(categories).where(eq(categories.id, input.categoryId)).limit(1)
+      if (!category) return apiError('Selected category does not exist.', 422, { categoryId: ['Select a valid category.'] })
+    }
+
+    const finalPrice = input.price ?? Number(existing.price)
+    const finalComparePrice = input.comparePrice === undefined
+      ? (existing.comparePrice ? Number(existing.comparePrice) : undefined)
+      : (input.comparePrice ?? undefined)
+    if (finalComparePrice && finalComparePrice < finalPrice) {
+      return apiError('Compare price must be at least the selling price.', 422, { comparePrice: ['Compare price must be at least the selling price.'] })
+    }
+
+    const condition = input.condition ?? normalizeProductCondition(existing.condition)
+    const tags = withConditionTag(input.tags ?? existing.tags, condition)
+    const variantStock = input.variants?.filter(variant => variant.isActive).reduce((sum, variant) => sum + variant.stock, 0)
+
+    const updated = await db.transaction(async tx => {
+      const [saved] = await tx.update(products).set({
+        ...(input.name !== undefined && { name: input.name }),
+        ...(input.description !== undefined && { description: input.description }),
+        ...(input.shortDescription !== undefined && { shortDescription: nullableValue(input.shortDescription) }),
+        ...(input.specs !== undefined && { specs: input.specs }),
+        ...(input.price !== undefined && { price: String(input.price) }),
+        ...(input.comparePrice !== undefined && { comparePrice: input.comparePrice ? String(input.comparePrice) : null }),
+        ...(input.cost !== undefined && { cost: input.cost !== null ? String(input.cost) : null }),
+        ...(input.categoryId !== undefined && { categoryId: nullableValue(input.categoryId) }),
+        ...(input.variants !== undefined
+          ? { stock: variantStock ?? 0 }
+          : input.stock !== undefined ? { stock: input.stock } : {}),
+        ...(input.lowStockThreshold !== undefined && { lowStockThreshold: input.lowStockThreshold }),
+        ...(input.sku !== undefined && { sku: input.sku }),
+        ...(input.barcode !== undefined && { barcode: nullableValue(input.barcode) }),
+        ...(input.brand !== undefined && { brand: nullableValue(input.brand) }),
+        tags,
+        condition,
+        ...(input.featured !== undefined && { featured: input.featured }),
+        ...(input.isNew !== undefined && { isNew: input.isNew }),
+        ...(input.isActive !== undefined && { isActive: input.isActive }),
+        ...(input.images !== undefined && { images: input.images }),
+        updatedAt: new Date(),
+      }).where(eq(products.id, id)).returning()
+
+      if (input.variants !== undefined) {
+        await tx.delete(productVariants).where(eq(productVariants.productId, id))
+        if (input.variants.length > 0) {
+          await tx.insert(productVariants).values(input.variants.map((variant, index) => ({
+            productId: id,
+            name: variant.name,
+            sku: variant.sku,
+            price: variant.price ? String(variant.price) : null,
+            stock: variant.stock,
+            attributes: variant.attributes,
+            image: nullableValue(variant.image),
+            isActive: variant.isActive,
+            sortOrder: index,
+          })))
+        }
+      }
+
+      return saved
+    })
 
     if (!updated) return apiError('Product not found.', 404)
-    return apiOk(numericProduct(updated))
+    return apiOk({ ...numericProduct(updated), ...(input.variants !== undefined ? { variants: input.variants } : {}) })
   } catch (err) {
     console.error('[admin update product]', err)
+    if (postgresErrorCode(err) === '23505') return apiError('A product or variant already uses that SKU.', 409)
     return apiError('Failed to update product.', 500)
   }
 }

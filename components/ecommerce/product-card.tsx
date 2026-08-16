@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { useState } from 'react'
-import { Heart, ShoppingCart, Star, Eye, Check, Plus, Minus } from 'lucide-react'
+import { Heart, ShoppingCart, Star, Eye, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useCart } from '@/contexts/cart-context'
@@ -55,31 +55,31 @@ export function ProductCard({ product, className }: ProductCardProps) {
     <article
       className={cn(
         'group relative flex h-full min-w-0 flex-col overflow-hidden rounded-lg border border-border bg-card',
-        'hover:border-primary/40 hover:shadow-lg transition-all duration-200',
+        'transition-all duration-200 hover:border-primary/40 hover:shadow-lg',
         className
       )}
     >
       {/* Badges */}
-      <div className="absolute top-3 left-3 z-10 flex flex-col gap-1.5">
+      <div className="absolute left-3 top-3 z-10 flex flex-col gap-1.5">
         {product.stock <= 0 && (
-          <Badge variant="secondary" className="text-[10px] font-mono uppercase tracking-wider bg-muted text-muted-foreground border-0">
+          <Badge variant="secondary" className="border-0 bg-muted font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
             Sold out
           </Badge>
         )}
         {product.isNew && product.stock > 0 && (
-          <Badge className="text-[10px] font-mono uppercase tracking-wider bg-primary text-primary-foreground border-0">
+          <Badge className="border-0 bg-primary font-mono text-[10px] uppercase tracking-wider text-primary-foreground">
             New
           </Badge>
         )}
         {discount && (
-          <Badge variant="secondary" className="text-[10px] font-mono uppercase tracking-wider border-0 bg-foreground text-background">
+          <Badge variant="secondary" className="border-0 bg-foreground font-mono text-[10px] uppercase tracking-wider text-background">
             -{discount}%
           </Badge>
         )}
       </div>
 
       {/* Quick actions - top right */}
-      <div className="absolute top-2 right-2 z-10 flex flex-col gap-1.5 sm:top-3 sm:right-3">
+      <div className="absolute right-2 top-2 z-10 flex flex-col gap-1.5 sm:right-3 sm:top-3">
         <button
           onClick={handleWishlist}
           aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
@@ -89,18 +89,15 @@ export function ProductCard({ product, className }: ProductCardProps) {
             isWishlisted && 'opacity-100'
           )}
         >
-          <Heart className={cn('w-4 h-4', isWishlisted && 'fill-current text-destructive')} />
+          <Heart className={cn('h-4 w-4', isWishlisted && 'fill-destructive text-destructive')} />
         </button>
         <Link
           href={`/products/${product.slug}`}
-          aria-label="Quick view"
-          className={cn(
-            'flex h-9 w-9 items-center justify-center rounded-full bg-background/85 backdrop-blur-sm transition-all duration-200 hover:scale-110',
-            'opacity-0 group-hover:opacity-100'
-          )}
+          aria-label="View product"
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-background/85 opacity-0 backdrop-blur-sm transition-all duration-200 hover:scale-110 group-hover:opacity-100"
           onClick={(e) => e.stopPropagation()}
         >
-          <Eye className="w-4 h-4" />
+          <Eye className="h-4 w-4" />
         </Link>
       </div>
 
@@ -139,7 +136,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
             {product.brand}
           </p>
         )}
-        <Link href={`/products/${product.slug}`} className="block mt-1">
+        <Link href={`/products/${product.slug}`} className="mt-1 block">
           <h3 className="line-clamp-2 min-h-[2.5rem] text-sm font-medium leading-snug text-foreground transition-colors group-hover:text-primary sm:min-h-[2.625rem] sm:text-[15px]">
             {product.name}
           </h3>
@@ -154,7 +151,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
                   <Star
                     key={i}
                     className={cn(
-                      'w-3 h-3',
+                      'h-3 w-3',
                       i < Math.round(product.rating)
                         ? 'fill-primary text-primary'
                         : 'text-muted-foreground/30'
@@ -171,12 +168,12 @@ export function ProductCard({ product, className }: ProductCardProps) {
         {/* Price + Add to cart */}
         <div className="mt-auto flex flex-col gap-2 pt-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
-            <span className="block break-words text-sm font-semibold leading-tight text-foreground sm:text-base">
-              ₦{product.price.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} NGN
+            <span className="block break-words text-base font-bold leading-tight tracking-tight text-foreground sm:text-lg">
+              ₦{product.price.toLocaleString('en-NG')}
             </span>
             {product.comparePrice && (
               <span className="block text-xs text-muted-foreground line-through">
-                ₦{product.comparePrice.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} NGN
+                ₦{product.comparePrice.toLocaleString('en-NG')}
               </span>
             )}
           </div>
@@ -185,7 +182,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
             onClick={handleAddToCart}
             disabled={product.stock <= 0 || adding}
             className={cn(
-              'h-8 w-full shrink-0 px-3 text-xs sm:w-auto transition-all',
+              'h-8 w-full shrink-0 px-3 text-xs transition-all sm:w-auto',
               justAdded
                 ? 'bg-emerald-600 text-white hover:bg-emerald-600'
                 : 'bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground'
@@ -193,14 +190,14 @@ export function ProductCard({ product, className }: ProductCardProps) {
           >
             {justAdded ? (
               <>
-                <Check className="w-3.5 h-3.5 mr-1" />
+                <Check className="mr-1 h-3.5 w-3.5" />
                 Added
               </>
             ) : product.stock <= 0 ? (
               'Sold out'
             ) : (
               <>
-                <ShoppingCart className="w-3.5 h-3.5 mr-1" aria-hidden />
+                <ShoppingCart className="mr-1 h-3.5 w-3.5" aria-hidden />
                 Add
               </>
             )}

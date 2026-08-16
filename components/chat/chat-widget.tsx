@@ -139,7 +139,7 @@ export function ChatWidget() {
       {/* Floating Button */}
       <button
         onClick={() => setOpen(o => !o)}
-        className="fixed bottom-20 md:bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all hover:scale-105 active:scale-95 flex items-center justify-center"
+        className="fixed bottom-[5.25rem] right-3 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-all hover:scale-105 hover:bg-primary/90 active:scale-95 md:bottom-6 md:right-6 md:h-14 md:w-14"
         aria-label="Open chat"
       >
         {open ? <X className="w-6 h-6" /> : <MessageCircle className="w-6 h-6" />}

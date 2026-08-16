@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
-import { Home, Grid3X3, ShoppingCart, User, Heart, X } from 'lucide-react'
+import { Home, Grid3X3, ShoppingCart, User, Ticket, X } from 'lucide-react'
 import { useCart } from '@/contexts/cart-context'
 import { useCartDrawer } from '@/contexts/cart-drawer-context'
 import { Badge } from '@/components/ui/badge'
@@ -117,15 +117,18 @@ export function MobileBottomNav() {
           </button>
 
           <Link
-            href="/wishlist"
+            href="/raffles"
             className={cn(
               'flex flex-col items-center justify-center gap-0.5 flex-1 py-1 rounded-lg transition-colors',
-              pathname === '/wishlist' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+              pathname.startsWith('/raffles') ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
             )}
-            aria-label="Wishlist"
+            aria-label="Live raffles"
           >
-            <Heart className="w-5 h-5" />
-            <span className="text-[10px] font-medium leading-none mt-0.5">Wishlist</span>
+            <span className="relative -mt-5 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 ring-4 ring-background transition-transform active:scale-95">
+              <Ticket className="h-5 w-5" />
+              <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 animate-pulse-dot rounded-full bg-emerald-500 ring-2 ring-background" />
+            </span>
+            <span className="text-[10px] font-semibold leading-none mt-0.5">Raffles</span>
           </Link>
 
           <Link

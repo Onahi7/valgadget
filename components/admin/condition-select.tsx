@@ -3,7 +3,7 @@
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 
-const CONDITIONS = [
+export const PRODUCT_CONDITIONS = [
   { value: 'brand-new', label: 'Brand New', desc: 'Factory sealed' },
   { value: 'uk-used', label: 'UK Used', desc: 'Pre-owned from UK' },
   { value: 'us-used', label: 'US Used', desc: 'Pre-owned from US' },
@@ -12,11 +12,11 @@ const CONDITIONS = [
   { value: 'open-box', label: 'Open Box', desc: 'Opened but unused' },
 ] as const
 
-export type ProductCondition = typeof CONDITIONS[number]['value']
+export type ProductCondition = typeof PRODUCT_CONDITIONS[number]['value']
 
 interface ConditionSelectProps {
-  value: string
-  onChange: (value: string) => void
+  value: ProductCondition
+  onChange: (value: ProductCondition) => void
 }
 
 /**
@@ -28,11 +28,11 @@ export function ConditionSelect({ value, onChange }: ConditionSelectProps) {
     <div className="space-y-2">
       <Label>Condition</Label>
       <div className="flex flex-wrap gap-2">
-        {CONDITIONS.map(condition => (
+        {PRODUCT_CONDITIONS.map(condition => (
           <button
             key={condition.value}
             type="button"
-            onClick={() => onChange(value === condition.value ? '' : condition.value)}
+            onClick={() => onChange(condition.value)}
             className={cn(
               'px-3 py-1.5 rounded-full text-xs font-medium border transition-all',
               value === condition.value
@@ -46,7 +46,7 @@ export function ConditionSelect({ value, onChange }: ConditionSelectProps) {
       </div>
       {value && (
         <p className="text-[11px] text-muted-foreground">
-          {CONDITIONS.find(c => c.value === value)?.desc}
+          {PRODUCT_CONDITIONS.find(c => c.value === value)?.desc}
         </p>
       )}
     </div>
@@ -54,13 +54,13 @@ export function ConditionSelect({ value, onChange }: ConditionSelectProps) {
 }
 
 /** Extract condition from tags array */
-export function getConditionFromTags(tags: string[]): string {
-  return tags.find(t => CONDITIONS.some(c => c.value === t)) ?? ''
+export function getConditionFromTags(tags: string[]): ProductCondition {
+  return (tags.find(t => PRODUCT_CONDITIONS.some(c => c.value === t)) as ProductCondition | undefined) ?? 'brand-new'
 }
 
 /** Update tags array with new condition (removes old condition tag, adds new one) */
-export function updateConditionInTags(tags: string[], newCondition: string): string[] {
-  const conditionValues = CONDITIONS.map(c => c.value) as string[]
+export function updateConditionInTags(tags: string[], newCondition: ProductCondition): string[] {
+  const conditionValues = PRODUCT_CONDITIONS.map(c => c.value) as string[]
   const filtered = tags.filter(t => !conditionValues.includes(t))
   if (newCondition) filtered.push(newCondition)
   return filtered

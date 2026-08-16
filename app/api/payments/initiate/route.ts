@@ -85,8 +85,8 @@ export async function POST(req: NextRequest) {
 
     if (!paystackRes.ok) {
       await releasePaystackReservation(orderId)
-      const err = await paystackRes.json().catch(() => ({}))
-      return apiError((err as any).message ?? 'Paystack initialization failed', 502)
+      const err = await paystackRes.json().catch(() => ({})) as { message?: string }
+      return apiError(err.message ?? 'Paystack initialization failed', 502)
     }
 
     const data = await paystackRes.json() as { status: boolean; data: { authorization_url: string; reference: string; access_code: string } }

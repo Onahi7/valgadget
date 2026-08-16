@@ -23,14 +23,15 @@ interface VariantSelectorProps {
 }
 
 export function VariantSelector({ variants, selectedVariant, onSelect, basePrice }: VariantSelectorProps) {
+  const selectableVariants = variants.filter(variant => variant.isActive)
   // Extract unique attribute types (e.g., color, size)
   const attributeTypes = Array.from(
-    new Set(variants.flatMap(v => Object.keys(v.attributes)))
+    new Set(selectableVariants.flatMap(v => Object.keys(v.attributes)))
   )
 
   // Get unique values for each attribute type
   const attributeOptions = attributeTypes.reduce((acc, type) => {
-    acc[type] = Array.from(new Set(variants.map(v => v.attributes[type]).filter(Boolean)))
+    acc[type] = Array.from(new Set(selectableVariants.map(v => v.attributes[type]).filter(Boolean)))
     return acc
   }, {} as Record<string, string[]>)
 
@@ -38,7 +39,7 @@ export function VariantSelector({ variants, selectedVariant, onSelect, basePrice
 
   // Find matching variant based on selected attributes
   const findMatchingVariant = (attrs: Record<string, string>) => {
-    return variants.find(v => {
+    return selectableVariants.find(v => {
       return Object.entries(attrs).every(([key, value]) => v.attributes[key] === value)
     })
   }
@@ -59,12 +60,43 @@ export function VariantSelector({ variants, selectedVariant, onSelect, basePrice
   // Check if a specific option is available given current selections
   const isOptionAvailable = (type: string, value: string) => {
     const testAttributes = { ...selectedAttributes, [type]: value }
-    return variants.some(v => {
-      return Object.entries(testAttributes).every(([key, val]) => v.attributes[key] === val)
+    return selectableVariants.some(v => {
+      return v.stock > 0 && Object.entries(testAttributes).every(([key, val]) => v.attributes[key] === val)
     })
   }
 
-  if (variants.length === 0) return null
+  if (selectableVariants.length === 0) return null
+
+  if (attributeTypes.length === 0) {
+    return (
+      <div className="space-y-3">
+        <label className="text-sm font-semibold">Choose an option</label>
+        <div className="flex flex-wrap gap-2">
+          {selectableVariants.map(variant => {
+            const isSelected = selectedVariant?.id === variant.id
+            return (
+              <button
+                key={variant.id}
+                type="button"
+                onClick={() => onSelect(variant)}
+                disabled={variant.stock <= 0}
+                className={cn(
+                  'rounded-lg border-2 px-4 py-2 text-left text-sm transition-all',
+                  isSelected ? 'border-primary bg-primary/10 text-primary' : 'border-border hover:border-primary/50',
+                  variant.stock <= 0 && 'cursor-not-allowed opacity-40',
+                )}
+              >
+                <span className="block font-medium">{variant.name}</span>
+                <span className="text-xs text-muted-foreground">
+                  {variant.stock > 0 ? `${variant.stock} in stock` : 'Out of stock'}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -124,7 +156,7 @@ export function VariantSelector({ variants, selectedVariant, onSelect, basePrice
             <span className="text-sm font-medium">Selected Variant</span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">SKU: {selectedVariant.sku}</span>
+            <span className="text-sm text-muted-foreground">SKU: {selectedVariant.sku} · {selectedVariant.stock} in stock</span>
             {selectedVariant.price && selectedVariant.price !== basePrice && (
               <span className="text-lg font-bold text-primary">
                 ₦{selectedVariant.price.toLocaleString()}

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
 
 const ANNOUNCEMENTS = [
-  'Free shipping on orders over NGN 500,000 - nationwide delivery across Nigeria.',
+  'Free shipping on orders over ₦500,000 — nationwide delivery across Nigeria.',
   'Live raffles are active now - win premium gadgets from low ticket prices.',
   'Flash deals are updated daily - check the shop for today\'s best offers.',
   'Secure checkout - pay with card, bank transfer, or USSD via Paystack.',

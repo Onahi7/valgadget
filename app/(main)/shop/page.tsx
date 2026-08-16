@@ -211,23 +211,6 @@ export default async function ShopPage() {
       {/* ── TOP RATED ────────────────────────────────────────────── */}
       <ProductShelf title="Top Rated Products" href="/shop?sort=rating" products={topRated} columns={4} />
 
-      {/* ── NEWSLETTER CTA (Tech Direct pattern) ─────────────────── */}
-      <section className="border-t border-border py-12 bg-muted/30">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-2xl font-bold">Discover What's New</h2>
-          <p className="mt-2 text-sm text-muted-foreground">Subscribe to our newsletter for the latest deals and updates</p>
-          <div className="mt-6 flex max-w-md mx-auto gap-2">
-            <input
-              type="email"
-              placeholder="Your email address"
-              className="flex-1 rounded-md border border-border bg-card px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-            <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-              Subscribe
-            </button>
-          </div>
-        </div>
-      </section>
     </div>
   )
 }

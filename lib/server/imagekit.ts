@@ -7,15 +7,24 @@ import ImageKit from '@imagekit/nodejs'
 const privateKey = process.env.IMAGEKIT_PRIVATE_KEY
 const urlEndpoint = process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let _ik: any = null
+interface ImageKitInstance {
+  helper: {
+    getAuthenticationParameters(token?: string, expire?: number): Record<string, unknown>
+  }
+  files: {
+    upload(params: { file: string; fileName: string; folder: string; useUniqueFileName: boolean; tags: string[] }): Promise<{ url: string; fileId: string }>
+    delete(fileId: string): Promise<void>
+  }
+}
 
-function getIK() {
+let _ik: ImageKitInstance | null = null
+
+function getIK(): ImageKitInstance {
   if (!_ik) {
     if (!privateKey) {
       throw new Error('ImageKit env var missing. Set IMAGEKIT_PRIVATE_KEY.')
     }
-    _ik = new ImageKit({ privateKey })
+    _ik = new ImageKit({ privateKey }) as unknown as ImageKitInstance
   }
   return _ik
 }

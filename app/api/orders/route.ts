@@ -1,9 +1,10 @@
 import { NextRequest } from 'next/server'
 import crypto from 'node:crypto'
 import { db } from '@/lib/server/db'
-import { orders, products, shippingRates, users, affiliateClicks } from '@/lib/server/schema'
+import { orders, products, shippingRates, users, affiliateClicks, coupons } from '@/lib/server/schema'
 import { requireAuth, getRequestUser, apiOk, apiError, apiRateLimited, generateReference } from '@/lib/server/auth-helpers'
 import { rateLimit, getRateLimitKey } from '@/lib/server/rate-limiter'
+import { numericOrder } from '@/lib/server/order-helpers'
 import { eq, desc, and, sql, inArray } from 'drizzle-orm'
 import type { OrderItem, Address } from '@/lib/server/schema'
 
@@ -104,7 +105,7 @@ export async function POST(req: NextRequest) {
 
       // Fetch products and build line items.
       const productIds = items.map(i => i.productId)
-      const found = await tx.select({ id: products.id, name: products.name, sku: products.sku, price: products.price, images: products.images })
+      const found = await tx.select({ id: products.id, name: products.name, sku: products.sku, price: products.price, images: products.images, stock: products.stock, isActive: products.isActive })
         .from(products).where(inArray(products.id, productIds))
 
       const orderItems: OrderItem[] = []
@@ -113,10 +114,25 @@ export async function POST(req: NextRequest) {
       for (const lineItem of items) {
         const p = found.find(f => f.id === lineItem.productId)
         if (!p) throw new ApiFailure(`Product ${lineItem.productId} not found.`, 422)
+        if (!p.isActive) throw new ApiFailure(`Product "${p.name}" is no longer available.`, 422)
+        if (p.stock < lineItem.qty) {
+          throw new ApiFailure(`Insufficient stock for "${p.name}". Available: ${p.stock}, requested: ${lineItem.qty}.`, 422)
+        }
 
         const unitPrice = Number(p.price)
         orderItems.push({ productId: p.id, name: p.name, sku: p.sku, price: unitPrice, qty: lineItem.qty, image: (p.images as string[])[0] })
         subtotal += unitPrice * lineItem.qty
+      }
+
+      // Decrement stock atomically
+      for (const lineItem of orderItems) {
+        const [updated] = await tx.update(products)
+          .set({ stock: sql`${products.stock} - ${lineItem.qty}`, updatedAt: new Date() })
+          .where(and(eq(products.id, lineItem.productId), sql`${products.stock} >= ${lineItem.qty}`))
+          .returning({ id: products.id })
+        if (!updated) {
+          throw new ApiFailure(`Stock for "${lineItem.name}" was depleted by another order. Please reduce quantity or remove this item.`, 409)
+        }
       }
 
       // Look up shipping rate from DB based on state.
@@ -132,7 +148,43 @@ export async function POST(req: NextRequest) {
         shipping = 2500 // fallback flat rate
       }
       const tax = 0 // No VAT added (prices are tax-inclusive)
-      const total = subtotal + shipping + tax
+
+      // Validate and apply coupon if provided
+      let discount = 0
+      let validatedCouponCode: string | undefined
+      if (couponCode) {
+        const [coupon] = await tx.select().from(coupons)
+          .where(and(
+            eq(coupons.code, couponCode.toUpperCase()),
+            eq(coupons.isActive, true),
+          ))
+          .limit(1)
+
+        if (!coupon) throw new ApiFailure('Invalid coupon code.', 422)
+        if (coupon.expiresAt && coupon.expiresAt < new Date()) throw new ApiFailure('This coupon has expired.', 422)
+        if (coupon.usageLimit && coupon.usageCount >= coupon.usageLimit) throw new ApiFailure('This coupon has reached its usage limit.', 422)
+        if (coupon.minPurchase && subtotal < Number(coupon.minPurchase)) {
+          throw new ApiFailure(`Minimum purchase of ₦${Number(coupon.minPurchase).toLocaleString()} required for this coupon.`, 422)
+        }
+
+        if (coupon.type === 'percentage') {
+          discount = (subtotal * Number(coupon.value)) / 100
+          if (coupon.maxDiscount) discount = Math.min(discount, Number(coupon.maxDiscount))
+        } else if (coupon.type === 'fixed') {
+          discount = Number(coupon.value)
+          discount = Math.min(discount, subtotal)
+        }
+
+        discount = Math.round(discount * 100) / 100
+        validatedCouponCode = coupon.code
+
+        // Increment usage count
+        await tx.update(coupons)
+          .set({ usageCount: sql`${coupons.usageCount} + 1`, updatedAt: new Date() })
+          .where(eq(coupons.id, coupon.id))
+      }
+
+      const total = Math.max(0, subtotal - discount + shipping + tax)
 
       const [createdOrder] = await tx.insert(orders).values({
         reference: generateReference(),
@@ -144,29 +196,23 @@ export async function POST(req: NextRequest) {
         paymentMethod: 'paystack',
         items: orderItems,
         subtotal: String(subtotal.toFixed(2)),
-        discount: '0',
+        discount: String(discount.toFixed(2)),
         shipping: String(shipping.toFixed(2)),
         tax: String(tax.toFixed(2)),
         total: String(total.toFixed(2)),
-        couponCode,
+        couponCode: validatedCouponCode,
         affiliateCode,
         shippingAddress,
         notes,
       }).returning()
 
-      // Credit affiliate commission if affiliate code was used.
+      // Record affiliate click if code was used (commission credited on payment confirmation).
       if (affiliateCode) {
         const [affiliate] = await tx.select({ id: users.id, affiliateCode: users.affiliateCode })
           .from(users).where(eq(users.affiliateCode, affiliateCode)).limit(1)
         if (affiliate) {
-          const commissionRate = 0.05 // 5% commission
-          const commission = Math.round(subtotal * commissionRate)
-          await tx.update(users)
-            .set({ affiliateBalance: sql`${users.affiliateBalance} + ${commission}`, updatedAt: new Date() })
-            .where(eq(users.id, affiliate.id))
           await tx.insert(affiliateClicks).values({
             code: affiliateCode, orderId: createdOrder.id, userId: user?.sub || null,
-            commission: String(commission), convertedAt: new Date(),
           }).catch(() => {}) // ignore if duplicate
         }
       }
@@ -186,17 +232,6 @@ export async function POST(req: NextRequest) {
     }
     console.error('[create order]', err)
     return apiError('Failed to create order. Please try again.', 500)
-  }
-}
-
-function numericOrder(o: typeof orders.$inferSelect) {
-  return {
-    ...o,
-    subtotal: Number(o.subtotal),
-    discount: Number(o.discount),
-    shipping: Number(o.shipping),
-    tax: Number(o.tax),
-    total: Number(o.total),
   }
 }
 

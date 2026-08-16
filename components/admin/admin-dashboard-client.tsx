@@ -43,7 +43,7 @@ export function AdminDashboardClient() {
     }
   }, [])
 
-  const formatNaira = (value: number) => `NGN ${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+  const formatNaira = (value: number) => `₦${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
 
   const revenueTotal = stats?.revenue.total ?? 0
   const ordersTotal = stats?.orders.total ?? 0

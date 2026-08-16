@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { Search, Loader2, Package, Tag } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -225,8 +226,7 @@ export function TypeaheadSearch({
                         )}
                       >
                         <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md border border-border bg-white">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={prod.image} alt={prod.name} className="h-full w-full object-contain p-1" />
+                          <Image src={prod.image} alt={prod.name} fill sizes="40px" className="object-contain p-1" unoptimized />
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="line-clamp-1 font-medium">{prod.name}</p>

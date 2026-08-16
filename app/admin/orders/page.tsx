@@ -65,7 +65,7 @@ export default function AdminOrdersPage() {
 
   const revenue = Number(summary.revenue ?? 0)
 
-  const formatNaira = (value: number) => `NGN ${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+  const formatNaira = (value: number) => `₦${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
 
   return (
     <div className="space-y-6 animate-page-reveal">

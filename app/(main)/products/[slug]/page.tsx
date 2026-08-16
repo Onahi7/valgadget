@@ -3,6 +3,7 @@ import { db } from '@/lib/server/db'
 import { products, categories } from '@/lib/server/schema'
 import { eq } from 'drizzle-orm'
 import { ProductDetailClient } from './product-detail-client'
+import { normalizeProductCondition } from '@/lib/server/admin-product'
 
 interface PageProps {
   params: Promise<{ slug: string }>
@@ -25,6 +26,8 @@ async function getProduct(slug: string) {
     rating: products.rating,
     reviewCount: products.reviewCount,
     tags: products.tags,
+    condition: products.condition,
+    brand: products.brand,
     featured: products.featured,
     isNew: products.isNew,
     isActive: products.isActive,
@@ -49,6 +52,8 @@ async function getProduct(slug: string) {
     specs: product.specs ?? [],
     images: product.images ?? [],
     shortDescription: product.shortDescription ?? undefined,
+    condition: normalizeProductCondition(product.condition),
+    brand: product.brand ?? undefined,
     category: product.category ?? undefined,
     createdAt: product.createdAt instanceof Date ? product.createdAt.toISOString() : String(product.createdAt),
     updatedAt: product.updatedAt instanceof Date ? product.updatedAt.toISOString() : String(product.updatedAt),
@@ -95,7 +100,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
     description: product.shortDescription || product.description?.slice(0, 500),
     image: product.images,
     sku: product.sku,
-    brand: { '@type': 'Brand', name: 'ValGadget' },
+    brand: { '@type': 'Brand', name: product.brand ?? 'ValGadget' },
     offers: {
       '@type': 'Offer',
       priceCurrency: 'NGN',

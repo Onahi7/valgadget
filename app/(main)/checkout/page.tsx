@@ -1,13 +1,27 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import Link from 'next/link'
 import {
-  CreditCard, Truck, CheckCircle, Bitcoin, Copy, Send, Loader2, MapPin, Plus, BookmarkCheck, Mail,
+  ArrowLeft,
+  ArrowRight,
+  Bitcoin,
+  BookmarkCheck,
+  CheckCircle2,
+  Copy,
+  CreditCard,
+  Loader2,
+  Mail,
+  MapPin,
+  PackageOpen,
+  Plus,
+  Send,
+  ShieldCheck,
+  Truck,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,63 +35,108 @@ import { paymentService } from '@/lib/services/payment.service'
 import { addressService, type UserAddress } from '@/lib/services/address.service'
 import { NIGERIA_STATES_LGAS, getLGAsForState } from '@/lib/data/nigeria-locations'
 import { toast } from 'sonner'
-import { getToken } from '@/lib/api-client'
 import type { ApiError } from '@/lib/api-client'
-import { cn } from '@/lib/utils'
 
-interface ShippingRate { id: string; state: string; price: string; estimatedDays: number }
-
-const addressSchema = z.object({
-  fullName: z.string().min(2, 'Required'),
-  line1: z.string().min(3, 'Required'),
-  line2: z.string().optional(),
-  city: z.string().min(2, 'Select LGA'),
-  state: z.string().min(1, 'Select your state'),
-  postalCode: z.string().optional(),
-  country: z.string().min(2, 'Required'),
-  phone: z.string().min(6, 'Required'),
-  paymentMethod: z.string().min(1, 'Select a payment method'),
-  saveAddress: z.boolean().optional(),
-  addressLabel: z.string().optional(),
-  guestEmail: z.preprocess(
-    (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
-    z.string().email('Valid email required').optional(),
-  ),
-})
-type FormValues = z.infer<typeof addressSchema>
-
-const PAYMENT_METHODS = [
-  { id: 'paystack',   label: 'Pay with Paystack',        icon: CreditCard, desc: 'Cards, bank transfer, USSD & more' },
-  { id: 'bitcoin',    label: 'Pay with Bitcoin',          icon: Bitcoin,    desc: 'Send BTC to our wallet' },
-  { id: 'ethereum',   label: 'Pay with Ethereum',         icon: Bitcoin,    desc: 'Send ETH to our wallet' },
-  { id: 'usdt_trc20', label: 'Pay with USDT (TRC-20)',    icon: Bitcoin,    desc: 'Send USDT via Tron network' },
-  { id: 'usdt_erc20', label: 'Pay with USDT (ERC-20)',    icon: Bitcoin,    desc: 'Send USDT via Ethereum network' },
-]
-
-const CRYPTO_ADDRESSES: Record<string, string> = {
-  bitcoin:    process.env.NEXT_PUBLIC_BTC_ADDRESS ?? '',
-  ethereum:   process.env.NEXT_PUBLIC_ETH_ADDRESS ?? '',
-  usdt_trc20: process.env.NEXT_PUBLIC_USDT_TRC20_ADDRESS ?? '',
-  usdt_erc20: process.env.NEXT_PUBLIC_USDT_ERC20_ADDRESS ?? '',
+interface ShippingRate {
+  id: string
+  state: string
+  price: string
+  estimatedDays: number
 }
+
+type CryptoAddresses = {
+  btc: string
+  eth: string
+  usdt_erc20: string
+  usdt_trc20: string
+}
+
+const EMPTY_CRYPTO_ADDRESSES: CryptoAddresses = {
+  btc: '',
+  eth: '',
+  usdt_erc20: '',
+  usdt_trc20: '',
+}
+
+const CRYPTO_METHODS = [
+  { id: 'btc', label: 'Bitcoin', description: 'Send BTC to the displayed wallet' },
+  { id: 'eth', label: 'Ethereum', description: 'Send ETH on the Ethereum network' },
+  { id: 'usdt_trc20', label: 'USDT (TRC-20)', description: 'Send USDT on the Tron network' },
+  { id: 'usdt_erc20', label: 'USDT (ERC-20)', description: 'Send USDT on the Ethereum network' },
+] as const
 
 const CRYPTO_LABELS: Record<string, string> = {
-  bitcoin: 'BTC', ethereum: 'ETH', usdt_trc20: 'USDT (TRC-20)', usdt_erc20: 'USDT (ERC-20)',
+  btc: 'BTC',
+  eth: 'ETH',
+  usdt_trc20: 'USDT (TRC-20)',
+  usdt_erc20: 'USDT (ERC-20)',
 }
 
-function FormField({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
+const checkoutSchema = z.object({
+  fullName: z.string().trim().min(2, 'Enter your full name'),
+  line1: z.string().trim().min(5, 'Enter a complete street address'),
+  line2: z.string().trim().optional(),
+  city: z.string().min(2, 'Select your LGA'),
+  state: z.string().min(1, 'Select your state'),
+  postalCode: z.string().trim().optional(),
+  country: z.string().min(2, 'Country is required'),
+  phone: z.string().trim().refine(value => {
+    const digits = value.replace(/\D/g, '')
+    return /^(?:234[789]\d{9}|0[789]\d{9})$/.test(digits)
+  }, 'Enter a valid Nigerian phone number'),
+  paymentMethod: z.string().min(1, 'Select a payment method'),
+  saveAddress: z.boolean().optional(),
+  addressLabel: z.string().trim().optional(),
+  guestEmail: z.preprocess(
+    value => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+    z.string().email('Enter a valid email address').optional(),
+  ),
+})
+
+type FormValues = z.infer<typeof checkoutSchema>
+type CheckoutStep = 'delivery' | 'payment'
+
+const fieldClassName = 'h-11 rounded-lg border-slate-300 bg-white px-3 text-[15px] text-slate-950 shadow-none placeholder:text-slate-400 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/15'
+const selectClassName = 'flex h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-[15px] text-slate-950 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400'
+
+function FormField({ label, htmlFor, error, children }: { label: string; htmlFor: string; error?: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <Label>{label}</Label>
+    <div className="space-y-1.5">
+      <Label htmlFor={htmlFor} className="text-sm font-medium text-slate-800">{label}</Label>
       {children}
-      {error && <p className="text-destructive text-xs">{error}</p>}
+      {error ? <p className="text-xs font-medium text-red-600">{error}</p> : null}
+    </div>
+  )
+}
+
+function CheckoutLoading() {
+  return (
+    <div className="flex min-h-[520px] items-center justify-center bg-slate-50">
+      <Loader2 className="h-6 w-6 animate-spin text-primary" aria-label="Loading checkout" />
+    </div>
+  )
+}
+
+function EmptyCheckout() {
+  return (
+    <div className="mx-auto flex min-h-[620px] max-w-xl flex-col items-center justify-center px-4 text-center">
+      <span className="flex h-16 w-16 items-center justify-center rounded-full bg-accent text-primary">
+        <PackageOpen className="h-8 w-8" />
+      </span>
+      <h1 className="mt-6 text-3xl font-bold text-slate-950">Your cart is empty</h1>
+      <p className="mt-3 max-w-md text-sm leading-6 text-slate-500">
+        Add a gadget to your cart before starting checkout. Your saved items will still be waiting in your wishlist.
+      </p>
+      <Button className="mt-7 h-11 rounded-lg px-6 font-semibold" asChild>
+        <Link href="/shop">Browse gadgets <ArrowRight className="h-4 w-4" /></Link>
+      </Button>
     </div>
   )
 }
 
 export default function CheckoutPage() {
   return (
-    <Suspense fallback={<div className="flex items-center justify-center min-h-[400px]"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
+    <Suspense fallback={<CheckoutLoading />}>
       <CheckoutPageContent />
     </Suspense>
   )
@@ -87,569 +146,493 @@ function CheckoutPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const affiliateCode = searchParams.get('ref') ?? undefined
-  const { items, total, clearCart } = useCart()
-  const { user } = useAuth()
+  const { items, total, clearCart, isHydrated } = useCart()
+  const { user, token, isLoading: authIsLoading } = useAuth()
+  const [step, setStep] = useState<CheckoutStep>('delivery')
   const [cryptoTxHash, setCryptoTxHash] = useState('')
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(null)
   const [createdOrderRef, setCreatedOrderRef] = useState<string | null>(null)
+  const [createdOrderTotal, setCreatedOrderTotal] = useState(0)
   const [shippingRates, setShippingRates] = useState<ShippingRate[]>([])
   const [selectedRate, setSelectedRate] = useState<ShippingRate | null>(null)
   const [savedAddresses, setSavedAddresses] = useState<UserAddress[]>([])
-  const [selectedAddressId, setSelectedAddressId] = useState<string>('')
+  const [selectedAddressId, setSelectedAddressId] = useState('')
   const [showNewAddressForm, setShowNewAddressForm] = useState(false)
   const [initializingPayment, setInitializingPayment] = useState(false)
+  const [cryptoAddresses, setCryptoAddresses] = useState<CryptoAddresses>(EMPTY_CRYPTO_ADDRESSES)
 
-  // Load saved addresses (only for logged-in users)
-  useEffect(() => {
-    if (!user) return
-    addressService.getAll()
-      .then(res => {
-        setSavedAddresses(res.data)
-        // Auto-select default address
-        const defaultAddr = res.data.find(a => a.isDefault)
-        if (!showNewAddressForm) {
-          if (defaultAddr) {
-            setSelectedAddressId(defaultAddr.id)
-          } else if (res.data[0]) {
-            setSelectedAddressId(res.data[0].id)
-          }
-        }
-      })
-      .catch(() => { toast.error('Failed to load saved addresses. You can still enter a new one.') })
-  }, [showNewAddressForm, user])
-
-  useEffect(() => {
-    fetch('/api/shipping-rates').then(r => r.json()).then(j => {
-      if (j.data) setShippingRates(j.data)
-    }).catch(() => { toast.error('Failed to load shipping rates.') })
-  }, [])
-
-  const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm<FormValues>({
-    resolver: zodResolver(addressSchema),
-    defaultValues: { country: 'Nigeria', paymentMethod: 'paystack', saveAddress: false, guestEmail: '' },
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    trigger,
+    formState: { errors, isSubmitting },
+  } = useForm<FormValues>({
+    resolver: zodResolver(checkoutSchema),
+    defaultValues: {
+      country: 'Nigeria',
+      paymentMethod: 'paystack',
+      saveAddress: false,
+      guestEmail: '',
+    },
   })
 
   const selectedPayment = watch('paymentMethod')
   const watchedState = watch('state')
   const watchedSaveAddress = watch('saveAddress')
-  const isCrypto = ['bitcoin', 'ethereum', 'usdt_trc20', 'usdt_erc20'].includes(selectedPayment)
-  const step = watchedState || selectedAddressId ? 'payment' : 'address'
-
-  // Get LGAs for selected state
   const availableLGAs = watchedState ? getLGAsForState(watchedState) : []
-
-  // Auto-select shipping rate when state changes
-  useEffect(() => {
-    if (watchedState && shippingRates.length) {
-      const rate = shippingRates.find(r => r.state === watchedState) ?? null
-      setSelectedRate(rate)
-    }
-  }, [watchedState, shippingRates])
-
-  // Fill form when saved address is selected
-  useEffect(() => {
-    if (selectedAddressId && !showNewAddressForm) {
-      const addr = savedAddresses.find(a => a.id === selectedAddressId)
-      if (addr) {
-        setValue('fullName', addr.fullName)
-        setValue('line1', addr.line1)
-        setValue('line2', addr.line2 || '')
-        setValue('city', addr.city)
-        setValue('state', addr.state)
-        setValue('postalCode', addr.postalCode || '')
-        setValue('country', addr.country)
-        setValue('phone', addr.phone)
-      }
-    }
-  }, [selectedAddressId, savedAddresses, setValue, showNewAddressForm])
-
   const shippingCost = selectedRate ? Number(selectedRate.price) : 0
   const orderTotal = total + shippingCost
+  const isCrypto = selectedPayment !== 'paystack'
+
+  const paymentMethods = useMemo(() => {
+    const paystack = [{ id: 'paystack', label: 'Pay with Paystack', description: 'Card, bank transfer, USSD and more', icon: CreditCard }]
+    if (!user) return paystack
+    return [
+      ...paystack,
+      ...CRYPTO_METHODS
+        .filter(method => cryptoAddresses[method.id])
+        .map(method => ({ ...method, icon: Bitcoin })),
+    ]
+  }, [cryptoAddresses, user])
 
   useEffect(() => {
-    if (items.length === 0 && !createdOrderId) {
-      router.replace('/cart')
-    }
-  }, [items.length, createdOrderId, router])
+    fetch('/api/shipping-rates')
+      .then(response => response.json())
+      .then(json => {
+        if (Array.isArray(json)) setShippingRates(json)
+      })
+      .catch(() => toast.error('We could not load delivery rates. Please refresh and try again.'))
+  }, [])
 
-  if (items.length === 0 && !createdOrderId) return null
+  useEffect(() => {
+    if (authIsLoading || !user) return
+    addressService.getAll()
+      .then(response => {
+        setSavedAddresses(response.data)
+        const preferred = response.data.find(address => address.isDefault) ?? response.data[0]
+        if (preferred && !showNewAddressForm) setSelectedAddressId(preferred.id)
+      })
+      .catch(() => toast.error('Saved addresses could not be loaded. You can enter a new one.'))
+  }, [authIsLoading, showNewAddressForm, user])
+
+  useEffect(() => {
+    if (!user) {
+      setCryptoAddresses(EMPTY_CRYPTO_ADDRESSES)
+      return
+    }
+    fetch('/api/payments/crypto')
+      .then(response => response.json())
+      .then(json => setCryptoAddresses({ ...EMPTY_CRYPTO_ADDRESSES, ...json }))
+      .catch(() => setCryptoAddresses(EMPTY_CRYPTO_ADDRESSES))
+  }, [user])
+
+  useEffect(() => {
+    if (!paymentMethods.some(method => method.id === selectedPayment)) {
+      setValue('paymentMethod', 'paystack')
+    }
+  }, [paymentMethods, selectedPayment, setValue])
+
+  useEffect(() => {
+    if (!watchedState || shippingRates.length === 0) {
+      setSelectedRate(null)
+      return
+    }
+    setSelectedRate(shippingRates.find(rate => rate.state === watchedState) ?? null)
+  }, [shippingRates, watchedState])
+
+  useEffect(() => {
+    if (!selectedAddressId || showNewAddressForm) return
+    const address = savedAddresses.find(item => item.id === selectedAddressId)
+    if (!address) return
+    setValue('fullName', address.fullName)
+    setValue('line1', address.line1)
+    setValue('line2', address.line2 || '')
+    setValue('city', address.city)
+    setValue('state', address.state)
+    setValue('postalCode', address.postalCode || '')
+    setValue('country', address.country)
+    setValue('phone', address.phone)
+  }, [savedAddresses, selectedAddressId, setValue, showNewAddressForm])
+
+  if (!isHydrated || authIsLoading) return <CheckoutLoading />
+  if (items.length === 0 && !createdOrderId) return <EmptyCheckout />
+
+  const checkoutReturnUrl = `/checkout${affiliateCode ? `?ref=${affiliateCode}` : ''}`
+
+  const continueToPayment = async () => {
+    if (user && savedAddresses.length > 0 && !showNewAddressForm && !selectedAddressId) {
+      toast.error('Select a saved address or enter a new one.')
+      return
+    }
+
+    const deliveryFields: (keyof FormValues)[] = ['fullName', 'line1', 'city', 'state', 'country', 'phone']
+    if (!user) deliveryFields.push('guestEmail')
+    const valid = await trigger(deliveryFields, { shouldFocus: true })
+    if (!valid) return
+
+    if (!selectedRate) {
+      toast.error('A delivery rate is not available for the selected state yet.')
+      return
+    }
+
+    setStep('payment')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   const onSubmit = async (data: FormValues) => {
+    if (step !== 'payment') {
+      await continueToPayment()
+      return
+    }
+    if (!selectedRate) {
+      toast.error('Select a valid delivery address before paying.')
+      setStep('delivery')
+      return
+    }
+    if (!user && !data.guestEmail) {
+      toast.error('Enter the email address for your order receipt.')
+      setStep('delivery')
+      return
+    }
+    if (isCrypto && (!user || !cryptoAddresses[data.paymentMethod as keyof CryptoAddresses])) {
+      toast.error('That crypto payment option is not available.')
+      return
+    }
+
     try {
-      if (user && savedAddresses.length > 0 && !showNewAddressForm && !selectedAddressId) {
-        toast.error('Please select a saved address or choose "Use New Address".')
-        return
-      }
-
-      // Validate guest email if not logged in
-      if (!user && !data.guestEmail) {
-        toast.error('Please provide your email address')
-        return
-      }
-
-      // Save address if requested (only for logged-in users)
       if (user && data.saveAddress && showNewAddressForm) {
-        try {
-          await addressService.create({
-            label: data.addressLabel || 'Home',
+        await addressService.create({
+          label: data.addressLabel || 'Home',
+          fullName: data.fullName,
+          line1: data.line1,
+          line2: data.line2,
+          city: data.city,
+          state: data.state,
+          postalCode: data.postalCode,
+          country: data.country,
+          phone: data.phone,
+          isDefault: savedAddresses.length === 0,
+        }).catch(() => toast.error('The order can continue, but this address was not saved.'))
+      }
+
+      let orderId = createdOrderId
+      let orderReference = createdOrderRef
+
+      if (!orderId) {
+        const order = await orderService.create({
+          items: items.map(item => ({ productId: item.product.id, quantity: item.quantity })),
+          shippingAddress: {
             fullName: data.fullName,
             line1: data.line1,
             line2: data.line2,
             city: data.city,
             state: data.state,
-            postalCode: data.postalCode,
+            postalCode: data.postalCode ?? '',
             country: data.country,
             phone: data.phone,
-            isDefault: savedAddresses.length === 0, // First address is default
-          })
-          toast.success('Address saved!')
-        } catch (err) {
-          console.error('Failed to save address:', err)
-        }
+          },
+          paymentMethod: isCrypto ? 'crypto' : 'paystack',
+          affiliateCode,
+          guestEmail: user ? undefined : data.guestEmail,
+        })
+        orderId = order.id
+        orderReference = order.reference
+        setCreatedOrderId(order.id)
+        setCreatedOrderRef(order.reference)
+        setCreatedOrderTotal(orderTotal)
       }
-
-      const order = await orderService.create({
-        items: items.map(i => ({ productId: i.product.id, quantity: i.quantity })),
-        shippingAddress: {
-          fullName: data.fullName, line1: data.line1, line2: data.line2,
-          city: data.city, state: data.state, postalCode: data.postalCode ?? '',
-          country: data.country, phone: data.phone,
-        },
-        paymentMethod: isCrypto ? 'crypto' : 'paystack',
-        affiliateCode,
-        guestEmail: user ? undefined : data.guestEmail,
-      })
-
-      clearCart()
-      setCreatedOrderId(order.id)
-      setCreatedOrderRef(order.reference)
 
       if (data.paymentMethod === 'paystack') {
         setInitializingPayment(true)
+        const destination = user ? `/account/orders/${orderId}` : `/orders/guest/${orderId}`
         const intent = await paymentService.initiate({
-          orderId: order.id,
+          orderId,
           method: 'card',
-          returnUrl: `${window.location.origin}/account/orders/${order.id}?paid=1`,
-          cancelUrl: `${window.location.origin}/checkout?orderId=${order.id}`,
+          returnUrl: `${window.location.origin}${destination}?paid=1`,
+          cancelUrl: `${window.location.origin}${destination}?payment=cancelled`,
           guestEmail: user ? undefined : data.guestEmail,
         })
-        if (intent.redirectUrl) {
-          toast.success('Redirecting to Paystack...')
-          window.location.href = intent.redirectUrl
-          return
-        }
-        setInitializingPayment(false)
-        toast.error('Paystack init failed')
+        if (!intent.redirectUrl) throw new Error('Payment provider did not return a checkout URL')
+        clearCart()
+        toast.success('Opening secure Paystack checkout…')
+        window.location.assign(intent.redirectUrl)
         return
       }
 
-      // Crypto payment — show wallet address panel
-      if (isCrypto) {
-        setInitializingPayment(false)
-        toast.success('Order placed! Send crypto to the wallet address below.')
-        return
-      }
-
+      setCreatedOrderId(orderId)
+      setCreatedOrderRef(orderReference)
+      setCreatedOrderTotal(orderTotal)
+      clearCart()
+      toast.success('Order placed. Complete the crypto transfer below.')
+    } catch (error) {
+      const apiError = error as ApiError
+      toast.error(apiError.message ?? 'Checkout could not be completed. Your cart is still available.')
+    } finally {
       setInitializingPayment(false)
-      toast.error('Only Paystack checkout is currently available.')
-    } catch (err) {
-      setInitializingPayment(false)
-      const e = err as ApiError
-      toast.error(e.message ?? 'Failed to place order')
     }
   }
-
-  const onInvalid = (errors: Record<string, { message?: string }>) => {
-    const firstMessage = Object.values(errors).find((e) => e?.message)?.message
-    toast.error(firstMessage ?? 'Please complete the required checkout fields.')
-  }
-
-  const checkoutReturnUrl = `/checkout${affiliateCode ? `?ref=${affiliateCode}` : ''}`
 
   const submitCryptoHash = async () => {
-    if (!cryptoTxHash.trim() || !createdOrderId) return
-    const res = await fetch('/api/payments/crypto', {
+    if (!cryptoTxHash.trim() || !createdOrderId || !token) return
+    const response = await fetch('/api/payments/crypto', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ orderId: createdOrderId, txHash: cryptoTxHash.trim(), coin: selectedPayment }),
     })
-    const json = await res.json()
-    if (res.ok) {
-      toast.success('TX hash submitted! We will verify your payment shortly.')
-      router.push(`/account/orders/${createdOrderId}?new=1`)
-    } else {
-      toast.error(json.message ?? 'Failed to submit TX hash')
+    const json = await response.json()
+    if (!response.ok) {
+      toast.error(json.message ?? 'The transaction hash could not be submitted.')
+      return
     }
+    toast.success('Transaction hash received. We will verify it shortly.')
+    router.push(`/account/orders/${createdOrderId}?new=1`)
   }
 
-  // Crypto wallet panel
   if (createdOrderId && isCrypto) {
-    const address = CRYPTO_ADDRESSES[selectedPayment] ?? ''
+    const address = cryptoAddresses[selectedPayment as keyof CryptoAddresses] ?? ''
     const coinLabel = CRYPTO_LABELS[selectedPayment] ?? selectedPayment
     return (
-      <div className="max-w-lg mx-auto px-4 py-16">
-        <div className="bg-card border border-border rounded-2xl p-8 space-y-6 text-center">
-          <Bitcoin className="w-12 h-12 text-amber-500 mx-auto" />
-          <div>
-            <h2 className="text-2xl font-bold mb-1">Send {coinLabel}</h2>
-            <p className="text-muted-foreground text-sm">Order <span className="font-mono">{createdOrderRef}</span> | ₦{total.toLocaleString()}</p>
-          </div>
-          <div className="bg-muted rounded-xl p-4 text-left space-y-2">
-            <p className="text-xs text-muted-foreground uppercase font-semibold tracking-wide">Wallet Address</p>
-            <div className="flex items-center gap-2">
-              <code className="text-xs break-all flex-1 select-all">{address}</code>
+      <div className="mx-auto max-w-xl px-4 py-12 sm:py-16">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_rgba(15,23,42,0.07)] sm:p-8">
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-accent text-primary">
+            <Bitcoin className="h-6 w-6" />
+          </span>
+          <h1 className="mt-5 text-3xl font-bold text-slate-950">Send {coinLabel}</h1>
+          <p className="mt-2 text-sm text-slate-500">Order {createdOrderRef} · ₦{createdOrderTotal.toLocaleString('en-NG')}</p>
+
+          <div className="mt-7 rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Wallet address</p>
+            <div className="mt-2 flex items-center gap-3">
+              <code className="min-w-0 flex-1 break-all text-xs text-slate-900">{address}</code>
               <button
-                onClick={() => { navigator.clipboard.writeText(address); toast.success('Copied!') }}
-                className="shrink-0 p-1.5 hover:bg-accent rounded"
+                type="button"
+                onClick={() => navigator.clipboard.writeText(address).then(() => toast.success('Wallet address copied'))}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:text-primary"
+                aria-label="Copy wallet address"
               >
-                <Copy className="w-4 h-4" />
+                <Copy className="h-4 w-4" />
               </button>
             </div>
           </div>
-            <p className="text-sm text-muted-foreground">
-              Send <strong className="text-foreground">₦{orderTotal.toLocaleString()}</strong> to the address above, then paste your transaction hash below.
-            </p>
-          <div className="space-y-3 text-left">
-            <Label>Transaction Hash (TX ID)</Label>
-            <Input
-              placeholder="0x... or txid..."
-              value={cryptoTxHash}
-              onChange={e => setCryptoTxHash(e.target.value)}
-            />
-            <Button className="w-full gap-2" onClick={submitCryptoHash} disabled={!cryptoTxHash.trim()}>
-              <Send className="w-4 h-4" /> Confirm Payment
+
+          <div className="mt-6 space-y-2">
+            <Label htmlFor="cryptoTxHash" className="text-sm font-medium text-slate-800">Transaction hash (TX ID)</Label>
+            <Input id="cryptoTxHash" className={fieldClassName} placeholder="Paste the transaction hash" value={cryptoTxHash} onChange={event => setCryptoTxHash(event.target.value)} />
+            <Button className="h-11 w-full rounded-lg font-semibold" onClick={submitCryptoHash} disabled={!cryptoTxHash.trim()}>
+              <Send className="h-4 w-4" /> Submit transaction hash
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground">Verification takes 1-30 minutes depending on network congestion.</p>
+          <p className="mt-4 text-xs leading-5 text-slate-500">Verification usually takes 1–30 minutes depending on network congestion.</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 animate-page-reveal">
-      <h1 className="text-3xl font-bold mb-8">Checkout</h1>
-
-      {/* Steps indicator */}
-      <div className="flex items-center mb-10">
-        {(['Address', 'Payment', 'Confirmation'] as const).map((label, i) => {
-          const isCompleted = i === 0 || (i === 1 && step === 'payment')
-          const isCurrent = (i === 0 && step === 'address') || (i === 1 && step === 'payment')
-          return (
-            <div key={label} className="flex items-center flex-1 last:flex-none">
-              <div className="flex items-center gap-2">
-                <div className={cn(
-                  'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold font-mono border-2 transition-colors',
-                  isCompleted || isCurrent
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'border-border text-muted-foreground bg-background'
-                )}>
-                  {isCompleted && !isCurrent ? (
-                    <CheckCircle className="w-4 h-4" />
-                  ) : (
-                    i + 1
-                  )}
-                </div>
-                <span className={cn(
-                  'text-sm font-medium hidden sm:block',
-                  isCurrent ? 'text-foreground' : 'text-muted-foreground'
-                )}>
-                  {label}
-                </span>
-              </div>
-              {i < 2 && (
-                <div className={cn(
-                  'flex-1 h-0.5 mx-3 rounded-full transition-colors',
-                  isCompleted && !isCurrent ? 'bg-primary' : 'bg-border'
-                )} />
-              )}
-            </div>
-          )
-        })}
-      </div>
-
-      <div className="grid lg:grid-cols-3 gap-8">
-        <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="lg:col-span-2 flex flex-col gap-6">
-          {/* Guest Email (if not logged in) */}
-          {!user && (
-            <div className="bg-card rounded-xl border border-border p-6">
-              <h2 className="font-bold text-base flex items-center gap-2 mb-5">
-                <Mail className="w-4 h-4 text-primary" /> Contact Information
-              </h2>
-              <FormField label="Email Address" error={errors.guestEmail?.message}>
-                <Input 
-                  {...register('guestEmail')} 
-                  type="email"
-                  placeholder="your@email.com" 
-                  autoComplete="email"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  We'll send your order confirmation here
-                </p>
-              </FormField>
-              <div className="mt-4 text-sm text-muted-foreground">
-                Already have an account?{' '}
-                <Link href={`/login?returnUrl=${encodeURIComponent(checkoutReturnUrl)}`} className="text-primary hover:underline">
-                  Sign in
-                </Link>
-              </div>
-            </div>
-          )}
-
-          {/* Saved Addresses */}
-          {user && savedAddresses.length > 0 && !showNewAddressForm && (
-              <div className="bg-card rounded-xl border border-border p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="font-bold text-base flex items-center gap-2">
-                    <BookmarkCheck className="w-4 h-4 text-primary" /> Saved Addresses
-                  </h2>
-                  <Link href="/account/addresses" className="text-xs text-primary hover:underline">
-                    Manage
-                  </Link>
-                </div>
-                <div className="flex flex-col gap-2">
-                  {savedAddresses.map(addr => (
-                    <label
-                      key={addr.id}
-                      className={`flex items-start gap-3 border rounded-lg px-4 py-3 cursor-pointer transition-all ${selectedAddressId === addr.id ? 'border-primary bg-primary/5' : 'border-border hover:bg-accent'}`}
-                    >
-                      <input
-                        type="radio"
-                        name="savedAddress"
-                        value={addr.id}
-                        checked={selectedAddressId === addr.id}
-                        onChange={() => setSelectedAddressId(addr.id)}
-                        className="mt-0.5"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold">{addr.label} {addr.isDefault && <span className="text-xs text-muted-foreground">(Default)</span>}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {addr.fullName} | {addr.line1}, {addr.city}, {addr.state} | {addr.phone}
-                        </p>
-                      </div>
-                    </label>
-                  ))}
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="w-full mt-3"
-                  onClick={() => { setShowNewAddressForm(true); setSelectedAddressId('') }}
-                >
-                  <Plus className="w-4 h-4 mr-2" /> Use New Address
-                </Button>
-              </div>
-            )}
-
-            {/* Shipping Address Form */}
-            {((!user || savedAddresses.length === 0) || showNewAddressForm) && (
-              <div className="bg-card rounded-xl border border-border p-6">
-                <div className="flex items-center justify-between mb-5">
-                  <h2 className="font-bold text-base flex items-center gap-2">
-                    <Truck className="w-4 h-4 text-primary" /> Shipping Address
-                  </h2>
-                  {showNewAddressForm && savedAddresses.length > 0 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => { setShowNewAddressForm(false); setSelectedAddressId(savedAddresses.find(a => a.isDefault)?.id || savedAddresses[0]?.id || '') }}
-                    >
-                      Use Saved
-                    </Button>
-                  )}
-                </div>
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <div className="sm:col-span-2">
-                    <FormField label="Full Name" error={errors.fullName?.message}>
-                      <Input {...register('fullName')} placeholder="Alex Johnson" autoComplete="name" />
-                    </FormField>
-                  </div>
-                  <div className="sm:col-span-2">
-                    <FormField label="Address Line 1" error={errors.line1?.message}>
-                      <Input {...register('line1')} placeholder="123 Main Street" autoComplete="address-line1" />
-                    </FormField>
-                  </div>
-                  <div className="sm:col-span-2">
-                    <FormField label="Address Line 2 (optional)" error={errors.line2?.message}>
-                      <Input {...register('line2')} placeholder="Apt 4B, Floor 2" autoComplete="address-line2" />
-                    </FormField>
-                  </div>
-                  <FormField label="State" error={errors.state?.message}>
-                    <select
-                      {...register('state')}
-                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-ring"
-                      onChange={(e) => {
-                        setValue('state', e.target.value)
-                        setValue('city', '') // Reset LGA when state changes
-                      }}
-                    >
-                      <option value="">Select state...</option>
-                      {NIGERIA_STATES_LGAS.map(loc => (
-                        <option key={loc.state} value={loc.state}>{loc.state}</option>
-                      ))}
-                    </select>
-                  </FormField>
-                  <FormField label="LGA (Local Government Area)" error={errors.city?.message}>
-                    <select
-                      {...register('city')}
-                      disabled={!watchedState}
-                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
-                    >
-                      <option value="">Select LGA...</option>
-                      {availableLGAs.map(lga => (
-                        <option key={lga} value={lga}>{lga}</option>
-                      ))}
-                    </select>
-                  </FormField>
-                  <FormField label="Phone Number" error={errors.phone?.message}>
-                    <Input {...register('phone')} placeholder="+234 800 000 0000" autoComplete="tel" type="tel" />
-                  </FormField>
-                  <FormField label="Postal Code (optional)" error={errors.postalCode?.message}>
-                    <Input {...register('postalCode')} placeholder="100001" autoComplete="postal-code" />
-                  </FormField>
-                  
-                  {/* Save Address Option (only for logged-in users) */}
-                  {user && showNewAddressForm && (
-                    <>
-                      <div className="sm:col-span-2 flex items-center gap-2 pt-2">
-                        <Checkbox
-                          id="saveAddress"
-                          checked={watchedSaveAddress}
-                          onCheckedChange={(checked) => setValue('saveAddress', !!checked)}
-                        />
-                        <Label htmlFor="saveAddress" className="text-sm cursor-pointer">
-                          Save this address for future orders
-                        </Label>
-                      </div>
-                      {watchedSaveAddress && (
-                        <div className="sm:col-span-2">
-                          <FormField label="Address Label" error={errors.addressLabel?.message}>
-                            <Input {...register('addressLabel')} placeholder="Home, Office, etc." />
-                          </FormField>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Shipping cost display */}
-            {selectedRate && (
-              <div className="bg-card rounded-xl border border-border p-4 flex items-center gap-3">
-                <MapPin className="w-4 h-4 text-primary shrink-0" />
-                <div className="flex-1">
-                  <p className="text-sm font-semibold">Delivery to {selectedRate.state}</p>
-                  <p className="text-xs text-muted-foreground">{selectedRate.estimatedDays} business day{selectedRate.estimatedDays !== 1 ? 's' : ''} estimated</p>
-                </div>
-                <span className="font-bold text-sm">₦{Number(selectedRate.price).toLocaleString()}</span>
-              </div>
-            )}
-
-            {/* Payment */}
-            <div className="bg-card rounded-xl border border-border p-6">
-              <h2 className="font-bold text-base flex items-center gap-2 mb-5">
-                <CreditCard className="w-4 h-4 text-primary" /> Payment Method
-              </h2>
-              <div className="flex flex-col gap-3">
-                {PAYMENT_METHODS.map(m => {
-                  const Icon = m.icon
-                  const active = selectedPayment === m.id
-                  return (
-                    <label
-                      key={m.id}
-                      className={`flex items-center gap-3 border rounded-xl px-4 py-3.5 cursor-pointer transition-all ${active ? 'border-primary bg-primary/5 shadow-sm' : 'border-border hover:bg-accent'}`}
-                    >
-                      <input type="radio" value={m.id} {...register('paymentMethod')} className="sr-only" />
-                      <Icon className={`w-4 h-4 shrink-0 ${active ? 'text-primary' : 'text-muted-foreground'}`} />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold leading-none">{m.label}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{m.desc}</p>
-                      </div>
-                      {active && <CheckCircle className="w-4 h-4 text-primary shrink-0" />}
-                    </label>
-                  )
-                })}
-              </div>
-              {errors.paymentMethod && <p className="text-destructive text-xs mt-2">{errors.paymentMethod.message}</p>}
-              {isCrypto && (
-                <div className="mt-4 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3 text-sm text-amber-800 dark:text-amber-300">
-                  After placing the order you'll see the wallet address and can paste your TX hash.
-                </div>
-              )}
-            </div>
-
-            {/* Order Review (shows when payment method selected) */}
-            {selectedPayment && (
-              <div className="bg-card rounded-xl border border-primary/20 p-6">
-                <h2 className="font-bold text-base flex items-center gap-2 mb-5">
-                  <CheckCircle className="w-4 h-4 text-primary" /> Review Your Order
-                </h2>
-                
-                {/* Order Items Summary */}
-                <div className="space-y-3 mb-4">
-                  <p className="text-sm font-semibold text-muted-foreground">Items ({items.length})</p>
-                  {items.slice(0, 3).map((item, i) => (
-                    <div key={i} className="flex justify-between text-sm">
-                      <span className="truncate flex-1">{item.product.name} x {item.quantity}</span>
-                      <span className="font-medium ml-2">₦{(item.product.price * item.quantity).toLocaleString()}</span>
-                    </div>
-                  ))}
-                  {items.length > 3 && (
-                    <p className="text-xs text-muted-foreground">+ {items.length - 3} more item{items.length - 3 !== 1 ? 's' : ''}</p>
-                  )}
-                </div>
-
-                {/* Shipping Address Summary */}
-                {(watchedState || selectedAddressId) && (
-                  <div className="border-t pt-4 mb-4">
-                    <p className="text-sm font-semibold text-muted-foreground mb-2">Shipping To</p>
-                    <p className="text-sm">
-                      {watch('fullName') || savedAddresses.find(a => a.id === selectedAddressId)?.fullName}<br />
-                      {watch('line1') || savedAddresses.find(a => a.id === selectedAddressId)?.line1}<br />
-                      {watch('city') || savedAddresses.find(a => a.id === selectedAddressId)?.city}, {watch('state') || savedAddresses.find(a => a.id === selectedAddressId)?.state}
-                    </p>
-                  </div>
-                )}
-
-                {/* Total */}
-                <div className="border-t pt-4">
-                  <div className="flex justify-between items-center">
-                    <span className="font-bold">Total Amount</span>
-                    <span className="font-bold text-lg text-primary">₦{orderTotal.toLocaleString()}</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Including ₦{shippingCost.toLocaleString()} shipping
-                  </p>
-                </div>
-              </div>
-            )}
-
-            <Button type="submit" disabled={isSubmitting || initializingPayment} size="lg" className="w-full font-semibold">
-              {initializingPayment ? (
-                <span className="flex items-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin" /> Initializing Paystack...
-                </span>
-              ) : isSubmitting ? (
-                <span className="flex items-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin" /> Processing...
-                </span>
-              ) : selectedPayment === 'paystack' ? (
-                `Pay ₦${orderTotal.toLocaleString()} with Paystack`
-              ) : isCrypto ? (
-                `Place Order & Pay with Crypto`
-              ) : (
-                `Place Order - ₦${orderTotal.toLocaleString()}`
-              )}
-            </Button>
-          </form>
-
-          <div>
-            <CheckoutSummary shipping={shippingCost} />
+    <div className="min-h-[calc(100vh-4rem)] bg-slate-50/70 py-8 sm:py-12">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold tracking-tight text-slate-950">Checkout</h1>
+          <div className="mt-5 grid max-w-2xl grid-cols-[auto_1fr_auto] items-center gap-3 text-sm">
+            <button type="button" onClick={() => setStep('delivery')} className="inline-flex items-center gap-2 font-semibold text-slate-950">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">
+                {step === 'payment' ? <CheckCircle2 className="h-4 w-4" /> : '1'}
+              </span>
+              Delivery
+            </button>
+            <span className={`h-px ${step === 'payment' ? 'bg-primary' : 'bg-slate-300'}`} />
+            <span className={`inline-flex items-center gap-2 font-semibold ${step === 'payment' ? 'text-slate-950' : 'text-slate-400'}`}>
+              <span className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${step === 'payment' ? 'bg-primary text-white' : 'bg-slate-200 text-slate-500'}`}>2</span>
+              Payment
+            </span>
           </div>
         </div>
+
+        <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.45fr)_minmax(340px,0.75fr)]">
+          <form onSubmit={handleSubmit(onSubmit)}>
+            {step === 'delivery' ? (
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_rgba(15,23,42,0.04)] sm:p-7">
+                <section>
+                  <div className="flex items-center justify-between gap-4">
+                    <h2 className="text-xl font-bold text-slate-950">Contact</h2>
+                    {!user ? (
+                      <Link href={`/login?returnUrl=${encodeURIComponent(checkoutReturnUrl)}`} className="text-sm font-semibold text-primary hover:underline">Sign in</Link>
+                    ) : null}
+                  </div>
+                  <div className="mt-5">
+                    {user ? (
+                      <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                        <Mail className="h-4 w-4 text-primary" />
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900">{user.email}</p>
+                          <p className="text-xs text-slate-500">Order updates will be sent here</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <FormField label="Email address" htmlFor="guestEmail" error={errors.guestEmail?.message}>
+                        <Input id="guestEmail" type="email" autoComplete="email" placeholder="you@example.com" className={fieldClassName} {...register('guestEmail')} />
+                      </FormField>
+                    )}
+                  </div>
+                </section>
+
+                <div className="my-7 h-px bg-slate-200" />
+
+                <section>
+                  <div className="flex items-center justify-between gap-4">
+                    <h2 className="text-xl font-bold text-slate-950">Delivery address</h2>
+                    <Truck className="h-5 w-5 text-primary" />
+                  </div>
+
+                  {user && savedAddresses.length > 0 && !showNewAddressForm ? (
+                    <div className="mt-5 space-y-3">
+                      {savedAddresses.map(address => (
+                        <label key={address.id} className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition ${selectedAddressId === address.id ? 'border-primary bg-accent/60 ring-1 ring-primary' : 'border-slate-200 hover:border-slate-300'}`}>
+                          <input type="radio" name="savedAddress" value={address.id} checked={selectedAddressId === address.id} onChange={() => setSelectedAddressId(address.id)} className="mt-1 accent-[#324C33]" />
+                          <span className="min-w-0 flex-1">
+                            <span className="flex items-center gap-2 text-sm font-semibold text-slate-950">
+                              <BookmarkCheck className="h-4 w-4 text-primary" /> {address.label}
+                              {address.isDefault ? <span className="text-xs font-normal text-slate-500">Default</span> : null}
+                            </span>
+                            <span className="mt-1 block text-sm leading-6 text-slate-600">{address.fullName} · {address.line1}, {address.city}, {address.state} · {address.phone}</span>
+                          </span>
+                        </label>
+                      ))}
+                      <Button type="button" variant="outline" className="h-11 w-full rounded-lg border-slate-300" onClick={() => { setShowNewAddressForm(true); setSelectedAddressId('') }}>
+                        <Plus className="h-4 w-4" /> Use a new address
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                      {showNewAddressForm && savedAddresses.length > 0 ? (
+                        <div className="sm:col-span-2">
+                          <Button type="button" variant="ghost" className="-ml-3 h-9 text-primary" onClick={() => { setShowNewAddressForm(false); setSelectedAddressId(savedAddresses.find(address => address.isDefault)?.id ?? savedAddresses[0]?.id ?? '') }}>
+                            <ArrowLeft className="h-4 w-4" /> Use a saved address
+                          </Button>
+                        </div>
+                      ) : null}
+                      <div className="sm:col-span-2">
+                        <FormField label="Full name" htmlFor="fullName" error={errors.fullName?.message}>
+                          <Input id="fullName" autoComplete="name" placeholder="Tunde Adewale" className={fieldClassName} {...register('fullName')} />
+                        </FormField>
+                      </div>
+                      <div className="sm:col-span-2">
+                        <FormField label="Street address" htmlFor="line1" error={errors.line1?.message}>
+                          <Input id="line1" autoComplete="address-line1" placeholder="12 Admiralty Way" className={fieldClassName} {...register('line1')} />
+                        </FormField>
+                      </div>
+                      <div className="sm:col-span-2">
+                        <FormField label="Apartment or landmark (optional)" htmlFor="line2" error={errors.line2?.message}>
+                          <Input id="line2" autoComplete="address-line2" placeholder="Flat 4B, near the roundabout" className={fieldClassName} {...register('line2')} />
+                        </FormField>
+                      </div>
+                      <FormField label="State" htmlFor="state" error={errors.state?.message}>
+                        <select id="state" className={selectClassName} {...register('state')} onChange={event => { setValue('state', event.target.value, { shouldValidate: true }); setValue('city', '') }}>
+                          <option value="">Select state</option>
+                          {NIGERIA_STATES_LGAS.map(location => <option key={location.state} value={location.state}>{location.state}</option>)}
+                        </select>
+                      </FormField>
+                      <FormField label="LGA" htmlFor="city" error={errors.city?.message}>
+                        <select id="city" className={selectClassName} disabled={!watchedState} {...register('city')}>
+                          <option value="">Select LGA</option>
+                          {availableLGAs.map(lga => <option key={lga} value={lga}>{lga}</option>)}
+                        </select>
+                      </FormField>
+                      <FormField label="Phone number" htmlFor="phone" error={errors.phone?.message}>
+                        <Input id="phone" type="tel" autoComplete="tel" placeholder="0801 234 5678" className={fieldClassName} {...register('phone')} />
+                      </FormField>
+                      <FormField label="Postal code (optional)" htmlFor="postalCode" error={errors.postalCode?.message}>
+                        <Input id="postalCode" autoComplete="postal-code" placeholder="100001" className={fieldClassName} {...register('postalCode')} />
+                      </FormField>
+
+                      {user && showNewAddressForm ? (
+                        <div className="space-y-3 sm:col-span-2">
+                          <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+                            <Checkbox checked={watchedSaveAddress} onCheckedChange={checked => setValue('saveAddress', Boolean(checked))} />
+                            Save this address for future orders
+                          </label>
+                          {watchedSaveAddress ? (
+                            <FormField label="Address label" htmlFor="addressLabel" error={errors.addressLabel?.message}>
+                              <Input id="addressLabel" placeholder="Home or Office" className={fieldClassName} {...register('addressLabel')} />
+                            </FormField>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
+
+                  {selectedRate ? (
+                    <div className="mt-5 flex items-center gap-3 rounded-xl bg-slate-50 px-4 py-3 text-sm">
+                      <MapPin className="h-4 w-4 shrink-0 text-primary" />
+                      <span className="min-w-0 flex-1 text-slate-600">Delivery to {selectedRate.state} · {selectedRate.estimatedDays} business days</span>
+                      <span className="shrink-0 font-semibold text-slate-950">₦{Number(selectedRate.price).toLocaleString('en-NG')}</span>
+                    </div>
+                  ) : null}
+                </section>
+
+                <Button type="button" size="lg" className="mt-7 h-12 w-full rounded-lg text-base font-semibold" onClick={continueToPayment}>
+                  Continue to payment <ArrowRight className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-5">
+                <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Delivering to</p>
+                      <p className="mt-2 text-sm font-semibold text-slate-950">{watch('fullName')}</p>
+                      <p className="mt-1 text-sm leading-6 text-slate-600">{watch('line1')}{watch('line2') ? `, ${watch('line2')}` : ''}<br />{watch('city')}, {watch('state')} · {watch('phone')}</p>
+                    </div>
+                    <Button type="button" variant="ghost" size="sm" className="text-primary" onClick={() => setStep('delivery')}>Edit</Button>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_rgba(15,23,42,0.04)] sm:p-7">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <h2 className="text-xl font-bold text-slate-950">Payment method</h2>
+                      <p className="mt-1 text-sm text-slate-500">Choose how you would like to pay.</p>
+                    </div>
+                    <ShieldCheck className="h-5 w-5 text-primary" />
+                  </div>
+
+                  <div className="mt-6 space-y-3">
+                    {paymentMethods.map(method => {
+                      const Icon = method.icon
+                      const active = selectedPayment === method.id
+                      return (
+                        <label key={method.id} className={`flex cursor-pointer items-center gap-4 rounded-xl border p-4 transition ${active ? 'border-primary bg-accent/60 ring-1 ring-primary' : 'border-slate-200 hover:border-slate-300'}`}>
+                          <input type="radio" value={method.id} className="sr-only" {...register('paymentMethod')} />
+                          <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${active ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'}`}><Icon className="h-5 w-5" /></span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-sm font-semibold text-slate-950">{method.label}</span>
+                            <span className="mt-0.5 block text-xs text-slate-500">{method.description}</span>
+                          </span>
+                          {active ? <CheckCircle2 className="h-5 w-5 shrink-0 text-primary" /> : null}
+                        </label>
+                      )
+                    })}
+                  </div>
+
+                  <Button type="submit" size="lg" disabled={isSubmitting || initializingPayment} className="mt-7 h-12 w-full rounded-lg text-base font-semibold">
+                    {isSubmitting || initializingPayment ? (
+                      <><Loader2 className="h-4 w-4 animate-spin" /> Preparing secure payment…</>
+                    ) : selectedPayment === 'paystack' ? (
+                      <>Pay ₦{orderTotal.toLocaleString('en-NG')} with Paystack <ArrowRight className="h-4 w-4" /></>
+                    ) : (
+                      <>Place order and pay with crypto <ArrowRight className="h-4 w-4" /></>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </form>
+
+          <CheckoutSummary shipping={shippingCost} shippingKnown={Boolean(selectedRate)} />
+        </div>
       </div>
-    )
-  }
+    </div>
+  )
+}

@@ -26,7 +26,7 @@ const TIMELINE: { status: OrderStatus; label: string; icon: typeof Clock }[] = [
 ]
 
 function formatNaira(value: number) {
-  return `NGN ${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+  return `₦${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
 }
 
 export default function AdminOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {

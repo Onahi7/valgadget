@@ -19,25 +19,45 @@ export async function POST(req: NextRequest) {
     if (!name || !email || !password) {
       return apiError('Name, email and password are required.')
     }
-    if (password.length < 8) {
-      return apiError('Password must be at least 8 characters.', 400, { password: ['Minimum 8 characters'] })
+
+    // Sanitize and validate name
+    const sanitizedName = String(name).trim().replace(/[<>]/g, '')
+    if (sanitizedName.length < 2) {
+      return apiError('Name must be at least 2 characters.', 400)
     }
-    if (name.length > 200) {
+    if (sanitizedName.length > 200) {
       return apiError('Name is too long.', 400)
     }
 
-    const existing = await db.select({ id: users.id }).from(users).where(eq(users.email, email.toLowerCase())).limit(1)
+    // Validate email format
+    const emailStr = String(email).trim().toLowerCase()
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr)) {
+      return apiError('Please provide a valid email address.', 400)
+    }
+    if (emailStr.length > 255) {
+      return apiError('Email is too long.', 400)
+    }
+
+    // Validate password strength
+    if (typeof password !== 'string' || password.length < 8) {
+      return apiError('Password must be at least 8 characters.', 400, { password: ['Minimum 8 characters'] })
+    }
+    if (password.length > 128) {
+      return apiError('Password is too long.', 400)
+    }
+
+    const existing = await db.select({ id: users.id }).from(users).where(eq(users.email, emailStr)).limit(1)
     if (existing.length > 0) return apiError('An account with this email already exists.', 409)
 
     const passwordHash = await hashPassword(password)
     const verifyToken  = crypto.randomBytes(32).toString('hex')
     const safeRole     = ['customer', 'affiliate'].includes(role) ? role : 'customer'
     const aCode        = safeRole === 'affiliate'
-      ? (affiliateCode ?? (name as string).toLowerCase().replace(/\s+/g, '') + Math.floor(Math.random() * 999))
+      ? (affiliateCode ?? sanitizedName.toLowerCase().replace(/\s+/g, '') + crypto.randomInt(100, 999))
       : undefined
 
     const [user] = await db.insert(users).values({
-      name, email: email.toLowerCase(), passwordHash,
+      name: sanitizedName, email: emailStr, passwordHash,
       role: safeRole, isVerified: false, verifyToken, affiliateCode: aCode,
     }).returning({
       id: users.id, name: users.name, email: users.email, role: users.role,

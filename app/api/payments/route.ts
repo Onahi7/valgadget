@@ -3,9 +3,9 @@
  * Verifies Paystack webhook signature using HMAC-SHA512.
  * Supports Paystack and Flutterwave patterns.
  */
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
-import { orders } from '@/lib/server/schema'
+import { orders, users, affiliateClicks } from '@/lib/server/schema'
 import { apiOk, apiError } from '@/lib/server/auth-helpers'
 import { sendPurchaseConfirmationForOrder } from '@/lib/server/order-email'
 import { eq, and, sql } from 'drizzle-orm'
@@ -25,13 +25,33 @@ async function confirmPayment(reference: string): Promise<{ ok: boolean; already
   const [updated] = await db.update(orders)
     .set({ paymentStatus: 'paid', status: 'confirmed', paymentRef: reference, updatedAt: new Date() })
     .where(and(eq(orders.reference, reference), sql`${orders.paymentStatus} != 'paid'`))
-    .returning({ id: orders.id, userId: orders.userId, guestEmail: orders.guestEmail, reference: orders.reference, total: orders.total })
+    .returning({ id: orders.id, userId: orders.userId, guestEmail: orders.guestEmail, reference: orders.reference, total: orders.total, affiliateCode: orders.affiliateCode, subtotal: orders.subtotal })
 
   if (!updated) {
     // Either order not found, or already paid (idempotent)
     const [exists] = await db.select({ id: orders.id })
       .from(orders).where(eq(orders.reference, reference)).limit(1)
     return { ok: !!exists, alreadyPaid: !!exists }
+  }
+
+  // Credit affiliate commission on payment confirmation
+  if (updated.affiliateCode) {
+    try {
+      const [affiliate] = await db.select({ id: users.id, affiliateCode: users.affiliateCode })
+        .from(users).where(eq(users.affiliateCode, updated.affiliateCode)).limit(1)
+      if (affiliate) {
+        const commissionRate = 0.05 // 5% commission
+        const commission = Math.round(Number(updated.subtotal) * commissionRate)
+        await db.update(users)
+          .set({ affiliateBalance: sql`${users.affiliateBalance} + ${commission}`, updatedAt: new Date() })
+          .where(eq(users.id, affiliate.id))
+        await db.update(affiliateClicks)
+          .set({ commission: String(commission), convertedAt: new Date() })
+          .where(and(eq(affiliateClicks.orderId, updated.id), eq(affiliateClicks.code, updated.affiliateCode)))
+      }
+    } catch (err) {
+      console.error('[webhook affiliate commission]', err)
+    }
   }
 
   sendPurchaseConfirmationForOrder(updated, 'webhook email')

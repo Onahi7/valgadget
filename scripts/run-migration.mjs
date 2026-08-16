@@ -130,6 +130,29 @@ async function main() {
         AND t.tag ~ '^[A-Z][A-Z0-9 &.-]{1,30}$';
     `
 
+    // ── Migration 0008: First-class product condition ────────────────────
+    await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS condition VARCHAR(30) NOT NULL DEFAULT 'brand-new';`
+    await sql`
+      UPDATE products
+      SET condition = CASE
+        WHEN tags::jsonb ? 'uk-used' THEN 'uk-used'
+        WHEN tags::jsonb ? 'us-used' THEN 'us-used'
+        WHEN tags::jsonb ? 'naija-used' THEN 'naija-used'
+        WHEN tags::jsonb ? 'refurbished' THEN 'refurbished'
+        WHEN tags::jsonb ? 'open-box' THEN 'open-box'
+        ELSE condition
+      END;
+    `
+    await sql`
+      UPDATE products p
+      SET condition = 'uk-used'
+      FROM categories c
+      WHERE p.category_id = c.id
+        AND c.slug = 'iphones-uk-used'
+        AND p.condition = 'brand-new';
+    `
+    await sql`CREATE INDEX IF NOT EXISTS products_condition_idx ON products(condition);`
+
     console.log('All migrations applied successfully.')
   } catch (err) {
     console.error('Migration failed:', err)

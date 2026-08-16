@@ -17,6 +17,7 @@ export default function WishlistPage() {
     description: '', price: item.price, comparePrice: item.comparePrice,
     images: item.images, categoryId: '', stock: item.stock, sku: item.sku,
     rating: 0, reviewCount: 0, tags: [], featured: false, isNew: false, isActive: true,
+    condition: 'brand-new',
     createdAt: '', updatedAt: '',
   }))
 

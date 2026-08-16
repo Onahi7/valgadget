@@ -1,8 +1,16 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
-import { products, categories } from '@/lib/server/schema'
+import { products, categories, productVariants } from '@/lib/server/schema'
 import { requireAuth, apiOk, apiError } from '@/lib/server/auth-helpers'
 import { eq, desc, sql, and, type SQL } from 'drizzle-orm'
+import {
+  createAdminProductSchema,
+  nullableValue,
+  postgresErrorCode,
+  slugifyProductName,
+  validationErrors,
+  withConditionTag,
+} from '@/lib/server/admin-product'
 
 // GET /api/admin/products — list with pagination
 export async function GET(req: NextRequest) {
@@ -26,8 +34,8 @@ export async function GET(req: NextRequest) {
 
   const where = conditions.length ? and(...conditions) : undefined
 
-  const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(products).where(where)
-  const data = await db.select({
+  const countQuery = db.select({ count: sql<number>`count(*)::int` }).from(products).where(where)
+  const dataQuery = db.select({
     id: products.id,
     name: products.name,
     slug: products.slug,
@@ -45,6 +53,7 @@ export async function GET(req: NextRequest) {
     rating: products.rating,
     reviewCount: products.reviewCount,
     tags: products.tags,
+    condition: products.condition,
     featured: products.featured,
     isNew: products.isNew,
     isActive: products.isActive,
@@ -56,6 +65,8 @@ export async function GET(req: NextRequest) {
     .where(where)
     .orderBy(desc(products.createdAt)).limit(limit).offset((page - 1) * limit)
 
+  const [[{ count }], data] = await Promise.all([countQuery, dataQuery])
+
   return apiOk({ data: data.map(numericProduct), total: count, page, limit, totalPages: Math.max(1, Math.ceil(count / limit)) })
 }
 
@@ -65,25 +76,63 @@ export async function POST(req: NextRequest) {
   if ('status' in auth) return auth
 
   try {
-    const body = await req.json()
-    const { name, description = '', shortDescription, specs = [], price, comparePrice, cost, categoryId,
-            stock = 0, sku, tags = [], featured = false, isNew = false,
-            isActive = true, images = [] } = body
+    const parsed = createAdminProductSchema.safeParse(await req.json())
+    if (!parsed.success) return apiError('Please correct the highlighted product fields.', 422, validationErrors(parsed.error))
 
-    if (!name || !price || !sku) return apiError('name, price, and sku are required.')
+    const input = parsed.data
+    if (input.categoryId) {
+      const [category] = await db.select({ id: categories.id }).from(categories).where(eq(categories.id, input.categoryId)).limit(1)
+      if (!category) return apiError('Selected category does not exist.', 422, { categoryId: ['Select a valid category.'] })
+    }
 
-    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + Date.now()
+    const slug = `${slugifyProductName(input.name)}-${Date.now().toString(36)}`
+    const variantStock = input.variants.filter(variant => variant.isActive).reduce((sum, variant) => sum + variant.stock, 0)
 
-    const [product] = await db.insert(products).values({
-      name, slug, description, shortDescription, specs,
-      price: String(price), comparePrice: comparePrice ? String(comparePrice) : null,
-      cost: cost ? String(cost) : null,
-      categoryId, stock, sku, tags, featured, isNew, isActive, images,
-    }).returning()
+    const product = await db.transaction(async tx => {
+      const [created] = await tx.insert(products).values({
+        name: input.name,
+        slug,
+        description: input.description,
+        shortDescription: nullableValue(input.shortDescription),
+        specs: input.specs,
+        price: String(input.price),
+        comparePrice: input.comparePrice ? String(input.comparePrice) : null,
+        cost: input.cost !== undefined && input.cost !== null ? String(input.cost) : null,
+        categoryId: nullableValue(input.categoryId),
+        stock: input.variants.length > 0 ? variantStock : input.stock,
+        lowStockThreshold: input.lowStockThreshold,
+        sku: input.sku,
+        barcode: nullableValue(input.barcode),
+        brand: nullableValue(input.brand),
+        tags: withConditionTag(input.tags, input.condition),
+        condition: input.condition,
+        featured: input.featured,
+        isNew: input.isNew,
+        isActive: input.isActive,
+        images: input.images,
+      }).returning()
 
-    return apiOk(numericProduct(product), 201)
+      if (input.variants.length > 0) {
+        await tx.insert(productVariants).values(input.variants.map((variant, index) => ({
+          productId: created.id,
+          name: variant.name,
+          sku: variant.sku,
+          price: variant.price ? String(variant.price) : null,
+          stock: variant.stock,
+          attributes: variant.attributes,
+          image: nullableValue(variant.image),
+          isActive: variant.isActive,
+          sortOrder: index,
+        })))
+      }
+
+      return created
+    })
+
+    return apiOk({ ...numericProduct(product), variants: input.variants }, 201)
   } catch (err) {
     console.error('[admin create product]', err)
+    if (postgresErrorCode(err) === '23505') return apiError('A product or variant already uses that SKU.', 409)
     return apiError('Failed to create product.', 500)
   }
 }
@@ -99,6 +148,7 @@ function numericProduct(p: Record<string, unknown>) {
     imageStatus: displayImage ? 'ready' : 'needs_image',
     price: p.price ? Number(p.price) : undefined,
     comparePrice: p.comparePrice ? Number(p.comparePrice) : undefined,
+    cost: p.cost ? Number(p.cost) : undefined,
     rating: p.rating ? Number(p.rating) : 0,
   }
 }

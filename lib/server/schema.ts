@@ -103,6 +103,7 @@ export const products = pgTable('products', {
   rating:           numeric('rating', { precision: 3, scale: 2 }).notNull().default('0'),
   reviewCount:      integer('review_count').notNull().default(0),
   tags:             json('tags').$type<string[]>().notNull().default([]),
+  condition:        varchar('condition', { length: 30 }).notNull().default('brand-new'),
   featured:         boolean('featured').notNull().default(false),
   isNew:            boolean('is_new').notNull().default(false),
   isActive:         boolean('is_active').notNull().default(true),
@@ -115,6 +116,7 @@ export const products = pgTable('products', {
   index('products_featured_idx').on(t.featured),
   index('products_active_idx').on(t.isActive),
   index('products_brand_idx').on(t.brand),
+  index('products_condition_idx').on(t.condition),
 ])
 
 // ─── Product Variants ──────────────────────────────────────────────────────

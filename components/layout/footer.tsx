@@ -1,13 +1,14 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { Twitter } from 'lucide-react'
+import { Mail, Phone, Twitter } from 'lucide-react'
 
 const FOOTER_LINKS = {
   shop: [
     { label: 'All Products', href: '/shop' },
-    { label: 'Categories', href: '/categories' },
-    { label: 'Raffles', href: '/raffles' },
+    { label: 'Hot Deals', href: '/deals' },
+    { label: 'Live Raffles', href: '/raffles' },
     { label: 'New Arrivals', href: '/shop?sort=newest' },
+    { label: 'Categories', href: '/categories' },
   ],
   account: [
     { label: 'Sign In', href: '/login' },
@@ -16,14 +17,15 @@ const FOOTER_LINKS = {
     { label: 'Wishlist', href: '/wishlist' },
     { label: 'Affiliate Program', href: '/affiliate' },
   ],
-  company: [
-    { label: 'About', href: '/about' },
+  help: [
+    { label: 'About Us', href: '/about' },
     { label: 'Contact', href: '/contact' },
+    { label: 'FAQs', href: '/faq' },
+    { label: 'Return Policy', href: '/legal/returns' },
   ],
   legal: [
     { label: 'Privacy Policy', href: '/legal/privacy' },
     { label: 'Terms of Service', href: '/legal/terms' },
-    { label: 'Return Policy', href: '/legal/returns' },
     { label: 'Cookie Policy', href: '/legal/cookies' },
   ],
 }
@@ -40,21 +42,44 @@ const SOCIAL = [
   { label: 'TikTok', href: 'https://www.tiktok.com/@valgadgets', Icon: TikTokIcon },
 ]
 
+const PAYMENT_BADGES = ['Paystack', 'Visa', 'Mastercard', 'Verve', 'Crypto']
+
 export function Footer() {
   return (
-    <footer className="bg-secondary text-secondary-foreground mt-24">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <footer className="mt-24 bg-secondary text-secondary-foreground">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Main footer */}
-        <div className="py-16 grid grid-cols-2 md:grid-cols-5 gap-8">
-          {/* Brand */}
-          <div className="col-span-2 md:col-span-1">
+        <div className="grid grid-cols-2 gap-8 py-16 md:grid-cols-6">
+          {/* Brand — spans two columns */}
+          <div className="col-span-2">
             <Link href="/" className="flex items-center">
               <Image src="/logo.png" alt="Val Gadgets" width={160} height={56} className="h-12 w-auto object-contain" />
             </Link>
-            <p className="mt-4 text-sm text-secondary-foreground/60 leading-relaxed max-w-[200px]">
-              Your number 1 gadget plug. Solution to every gadget need - with nationwide delivery across Nigeria.
+            <p className="mt-4 max-w-[220px] text-sm leading-relaxed text-secondary-foreground/60">
+              Your number 1 gadget plug. Solution to every gadget need — with
+              nationwide delivery across Nigeria.
             </p>
-            <div className="flex items-center gap-3 mt-6">
+
+            <div className="mt-5 space-y-2 text-sm">
+              <a
+                href="mailto:support@valgadgets.com"
+                className="flex items-center gap-2 text-secondary-foreground/70 transition-colors hover:text-primary"
+              >
+                <Mail className="h-4 w-4 text-primary" />
+                support@valgadgets.com
+              </a>
+              <a
+                href="https://wa.me/2347038572046"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 text-secondary-foreground/70 transition-colors hover:text-primary"
+              >
+                <Phone className="h-4 w-4 text-primary" />
+                +234 703 857 2046
+              </a>
+            </div>
+
+            <div className="mt-6 flex items-center gap-3">
               {SOCIAL.map(({ label, href, Icon }) => (
                 <a
                   key={label}
@@ -62,7 +87,7 @@ export function Footer() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={label}
-                  className="flex h-9 w-9 items-center justify-center rounded-full text-secondary-foreground/40 transition-colors hover:bg-secondary-foreground/10 hover:text-primary"
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-secondary-foreground/15 text-secondary-foreground/60 transition-colors hover:border-primary/50 hover:text-primary"
                 >
                   <Icon className="w-4 h-4" />
                 </a>
@@ -70,23 +95,23 @@ export function Footer() {
             </div>
           </div>
 
-          {/* Links */}
+          {/* Link columns */}
           {([
             { title: 'Shop', links: FOOTER_LINKS.shop },
             { title: 'Account', links: FOOTER_LINKS.account },
-            { title: 'Company', links: FOOTER_LINKS.company },
+            { title: 'Help', links: FOOTER_LINKS.help },
             { title: 'Legal', links: FOOTER_LINKS.legal },
           ] as { title: string; links: { label: string; href: string }[] }[]).map(section => (
             <div key={section.title}>
-              <h3 className="font-mono font-bold text-xs uppercase tracking-widest text-secondary-foreground/50 mb-4">
+              <h3 className="mb-4 font-mono text-xs font-bold uppercase tracking-widest text-secondary-foreground/50">
                 {section.title}
               </h3>
-              <ul className="flex flex-col gap-2">
+              <ul className="flex flex-col gap-2.5">
                 {section.links.map(link => (
-                  <li key={link.href}>
+                  <li key={link.href + link.label}>
                     <Link
                       href={link.href}
-                      className="text-sm text-secondary-foreground/60 hover:text-primary transition-colors"
+                      className="text-sm text-secondary-foreground/65 transition-colors hover:text-primary"
                     >
                       {link.label}
                     </Link>
@@ -98,13 +123,22 @@ export function Footer() {
         </div>
 
         {/* Bottom bar */}
-        <div className="border-t border-secondary-foreground/10 py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="flex flex-col items-center justify-between gap-4 border-t border-secondary-foreground/10 py-7 sm:flex-row">
           <p className="text-xs text-secondary-foreground/40">
-            &copy; {new Date().getFullYear()} ValGadget. All rights reserved.
+            &copy; {new Date().getFullYear()} Val Gadgets. All rights reserved.
           </p>
-          <p className="text-xs text-secondary-foreground/40">
-            Built with passion for tech enthusiasts everywhere.
-          </p>
+
+          {/* Payment method badges */}
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            {PAYMENT_BADGES.map(name => (
+              <span
+                key={name}
+                className="rounded-full border border-secondary-foreground/15 px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-secondary-foreground/55"
+              >
+                {name}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
     </footer>

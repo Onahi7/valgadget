@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useCallback, useContext, useEffect, useReducer } from 'react'
+import React, { createContext, useCallback, useContext, useEffect, useReducer, useState } from 'react'
 import type { Product } from '@/lib/services/product.service'
 
 export interface CartItem {
@@ -78,6 +78,7 @@ interface CartContextValue extends CartState {
   subtotal: number
   discount: number
   total: number
+  isHydrated: boolean
 }
 
 const CartContext = createContext<CartContextValue | null>(null)
@@ -85,19 +86,22 @@ const STORAGE_KEY = 'vg_cart'
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(cartReducer, { items: [], couponCode: null, couponDiscount: 0 })
+  const [isHydrated, setIsHydrated] = useState(false)
 
   // Hydrate from localStorage on mount
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY)
       if (stored) dispatch({ type: 'HYDRATE', state: JSON.parse(stored) })
-    } catch { /* ignore */ }
+    } catch { /* ignore malformed local cart data */ }
+    setIsHydrated(true)
   }, [])
 
   // Persist on every change
   useEffect(() => {
+    if (!isHydrated) return
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
-  }, [state])
+  }, [isHydrated, state])
 
   const addToCart = useCallback((product: CartItem['product'], quantity = 1) => {
     dispatch({ type: 'ADD', product, quantity })
@@ -124,7 +128,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const total = Math.max(0, subtotal - discount)
 
   return (
-    <CartContext.Provider value={{ ...state, addToCart, removeFromCart, updateQuantity, applyCoupon, removeCoupon, clearCart, itemCount, subtotal, discount, total }}>
+    <CartContext.Provider value={{ ...state, addToCart, removeFromCart, updateQuantity, applyCoupon, removeCoupon, clearCart, itemCount, subtotal, discount, total, isHydrated }}>
       {children}
     </CartContext.Provider>
   )

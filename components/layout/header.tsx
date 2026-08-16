@@ -2,8 +2,8 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { usePathname, useRouter } from 'next/navigation'
-import { useState, useEffect, useRef } from 'react'
+import { usePathname } from 'next/navigation'
+import { useState, useEffect } from 'react'
 import {
   ShoppingCart, Heart, User, Menu, X, Search, ChevronDown,
   LogOut, Settings, Package, LayoutDashboard, Ticket,
@@ -23,24 +23,22 @@ import { useWishlist } from '@/contexts/wishlist-context'
 import { cn } from '@/lib/utils'
 import { categoryService, type Category } from '@/lib/services/category.service'
 
-const NAV_LINKS = [
+const NAV_LINKS: { label: string; href: string; highlight?: boolean }[] = [
   { label: 'Shop', href: '/shop' },
+  { label: 'Deals', href: '/deals', highlight: true },
   { label: 'Categories', href: '/categories' },
   { label: 'About', href: '/about' },
 ]
 
 export function Header() {
   const pathname = usePathname()
-  const router = useRouter()
   const { user, isAuthenticated, logout, isRole } = useAuth()
   const { itemCount } = useCart()
   const { count: wishlistCount } = useWishlist()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [categoriesOpen, setCategoriesOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
   const [categories, setCategories] = useState<Category[]>([])
-  const searchRef = useRef<HTMLInputElement>(null)
   const { openCart } = useCartDrawer()
 
   useEffect(() => {
@@ -60,13 +58,6 @@ export function Header() {
     }).catch(() => {})
   }, [])
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (searchQuery.trim()) {
-      router.push(`/shop?search=${encodeURIComponent(searchQuery.trim())}`)
-    }
-  }
-
   const dashboardHref = isRole('admin') ? '/admin' : isRole('affiliate') ? '/affiliate' : '/account'
 
   return (
@@ -81,10 +72,10 @@ export function Header() {
       {/* Top bar */}
       <div className="border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-4 h-16">
+          <div className="flex h-14 items-center gap-4 sm:h-[60px]">
             {/* Logo */}
             <Link href="/" className="flex items-center shrink-0">
-              <Image src="/logo.png" alt="Val Gadgets" width={180} height={63} className="h-12 w-auto object-contain sm:h-14" priority />
+              <Image src="/logo.png" alt="Val Gadgets" width={150} height={52} className="h-9 w-auto object-contain sm:h-10" priority />
             </Link>
 
             {/* Search bar - center, prominent */}
@@ -191,7 +182,7 @@ export function Header() {
       {/* Nav bar - Desktop */}
       <div className="hidden md:block border-b border-border bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <nav className="flex items-center gap-1 h-11" aria-label="Main navigation">
+          <nav className="flex h-10 items-center gap-1" aria-label="Main navigation">
             {/* Categories sidebar trigger */}
             <Sheet open={categoriesOpen} onOpenChange={setCategoriesOpen}>
               <SheetTrigger asChild>
@@ -239,7 +230,9 @@ export function Header() {
                   'px-4 py-1.5 text-sm font-medium rounded-full transition-colors',
                   pathname.startsWith(link.href)
                     ? 'bg-primary/10 text-primary'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                    : link.highlight
+                      ? 'text-primary hover:bg-primary/10'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-accent'
                 )}
               >
                 {link.label}
@@ -300,7 +293,9 @@ export function Header() {
                 'mx-2 px-3 py-2.5 text-sm font-medium rounded-md transition-colors',
                 pathname.startsWith(link.href)
                   ? 'bg-accent text-primary'
-                  : 'text-foreground hover:bg-accent'
+                  : link.highlight
+                    ? 'text-primary hover:bg-primary/10'
+                    : 'text-foreground hover:bg-accent'
               )}
             >
               {link.label}

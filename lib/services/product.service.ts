@@ -18,7 +18,10 @@ export interface ProductVariant {
   attributes: Record<string, string>
   image?: string
   isActive: boolean
+  sortOrder?: number
 }
+
+export type ProductCondition = 'brand-new' | 'uk-used' | 'us-used' | 'naija-used' | 'refurbished' | 'open-box'
 
 export interface ProductReview {
   id: string
@@ -55,6 +58,7 @@ export interface Product {
   rating: number
   reviewCount: number
   tags: string[]
+  condition: ProductCondition
   featured: boolean
   isNew: boolean
   isActive: boolean
@@ -98,15 +102,28 @@ export interface CreateProductPayload {
   price: number
   comparePrice?: number
   cost?: number
-  categoryId: string
+  categoryId?: string
   stock: number
   lowStockThreshold?: number
   sku: string
+  barcode?: string
+  brand?: string
+  condition?: ProductCondition
   tags?: string[]
   featured?: boolean
   isNew?: boolean
   isActive?: boolean
   images?: string[]
+  variants?: Array<{
+    id?: string
+    name: string
+    sku: string
+    price?: number
+    stock: number
+    attributes: Record<string, string>
+    image?: string
+    isActive: boolean
+  }>
 }
 
 // ─── Service ──────────────────────────────────────────────────────────────────

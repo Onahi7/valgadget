@@ -25,6 +25,15 @@ import { productService, type Product } from '@/lib/services/product.service'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
+const conditionLabels = {
+  'brand-new': 'Brand New',
+  'uk-used': 'UK Used',
+  'us-used': 'US Used',
+  'naija-used': 'Naija Used',
+  refurbished: 'Refurbished',
+  'open-box': 'Open Box',
+} as const
+
 interface ProductDetailClientProps {
   slug: string
   initialProduct: Product | null
@@ -127,7 +136,9 @@ export function ProductDetailClient({ slug, initialProduct }: ProductDetailClien
 
   const isWishlisted = has(product.id)
   const effectivePrice = selectedVariant?.price ?? product.price
-  const activeImage = product.images[activeImg] ?? product.images[0] ?? '/placeholder-product.svg'
+  const effectiveStock = selectedVariant?.stock ?? product.stock
+  const effectiveSku = selectedVariant?.sku ?? product.sku
+  const activeImage = selectedVariant?.image ?? product.images[activeImg] ?? product.images[0] ?? '/placeholder-product.svg'
   const featureSpecs = (product.specs ?? []).slice(0, 4)
   const detailSpecs = [
     ...(product.specs ?? []),
@@ -150,7 +161,15 @@ export function ProductDetailClient({ slug, initialProduct }: ProductDetailClien
   }
 
   const handleAddToCart = () => {
-    addToCart({ id: product.id, name: product.name, slug: product.slug, images: product.images, price: effectivePrice, sku: product.sku, stock: product.stock }, qty)
+    addToCart({
+      id: product.id,
+      name: selectedVariant ? `${product.name} - ${selectedVariant.name}` : product.name,
+      slug: product.slug,
+      images: selectedVariant?.image ? [selectedVariant.image, ...product.images] : product.images,
+      price: effectivePrice,
+      sku: effectiveSku,
+      stock: effectiveStock,
+    }, qty)
     toast.success('Added to cart', { description: `${product.name} ×${qty}` })
   }
 
@@ -218,6 +237,12 @@ export function ProductDetailClient({ slug, initialProduct }: ProductDetailClien
               {product.category.name}
             </Link>
           )}
+          <div className="flex flex-wrap gap-2">
+            <Badge className="border border-primary/20 bg-primary/10 text-primary hover:bg-primary/10">
+              {conditionLabels[product.condition ?? 'brand-new']}
+            </Badge>
+            {product.brand ? <Badge variant="outline">{product.brand}</Badge> : null}
+          </div>
           <div>
             <h1 className="text-2xl md:text-3xl font-bold leading-tight text-balance break-words">{product.name}</h1>
             <div className="mt-3 flex flex-wrap items-center gap-2 sm:gap-3">
@@ -260,7 +285,10 @@ export function ProductDetailClient({ slug, initialProduct }: ProductDetailClien
               <VariantSelector
                 variants={variants}
                 selectedVariant={selectedVariant}
-                onSelect={setSelectedVariant}
+                onSelect={variant => {
+                  setSelectedVariant(variant)
+                  setQty(1)
+                }}
                 basePrice={product.price}
               />
               <Separator />
@@ -282,8 +310,8 @@ export function ProductDetailClient({ slug, initialProduct }: ProductDetailClien
                 </button>
                 <span className="px-4 py-2 text-sm font-medium tabular-nums min-w-12 text-center">{qty}</span>
                 <button
-                  onClick={() => setQty(q => Math.min(product.stock, q + 1))}
-                  disabled={qty >= product.stock}
+                  onClick={() => setQty(q => Math.min(effectiveStock, q + 1))}
+                  disabled={qty >= effectiveStock}
                   className="px-3 py-2.5 hover:bg-accent transition-colors disabled:opacity-40"
                   aria-label="Increase quantity"
                 >
@@ -296,10 +324,11 @@ export function ProductDetailClient({ slug, initialProduct }: ProductDetailClien
               <Button
                 size="lg"
                 onClick={handleAddToCart}
+                disabled={effectiveStock <= 0}
                 className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
               >
                 <ShoppingCart className="w-4 h-4 mr-2" />
-                Add to Cart
+                {effectiveStock > 0 ? 'Add to Cart' : 'Out of Stock'}
               </Button>
               <Button
                 size="lg"
@@ -331,7 +360,7 @@ export function ProductDetailClient({ slug, initialProduct }: ProductDetailClien
           </div>
 
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <span className="font-mono">SKU: {product.sku}</span>
+            <span className="font-mono">SKU: {effectiveSku}</span>
             {product.tags.map(t => (
               <Badge key={t} variant="secondary" className="text-[10px] font-mono uppercase">{t}</Badge>
             ))}
