@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
 function getDisplayImage(product: Product) {
-  return product.displayImage ?? product.images?.find(src => src && !src.includes('source.unsplash.com')) ?? null
+  return product.displayImage ?? product.images?.find(src => src?.startsWith('/') || src?.includes('ik.imagekit.io')) ?? null
 }
 
 export default function AdminProductsPage() {

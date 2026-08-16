@@ -33,10 +33,10 @@ export const productSelection = {
   category: { id: categories.id, name: categories.name, slug: categories.slug },
 }
 
-/** Filter out broken Unsplash placeholder images. */
+/** Only allow local paths and ImageKit URLs. External hotlinks are blocked. */
 export function isDisplayableImage(src?: string | null): boolean {
   if (!src) return false
-  return !src.includes('source.unsplash.com')
+  return src.startsWith('/') || src.includes('ik.imagekit.io')
 }
 
 /** Return usable images, falling back to the placeholder SVG. */

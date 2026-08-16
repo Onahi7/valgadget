@@ -26,7 +26,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
   const discount = product.comparePrice
     ? Math.round(((product.comparePrice - product.price) / product.comparePrice) * 100)
     : null
-  const validImages = product.images.filter(src => src && !src.includes('source.unsplash.com'))
+  const validImages = product.images.filter(src => src?.startsWith('/') || src?.includes('ik.imagekit.io'))
   const imageSrc = validImages[0] ?? '/placeholder-product.svg'
   const hoverImage = validImages[1] ?? null
   const [adding, setAdding] = useState(false)

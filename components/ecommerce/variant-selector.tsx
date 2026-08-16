@@ -70,7 +70,9 @@ export function VariantSelector({ variants, selectedVariant, onSelect, basePrice
   if (attributeTypes.length === 0) {
     return (
       <div className="space-y-3">
-        <label className="text-sm font-semibold">Choose an option</label>
+        <label className="text-sm font-semibold">
+          {selectedVariant ? 'Selected' : 'Choose an option'}
+        </label>
         <div className="flex flex-wrap gap-2">
           {selectableVariants.map(variant => {
             const isSelected = selectedVariant?.id === variant.id
@@ -105,9 +107,13 @@ export function VariantSelector({ variants, selectedVariant, onSelect, basePrice
           <div className="flex items-center justify-between mb-3">
             <label className="text-sm font-semibold capitalize">
               {type}
-              {selectedAttributes[type] && (
+              {selectedAttributes[type] ? (
                 <span className="text-muted-foreground font-normal ml-2">
-                  - {selectedAttributes[type]}
+                  — {selectedAttributes[type]}
+                </span>
+              ) : (
+                <span className="text-muted-foreground font-normal ml-2">
+                  — Select {type}
                 </span>
               )}
             </label>

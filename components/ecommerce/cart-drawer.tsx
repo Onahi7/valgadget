@@ -63,7 +63,7 @@ export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
           ) : (
             <ul className="divide-y divide-border">
               {items.map(item => {
-                const imageSrc = item.product.images.find(s => !s.includes('source.unsplash.com')) ?? '/placeholder-product.svg'
+                const imageSrc = item.product.images.find(s => s?.startsWith('/') || s?.includes('ik.imagekit.io')) ?? '/placeholder-product.svg'
                 return (
                   <li key={item.product.id} className="flex gap-3 p-4">
                     <Link

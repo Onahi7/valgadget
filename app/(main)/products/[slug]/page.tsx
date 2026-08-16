@@ -74,6 +74,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return {
     title: product.name,
     description,
+    alternates: {
+      canonical: `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://valgadgets.com'}/products/${product.slug}`,
+    },
     openGraph: {
       title: `${product.name} | Val Gadgets`,
       description,
