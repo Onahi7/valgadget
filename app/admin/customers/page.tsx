@@ -37,6 +37,7 @@ export default function AdminCustomersPage() {
   const [page, setPage]         = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [total, setTotal]         = useState(0)
+  const [counts, setCounts]       = useState({ customer: 0, affiliate: 0, admin: 0 })
 
   const PAGE_SIZE = 20
 
@@ -58,8 +59,20 @@ export default function AdminCustomersPage() {
       .finally(() => setLoading(false))
   }
 
+  const fetchCounts = () => {
+    const headers = { Authorization: `Bearer ${getToken()}` }
+    Promise.all([
+      fetch('/api/admin/users?limit=1&role=customer', { headers }).then(r => r.json()),
+      fetch('/api/admin/users?limit=1&role=affiliate', { headers }).then(r => r.json()),
+      fetch('/api/admin/users?limit=1&role=admin', { headers }).then(r => r.json()),
+    ]).then(([c, a, ad]) => {
+      setCounts({ customer: c.total ?? 0, affiliate: a.total ?? 0, admin: ad.total ?? 0 })
+    }).catch(() => {})
+  }
+
   useEffect(() => {
     fetchCustomers(1)
+    fetchCounts()
   }, [search, roleFilter])
 
   return (
@@ -92,9 +105,9 @@ export default function AdminCustomersPage() {
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[
-          { label: 'Customers', value: customers.filter(c => c.role === 'customer').length },
-          { label: 'Affiliates', value: customers.filter(c => c.role === 'affiliate').length },
-          { label: 'Admins', value: customers.filter(c => c.role === 'admin').length },
+          { label: 'Customers', value: counts.customer },
+          { label: 'Affiliates', value: counts.affiliate },
+          { label: 'Admins', value: counts.admin },
         ].map(({ label, value }) => (
           <div key={label} className="bg-card border border-border rounded-lg px-4 py-3 text-center">
             <p className="text-xl font-bold font-mono">{value}</p>

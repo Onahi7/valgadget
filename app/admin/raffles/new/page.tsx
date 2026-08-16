@@ -101,7 +101,7 @@ export default function NewRafflePage() {
               <Input id="prize" value={form.prize} onChange={e => set('prize', e.target.value)} placeholder="MacBook Pro 16&quot; M4" required />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="prizeValue">Prize Value ($) *</Label>
+              <Label htmlFor="prizeValue">Prize Value (₦) *</Label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">₦</span>
                 <Input id="prizeValue" type="number" min="0" step="0.01" value={form.prizeValue} onChange={e => set('prizeValue', e.target.value)} className="pl-7" required />
@@ -114,7 +114,7 @@ export default function NewRafflePage() {
           <h2 className="font-semibold text-sm">Tickets & Draw</h2>
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-1.5">
-              <Label htmlFor="ticketPrice">Ticket Price ($) *</Label>
+              <Label htmlFor="ticketPrice">Ticket Price (₦) *</Label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">₦</span>
                 <Input id="ticketPrice" type="number" min="0.01" step="0.01" value={form.ticketPrice} onChange={e => set('ticketPrice', e.target.value)} className="pl-7" required />

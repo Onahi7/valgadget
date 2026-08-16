@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { Bell, LogOut, ChevronRight, Menu } from 'lucide-react'
+import { LogOut, ChevronRight, Menu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
@@ -16,7 +16,8 @@ import { toast } from 'sonner'
 const SEGMENT_LABELS: Record<string, string> = {
   admin: 'Admin', products: 'Products', orders: 'Orders', customers: 'Customers',
   categories: 'Categories', raffles: 'Raffles', affiliate: 'Affiliates',
-  settings: 'Settings', new: 'New', edit: 'Edit',
+  settings: 'Settings', shipping: 'Shipping', reviews: 'Reviews', coupons: 'Coupons',
+  chat: 'Chat', new: 'New', edit: 'Edit',
 }
 
 function getBreadcrumbs(pathname: string) {
@@ -84,10 +85,6 @@ export function AdminHeader() {
       </nav>
 
       <div className="flex items-center gap-1 shrink-0">
-        <Button variant="ghost" size="icon" className="w-8 h-8" aria-label="Notifications">
-          <Bell className="w-4 h-4" />
-        </Button>
-
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 hover:bg-accent transition-colors">

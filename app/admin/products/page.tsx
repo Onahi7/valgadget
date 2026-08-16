@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Plus, Search, Pencil, Trash2, Star, Package } from 'lucide-react'
+import { Plus, Search, Pencil, Trash2, Star, Package, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -24,6 +24,11 @@ export default function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [total, setTotal] = useState(0)
+
+  const PAGE_SIZE = 20
 
   useEffect(() => {
     categoryService.getFlat().then(r => { if (Array.isArray(r)) setCategories(r as any[]) })
@@ -32,14 +37,23 @@ export default function AdminProductsPage() {
   useEffect(() => {
     setLoading(true)
     productService.getAdminAll({
-      limit: 100,
+      limit: PAGE_SIZE,
+      page,
       search: search || undefined,
       category: categoryFilter !== 'all' ? categoryFilter : undefined,
       isActive: activeFilter === 'all' ? undefined : activeFilter === 'active',
     })
-      .then(r => { if ((r as any)?.data) setProducts((r as any).data) })
+      .then(r => {
+        const res = r as any
+        if (res?.data) setProducts(res.data)
+        if (res?.totalPages) setTotalPages(res.totalPages)
+        if (res?.total) setTotal(res.total)
+      })
       .finally(() => setLoading(false))
-  }, [search, categoryFilter, activeFilter])
+  }, [search, categoryFilter, activeFilter, page])
+
+  // Reset to page 1 when filters change
+  useEffect(() => { setPage(1) }, [search, categoryFilter, activeFilter])
 
   const filtered = products
   const parentCategoryIds = new Set(categories.filter(c => !c.parentId).map(c => c.id))
@@ -59,7 +73,7 @@ export default function AdminProductsPage() {
     <div className="space-y-6 animate-page-reveal">
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-bold tracking-tight">Products</h1>
-        <p className="text-sm text-muted-foreground">{products.length} products in the current view</p>
+        <p className="text-sm text-muted-foreground">{total} products</p>
       </div>
 
       {/* Toolbar */}
@@ -198,6 +212,21 @@ export default function AdminProductsPage() {
                 })}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">Page {page} of {totalPages}</p>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
+              <ChevronRight className="w-4 h-4" />
+            </Button>
           </div>
         </div>
       )}

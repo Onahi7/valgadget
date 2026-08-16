@@ -5,13 +5,14 @@ import Link from 'next/link'
 import { ShoppingBag, ShoppingCart, Users, DollarSign, ArrowUpRight, Package } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { adminService, type DashboardStats, type RecentOrder, type TopProduct } from '@/lib/services/admin.service'
+import { adminService, type DashboardStats, type RecentOrder, type TopProduct, type RevenueChartData } from '@/lib/services/admin.service'
 import { ORDER_STATUS_COLORS } from '@/lib/constants/admin-status-colors'
 
 export function AdminDashboardClient() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [recentOrders, setOrders] = useState<RecentOrder[]>([])
   const [topProducts, setTopProducts] = useState<TopProduct[]>([])
+  const [chartData, setChartData] = useState<RevenueChartData[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
 
@@ -22,12 +23,14 @@ export function AdminDashboardClient() {
       adminService.getDashboardStats(),
       adminService.getRecentOrders(5),
       adminService.getTopProducts(5),
+      adminService.getRevenueChart({ days: 14 }),
     ])
-      .then(([nextStats, nextOrders, nextTopProducts]) => {
+      .then(([nextStats, nextOrders, nextTopProducts, nextChart]) => {
         if (!mounted) return
         setStats(nextStats)
         setOrders(nextOrders)
         setTopProducts(nextTopProducts)
+        setChartData(nextChart)
         setLoadError(null)
       })
       .catch(() => {
@@ -86,6 +89,44 @@ export function AdminDashboardClient() {
             </p>
           </div>
         ))}
+      </div>
+
+      {/* Revenue Chart */}
+      <div className="rounded-lg border border-border bg-card p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="font-bold">Revenue (Last 14 Days)</h2>
+          <span className="text-xs text-muted-foreground">
+            {chartData.reduce((s, d) => s + d.orders, 0)} orders
+          </span>
+        </div>
+        {loading ? (
+          <p className="text-sm text-muted-foreground">Loading chart...</p>
+        ) : chartData.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No revenue data yet.</p>
+        ) : (
+          <div className="flex items-end gap-1.5 h-40">
+            {chartData.map(d => {
+              const maxRev = Math.max(...chartData.map(x => x.revenue), 1)
+              const pct = (d.revenue / maxRev) * 100
+              return (
+                <div key={d.date} className="flex-1 flex flex-col items-center gap-1 group">
+                  <div className="relative w-full flex justify-center">
+                    <span className="absolute -top-5 text-[9px] font-mono text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                      {formatNaira(d.revenue)}
+                    </span>
+                  </div>
+                  <div
+                    className="w-full rounded-t bg-primary/80 hover:bg-primary transition-colors min-h-[2px]"
+                    style={{ height: `${Math.max(pct, 2)}%` }}
+                  />
+                  <span className="text-[8px] text-muted-foreground truncate w-full text-center">
+                    {new Date(d.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
