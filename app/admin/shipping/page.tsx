@@ -31,6 +31,7 @@ export default function AdminShippingPage() {
   async function fetchRates() {
     const res = await fetch('/api/shipping-rates', {
       headers: { Authorization: `Bearer ${getToken()}` },
+      credentials: 'include',
     })
     const json = await res.json()
     if (json.data) setRates(json.data)
@@ -48,6 +49,7 @@ export default function AdminShippingPage() {
     const res = await fetch(`/api/shipping-rates/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+      credentials: 'include',
       body: JSON.stringify({ price: Number(editPrice), estimatedDays: Number(editDays) }),
     })
     const json = await res.json()
@@ -65,6 +67,7 @@ export default function AdminShippingPage() {
     const res = await fetch(`/api/shipping-rates/${r.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+      credentials: 'include',
       body: JSON.stringify({ isActive: !r.isActive }),
     })
     const json = await res.json()

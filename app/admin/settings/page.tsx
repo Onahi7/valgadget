@@ -30,7 +30,7 @@ export default function AdminSettingsPage() {
 
   // Load settings from backend
   useEffect(() => {
-    fetch('/api/admin/settings', { headers: { Authorization: `Bearer ${getToken()}` } })
+    fetch('/api/admin/settings', { headers: { Authorization: `Bearer ${getToken()}` }, credentials: 'include' })
       .then(r => r.json())
       .then(d => { if (d.data) setS(d.data) })
       .finally(() => setLoading(false))
@@ -48,6 +48,7 @@ export default function AdminSettingsPage() {
       const res = await fetch('/api/admin/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+        credentials: 'include',
         body: JSON.stringify({ settings: s }),
       })
       if (res.ok) toast.success('Settings saved successfully.')

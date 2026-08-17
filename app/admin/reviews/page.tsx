@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Star, CheckCircle, XCircle, Eye, Trash2 } from 'lucide-react'
+import { Star, CheckCircle, XCircle, Trash2, MessageSquare, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -22,6 +22,8 @@ interface Review {
   rating: number
   title?: string
   body: string
+  reply?: string | null
+  repliedAt?: string | null
   verified: boolean
   isActive: boolean
   createdAt: string
@@ -41,6 +43,8 @@ export default function AdminReviewsPage() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('all')
   const [search, setSearch] = useState('')
+  const [replyingTo, setReplyingTo] = useState<string | null>(null)
+  const [replyText, setReplyText] = useState('')
 
   useEffect(() => {
     loadReviews()
@@ -50,6 +54,7 @@ export default function AdminReviewsPage() {
     try {
       const res = await fetch('/api/admin/reviews', {
         headers: { Authorization: `Bearer ${getToken()}` },
+        credentials: 'include',
       })
       const data = await res.json()
       if (data.data) setReviews(data.data)
@@ -68,6 +73,7 @@ export default function AdminReviewsPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${getToken()}`,
         },
+        credentials: 'include',
         body: JSON.stringify({ isActive: !isActive }),
       })
 
@@ -89,6 +95,7 @@ export default function AdminReviewsPage() {
       const res = await fetch(`/api/admin/reviews/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${getToken()}` },
+        credentials: 'include',
       })
 
       if (res.ok) {
@@ -99,6 +106,31 @@ export default function AdminReviewsPage() {
       }
     } catch (err) {
       toast.error('Failed to delete review')
+    }
+  }
+
+  const submitReply = async (id: string) => {
+    if (!replyText.trim()) return
+    try {
+      const res = await fetch(`/api/admin/reviews/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${getToken()}`,
+        },
+        credentials: 'include',
+        body: JSON.stringify({ reply: replyText.trim() }),
+      })
+      if (res.ok) {
+        toast.success('Reply sent')
+        setReplyingTo(null)
+        setReplyText('')
+        loadReviews()
+      } else {
+        toast.error('Failed to send reply')
+      }
+    } catch {
+      toast.error('Failed to send reply')
     }
   }
 
@@ -244,6 +276,47 @@ export default function AdminReviewsPage() {
                 <h4 className="font-semibold mb-2">{review.title}</h4>
               )}
               <p className="text-muted-foreground whitespace-pre-wrap">{review.body}</p>
+
+              {/* Reply section */}
+              {review.reply && replyingTo !== review.id ? (
+                <div className="mt-3 bg-primary/5 border border-primary/10 rounded-lg p-3">
+                  <p className="text-xs font-medium text-primary flex items-center gap-1.5 mb-1">
+                    <MessageSquare className="w-3 h-3" /> Admin Reply
+                    {review.repliedAt && <span className="text-muted-foreground ml-1">· {new Date(review.repliedAt).toLocaleDateString()}</span>}
+                  </p>
+                  <p className="text-sm">{review.reply}</p>
+                </div>
+              ) : null}
+
+              {replyingTo === review.id ? (
+                <div className="mt-3 space-y-2">
+                  <textarea
+                    value={replyText}
+                    onChange={e => setReplyText(e.target.value)}
+                    placeholder="Write a reply..."
+                    rows={3}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y"
+                    autoFocus
+                  />
+                  <div className="flex gap-2">
+                    <Button size="sm" className="gap-1.5" onClick={() => submitReply(review.id)} disabled={!replyText.trim()}>
+                      <Send className="w-3.5 h-3.5" /> {review.reply ? 'Update Reply' : 'Send Reply'}
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => { setReplyingTo(null); setReplyText('') }}>Cancel</Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-3">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5 text-xs"
+                    onClick={() => { setReplyingTo(review.id); setReplyText(review.reply ?? '') }}
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" /> {review.reply ? 'Edit Reply' : 'Reply'}
+                  </Button>
+                </div>
+              )}
             </div>
           ))}
         </div>

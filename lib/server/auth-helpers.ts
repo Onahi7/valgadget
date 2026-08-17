@@ -18,7 +18,8 @@ if (!JWT_SECRET_RAW) {
 }
 const SECRET = new TextEncoder().encode(JWT_SECRET_RAW ?? 'dev-secret-change-me')
 const ALGORITHM = 'HS256'
-const TOKEN_TTL = '7d'
+const ACCESS_TOKEN_TTL = '15m'
+const REFRESH_TOKEN_TTL_DAYS = 30
 
 // ─── JWT ───────────────────────────────────────────────────────────────────
 
@@ -33,13 +34,38 @@ export async function signToken(payload: Omit<TokenPayload, 'iat' | 'exp'>): Pro
   return new SignJWT({ ...payload })
     .setProtectedHeader({ alg: ALGORITHM })
     .setIssuedAt()
-    .setExpirationTime(TOKEN_TTL)
+    .setExpirationTime(ACCESS_TOKEN_TTL)
     .sign(SECRET)
 }
 
 export async function verifyToken(token: string): Promise<TokenPayload> {
   const { payload } = await jwtVerify(token, SECRET, { algorithms: [ALGORITHM] })
   return payload as TokenPayload
+}
+
+// ─── Refresh tokens ────────────────────────────────────────────────────────
+
+export function generateRefreshToken(): { raw: string; hash: string; expiresAt: Date } {
+  const raw = crypto.randomBytes(64).toString('hex')
+  const hash = crypto.createHash('sha256').update(raw).digest('hex')
+  const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000)
+  return { raw, hash, expiresAt }
+}
+
+export function hashRefreshToken(raw: string): string {
+  return crypto.createHash('sha256').update(raw).digest('hex')
+}
+
+export function getRefreshTokenCookieOptions(): {
+  httpOnly: boolean; secure: boolean; sameSite: 'lax'; maxAge: number; path: string
+} {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60, // seconds
+    path: '/',
+  }
 }
 
 // ─── Password ──────────────────────────────────────────────────────────────

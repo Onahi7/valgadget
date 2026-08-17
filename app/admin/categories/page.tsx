@@ -211,12 +211,13 @@ export default function AdminCategoriesPage() {
       sortOrder: list.length - position,
     }))
 
+    const previous = categories
     setCategories(next)
 
     try {
       await categoryService.reorder(next.map(category => ({ id: category.id, sortOrder: category.sortOrder ?? 0 })))
     } catch {
-      setCategories(categories)
+      setCategories(previous)
       toast.error('Failed to reorder categories')
     }
   }

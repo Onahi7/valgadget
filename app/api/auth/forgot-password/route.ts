@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
 import { users } from '@/lib/server/schema'
 import { apiOk, apiError, apiRateLimited } from '@/lib/server/auth-helpers'
-import { sendPasswordResetEmail } from '@/lib/server/email'
+import { safeSendPasswordResetEmail } from '@/lib/server/email'
 import { rateLimit, rateLimitPresets, getScopedRateLimitKey } from '@/lib/server/rate-limiter'
 import { eq } from 'drizzle-orm'
 import crypto from 'crypto'
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       const expires = new Date(Date.now() + 60 * 60 * 1000)
       await db.update(users).set({ resetToken: token, resetExpires: expires, updatedAt: new Date() })
         .where(eq(users.id, user.id))
-      sendPasswordResetEmail(user.email, user.name, token).catch(console.error)
+      safeSendPasswordResetEmail(user.email, user.name, token, 'forgot-password')
     }
 
     return apiOk({ message: 'If an account exists for this email, a reset link has been sent.' })

@@ -52,14 +52,14 @@ export default function AdminChatPage() {
   }, [messages])
 
   async function fetchSessions() {
-    const res = await fetch('/api/chat', { headers: { Authorization: `Bearer ${getToken()}` } })
+    const res = await fetch('/api/chat', { headers: { Authorization: `Bearer ${getToken()}` }, credentials: 'include' })
     const json = await res.json()
     if (json.data) setSessions(json.data)
   }
 
   async function fetchMessages(sid: string) {
     setLoadingMsgs(true)
-    const res = await fetch(`/api/chat/${sid}/messages`, { headers: { Authorization: `Bearer ${getToken()}` } })
+    const res = await fetch(`/api/chat/${sid}/messages`, { headers: { Authorization: `Bearer ${getToken()}` }, credentials: 'include' })
     const json = await res.json()
     if (json.data) setMessages(json.data)
     setLoadingMsgs(false)
@@ -71,6 +71,7 @@ export default function AdminChatPage() {
     const res = await fetch(`/api/chat/${activeSession.id}/messages`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+      credentials: 'include',
       body: JSON.stringify({ content: reply.trim(), role: 'admin', senderName: 'Support' }),
     })
     const json = await res.json()

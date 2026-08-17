@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, ShoppingBag, ShoppingCart, Users, Tag, Ticket,
   Share2, Settings, ChevronRight, TrendingUp, MessageCircle, Truck,
-  Star, Percent,
+  Star, Percent, Activity,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -41,6 +41,7 @@ export const NAV_GROUPS = [
       { href: '/admin/settings', label: 'Settings', icon: Settings },
       { href: '/admin/reviews', label: 'Reviews', icon: Star },
       { href: '/admin/coupons', label: 'Coupons', icon: Percent },
+      { href: '/admin/activity-log', label: 'Activity Log', icon: Activity },
     ],
   },
 ]

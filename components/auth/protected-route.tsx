@@ -24,7 +24,11 @@ export function ProtectedRoute({
     if (isLoading) return
     if (!isAuthenticated) {
       const returnUrl = encodeURIComponent(pathname)
-      router.replace(`${redirectTo}?returnUrl=${returnUrl}`)
+      const isAdminRoute = Array.isArray(requiredRole)
+        ? requiredRole.includes('admin')
+        : requiredRole === 'admin'
+      const loginPath = isAdminRoute ? '/admin/login' : (redirectTo ?? '/login')
+      router.replace(`${loginPath}?returnUrl=${returnUrl}`)
       return
     }
     if (requiredRole && !isRole(requiredRole)) {

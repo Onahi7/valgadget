@@ -42,6 +42,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
   useEffect(() => {
     fetch(`/api/admin/orders/${id}`, {
       headers: { Authorization: `Bearer ${getToken()}` },
+      credentials: 'include',
     })
       .then(r => r.json())
       .then(data => {
@@ -60,6 +61,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
     const res = await fetch(`/api/admin/orders/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+      credentials: 'include',
       body: JSON.stringify(payload),
     })
 

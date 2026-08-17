@@ -1,6 +1,6 @@
 /**
  * Centralized API client — ValGadget
- * Handles auth injection, 401 logout, request timeout, and query-string building.
+ * Handles auth injection, 401 logout, token refresh, request timeout, and query-string building.
  */
 
 const RAW_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? '/api'
@@ -9,25 +9,21 @@ const TIMEOUT_MS = 15_000
 
 // ─── Token helpers ────────────────────────────────────────────────────────────
 
+/** Token is managed via httpOnly cookies. This is kept for legacy compatibility but always returns null. */
 export function getToken(): string | null {
-  if (typeof window === 'undefined') return null
-  return localStorage.getItem('vg_token')
+  return null
 }
 
-export function setToken(token: string): void {
-  if (typeof window === 'undefined') return
-  localStorage.setItem('vg_token', token)
-  // Also set as cookie for middleware access
-  const secure = window.location.protocol === 'https:' ? '; Secure' : ''
-  document.cookie = `vg_token=${encodeURIComponent(token)}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax${secure}`
+/** @deprecated Token is managed via httpOnly cookies. No-op. */
+export function setToken(_token: string): void {
+  // No-op — auth is handled entirely via httpOnly cookies set by the server
 }
 
 export function clearToken(): void {
   if (typeof window === 'undefined') return
-  localStorage.removeItem('vg_token')
   localStorage.removeItem('vg_user')
-  // Clear cookie
-  document.cookie = 'vg_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
+  // Call server logout to clear httpOnly cookies + revoke refresh token
+  fetch(`${BASE_URL}/auth/logout`, { method: 'POST', credentials: 'include' }).catch(() => {})
 }
 
 // ─── Typed error ──────────────────────────────────────────────────────────────
@@ -40,6 +36,34 @@ export interface ApiError {
 
 export function isApiError(e: unknown): e is ApiError {
   return typeof e === 'object' && e !== null && 'status' in e && 'message' in e
+}
+
+// ─── Token refresh ────────────────────────────────────────────────────────────
+
+let refreshPromise: Promise<string | null> | null = null
+
+async function refreshAccessToken(): Promise<string | null> {
+  // Dedupe concurrent refresh calls
+  if (refreshPromise) return refreshPromise
+
+  refreshPromise = (async () => {
+    try {
+      const res = await fetch(`${BASE_URL}/auth/refresh`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'x-requested-with': 'XMLHttpRequest' },
+      })
+      if (!res.ok) return null
+      // Server sets new httpOnly cookies automatically; no client-side token storage needed
+      return 'cookie'
+    } catch {
+      return null
+    } finally {
+      refreshPromise = null
+    }
+  })()
+
+  return refreshPromise
 }
 
 // ─── Core request ─────────────────────────────────────────────────────────────
@@ -64,9 +88,9 @@ function getErrorMessage(value: unknown, fallback: string): string {
 
 async function request<T>(
   path: string,
-  options: RequestInit & { params?: Params } = {}
+  options: RequestInit & { params?: Params; _retry?: boolean } = {}
 ): Promise<T> {
-  const { params, ...init } = options
+  const { params, _retry, ...init } = options
 
   let url = `${BASE_URL}${path}`
   if (params) {
@@ -84,11 +108,10 @@ async function request<T>(
     if (qs) url += `?${qs}`
   }
 
-  const token = getToken()
   const isFormData = typeof FormData !== 'undefined' && init.body instanceof FormData
   const headers: Record<string, string> = {
     ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    'x-requested-with': 'XMLHttpRequest',
     ...((init.headers as Record<string, string>) ?? {}),
   }
 
@@ -97,7 +120,7 @@ async function request<T>(
 
   let res: Response
   try {
-    res = await fetch(url, { ...init, headers, signal: controller.signal })
+    res = await fetch(url, { ...init, headers, signal: controller.signal, credentials: 'include' })
   } catch (err: unknown) {
     clearTimeout(timeoutId)
     if ((err as Error).name === 'AbortError') {
@@ -108,10 +131,16 @@ async function request<T>(
     clearTimeout(timeoutId)
   }
 
-  if (res.status === 401) {
-    // Only treat as session expiry if this is NOT an auth endpoint
+  // Handle 401 with automatic token refresh (only retry once)
+  if (res.status === 401 && !_retry) {
     const isAuthEndpoint = path.includes('/auth/login') || path.includes('/auth/register')
     if (!isAuthEndpoint) {
+      const newToken = await refreshAccessToken()
+      if (newToken) {
+        // Retry the original request with new token
+        return request<T>(path, { ...options, _retry: true })
+      }
+      // Refresh failed — clear everything
       clearToken()
       if (typeof window !== 'undefined') window.dispatchEvent(new Event('vg:unauthorized'))
     }

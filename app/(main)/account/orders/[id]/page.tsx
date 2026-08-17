@@ -167,6 +167,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                     const res = await fetch('/api/payments/paystack/requery', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+                      credentials: 'include',
                       body: JSON.stringify({ orderId: order.id }),
                     })
                     const json = await res.json()

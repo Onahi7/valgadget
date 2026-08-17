@@ -2,25 +2,22 @@
 
 import { use, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Mail, Phone, Shield, ShoppingBag } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { ArrowLeft, Mail, Phone, Shield, ShoppingBag, Trash2, ShieldCheck, ShieldOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { getToken } from '@/lib/api-client'
 import { cn } from '@/lib/utils'
 import { ORDER_STATUS_COLORS } from '@/lib/constants/admin-status-colors'
-
-const ROLE_COLORS: Record<string, string> = {
-  customer:  'bg-blue-100 text-blue-700 border-blue-200',
-  affiliate: 'bg-primary/10 text-primary border-primary/20',
-  admin:     'bg-purple-100 text-purple-700 border-purple-200',
-}
+import { toast } from 'sonner'
 
 type Customer = { id: string; name: string; email: string; phone?: string; role: string; isVerified: boolean; createdAt: string; orders: number; spent: number }
 type Order = { id: string; reference: string; total: number; status: string; createdAt: string }
 
 export default function AdminCustomerDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
+  const router = useRouter()
   const [customer, setCustomer]       = useState<Customer | null>(null)
   const [customerOrders, setOrders]   = useState<Order[]>([])
   const [loading, setLoading]         = useState(true)
@@ -28,13 +25,74 @@ export default function AdminCustomerDetailPage({ params }: { params: Promise<{ 
   useEffect(() => {
     const headers = { Authorization: `Bearer ${getToken()}` }
     Promise.all([
-      fetch(`/api/admin/users/${id}`, { headers }).then(r => r.json()),
-      fetch(`/api/admin/orders?userId=${id}&limit=20`, { headers }).then(r => r.json()),
+      fetch(`/api/admin/users/${id}`, { headers, credentials: 'include' }).then(r => r.json()),
+      fetch(`/api/admin/orders?userId=${id}&limit=20`, { headers, credentials: 'include' }).then(r => r.json()),
     ]).then(([userRes, ordersRes]) => {
       if (userRes.data) setCustomer(userRes.data)
       if (ordersRes.data?.data) setOrders(ordersRes.data.data)
     }).finally(() => setLoading(false))
   }, [id])
+
+  const updateRole = async (role: string) => {
+    if (!customer) return
+    try {
+      const res = await fetch(`/api/admin/users/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+        credentials: 'include',
+        body: JSON.stringify({ role }),
+      })
+      if (res.ok) {
+        setCustomer({ ...customer, role })
+        toast.success(`Role changed to ${role}`)
+      } else {
+        const d = await res.json().catch(() => ({}))
+        toast.error(d.error ?? 'Failed to update role')
+      }
+    } catch {
+      toast.error('Failed to update role')
+    }
+  }
+
+  const toggleVerified = async () => {
+    if (!customer) return
+    try {
+      const res = await fetch(`/api/admin/users/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+        credentials: 'include',
+        body: JSON.stringify({ isVerified: !customer.isVerified }),
+      })
+      if (res.ok) {
+        setCustomer({ ...customer, isVerified: !customer.isVerified })
+        toast.success(customer.isVerified ? 'Marked as unverified' : 'Marked as verified')
+      } else {
+        toast.error('Failed to update')
+      }
+    } catch {
+      toast.error('Failed to update')
+    }
+  }
+
+  const deleteUser = async () => {
+    if (!customer || !confirm(`Delete "${customer.name}"? This cannot be undone.`)) return
+    try {
+      const res = await fetch(`/api/admin/users/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${getToken()}` },
+        credentials: 'include',
+      })
+      if (res.ok) {
+        toast.success('User deleted')
+        router.push('/admin/customers')
+      } else {
+        const d = await res.json().catch(() => ({}))
+        toast.error(d.error ?? 'Failed to delete user')
+      }
+    } catch {
+      toast.error('Failed to delete user')
+    }
+  }
 
   if (loading) return <div className="py-20 text-center text-muted-foreground text-sm">Loading...</div>
 
@@ -68,7 +126,18 @@ export default function AdminCustomerDetailPage({ params }: { params: Promise<{ 
           </Avatar>
           <div>
             <p className="font-bold text-lg">{customer.name}</p>
-            <Badge className={cn('text-[11px] border capitalize mt-1', ROLE_COLORS[customer.role] ?? '')}>{customer.role}</Badge>
+            <div className="mt-1.5">
+              <Select value={customer.role} onValueChange={updateRole}>
+                <SelectTrigger className="w-32 h-7 text-[11px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="customer">Customer</SelectItem>
+                  <SelectItem value="affiliate">Affiliate</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <div className="w-full text-sm space-y-2 pt-2 border-t border-border">
             <div className="flex items-center gap-2 text-muted-foreground">
@@ -86,6 +155,15 @@ export default function AdminCustomerDetailPage({ params }: { params: Promise<{ 
           </div>
           <div className="w-full pt-2 border-t border-border text-xs text-muted-foreground">
             Member since {new Date(customer.createdAt).toLocaleDateString()}
+          </div>
+          <div className="w-full pt-2 border-t border-border space-y-2">
+            <Button size="sm" variant="outline" className="w-full gap-1.5 text-xs" onClick={toggleVerified}>
+              {customer.isVerified ? <ShieldOff className="w-3.5 h-3.5" /> : <ShieldCheck className="w-3.5 h-3.5" />}
+              {customer.isVerified ? 'Revoke Verification' : 'Verify User'}
+            </Button>
+            <Button size="sm" variant="outline" className="w-full gap-1.5 text-xs text-destructive border-destructive/30 hover:bg-destructive/5" onClick={deleteUser}>
+              <Trash2 className="w-3.5 h-3.5" /> Delete User
+            </Button>
           </div>
         </div>
 

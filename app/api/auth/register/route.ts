@@ -1,8 +1,8 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
-import { users } from '@/lib/server/schema'
-import { hashPassword, signToken, apiOk, apiError, apiRateLimited } from '@/lib/server/auth-helpers'
-import { sendVerificationEmail } from '@/lib/server/email'
+import { users, refreshTokens } from '@/lib/server/schema'
+import { hashPassword, signToken, generateRefreshToken, getRefreshTokenCookieOptions, apiOk, apiError, apiRateLimited } from '@/lib/server/auth-helpers'
+import { safeSendVerificationEmail } from '@/lib/server/email'
 import { rateLimit, rateLimitPresets, getScopedRateLimitKey } from '@/lib/server/rate-limiter'
 import { eq } from 'drizzle-orm'
 import crypto from 'crypto'
@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     if (!rl.success) return apiRateLimited(rl.resetAt)
 
     const body = await req.json().catch(() => null)
-    const { name, email, password, role = 'customer', affiliateCode } = body ?? {}
+    const { name, email, password, affiliateCode } = body ?? {}
 
     if (!name || !email || !password) {
       return apiError('Name, email and password are required.')
@@ -51,10 +51,8 @@ export async function POST(req: NextRequest) {
 
     const passwordHash = await hashPassword(password)
     const verifyToken  = crypto.randomBytes(32).toString('hex')
-    const safeRole     = ['customer', 'affiliate'].includes(role) ? role : 'customer'
-    const aCode        = safeRole === 'affiliate'
-      ? (affiliateCode ?? sanitizedName.toLowerCase().replace(/\s+/g, '') + crypto.randomInt(100, 999))
-      : undefined
+    const safeRole     = 'customer'
+    const aCode        = undefined
 
     const [user] = await db.insert(users).values({
       name: sanitizedName, email: emailStr, passwordHash,
@@ -66,10 +64,28 @@ export async function POST(req: NextRequest) {
       createdAt: users.createdAt, updatedAt: users.updatedAt,
     })
 
-    sendVerificationEmail(user.email, user.name, verifyToken).catch(console.error)
+    safeSendVerificationEmail(user.email, user.name, verifyToken, 'register')
 
     const token = await signToken({ sub: user.id, email: user.email, role: user.role, name: user.name })
-    return apiOk({ token, user }, 201)
+
+    // Issue refresh token
+    const refresh = generateRefreshToken()
+    await db.insert(refreshTokens).values({
+      userId: user.id,
+      tokenHash: refresh.hash,
+      expiresAt: refresh.expiresAt,
+    })
+
+    const res = apiOk({ user }, 201)
+    res.cookies.set('vg_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 15 * 60,
+      path: '/',
+    })
+    res.cookies.set('vg_refresh', refresh.raw, getRefreshTokenCookieOptions())
+    return res
   } catch (err) {
     console.error('[register]', err)
     return apiError('Registration failed. Please try again.', 500)

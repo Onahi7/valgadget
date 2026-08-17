@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Plus, Search, Pencil, Trash2, Star, Package, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, Search, Pencil, Trash2, Star, Package, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -27,6 +27,8 @@ export default function AdminProductsPage() {
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [total, setTotal] = useState(0)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [bulkAction, setBulkAction] = useState<string>('')
 
   const PAGE_SIZE = 20
 
@@ -63,10 +65,56 @@ export default function AdminProductsPage() {
     try {
       await productService.delete(id)
       setProducts(prev => prev.filter(p => p.id !== id))
+      setSelected(prev => { const n = new Set(prev); n.delete(id); return n })
       toast.success(`"${name}" deleted`)
     } catch {
       toast.error('Failed to delete product')
     }
+  }
+
+  const toggleSelect = (id: string) => {
+    setSelected(prev => {
+      const n = new Set(prev)
+      if (n.has(id)) n.delete(id)
+      else n.add(id)
+      return n
+    })
+  }
+
+  const toggleSelectAll = () => {
+    if (selected.size === products.length) {
+      setSelected(new Set())
+    } else {
+      setSelected(new Set(products.map(p => p.id)))
+    }
+  }
+
+  const executeBulk = async () => {
+    if (!bulkAction || selected.size === 0) return
+    const ids = [...selected]
+    if (bulkAction === 'delete') {
+      if (!confirm(`Delete ${ids.length} products? This cannot be undone.`)) return
+      let ok = 0
+      for (const id of ids) {
+        try { await productService.delete(id); ok++ } catch {}
+      }
+      setProducts(prev => prev.filter(p => !selected.has(p.id)))
+      setSelected(new Set())
+      toast.success(`${ok} products deleted`)
+    } else if (bulkAction === 'activate' || bulkAction === 'deactivate') {
+      const isActive = bulkAction === 'activate'
+      let ok = 0
+      for (const id of ids) {
+        try {
+          await productService.update(id, { isActive } as any)
+          ok++
+        } catch {}
+      }
+      setProducts(prev => prev.map(p => selected.has(p.id) ? { ...p, isActive } : p))
+      setSelected(new Set())
+      toast.success(`${ok} products ${isActive ? 'activated' : 'deactivated'}`)
+    }
+    setBulkAction('')
   }
 
   return (
@@ -107,7 +155,7 @@ export default function AdminProductsPage() {
       {/* Stats row */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[
-          { label: 'Total', value: products.length, icon: Package },
+          { label: 'Total', value: total, icon: Package },
           { label: 'Active', value: products.filter(p => p.isActive).length, icon: Package },
           { label: 'Needs Image', value: products.filter(p => !getDisplayImage(p)).length, icon: Package },
         ].map(({ label, value }) => (
@@ -117,6 +165,27 @@ export default function AdminProductsPage() {
           </div>
         ))}
       </div>
+
+      {/* Bulk actions bar */}
+      {selected.size > 0 && (
+        <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-lg px-4 py-2.5">
+          <span className="text-sm font-medium">{selected.size} selected</span>
+          <select
+            value={bulkAction}
+            onChange={e => setBulkAction(e.target.value)}
+            className="appearance-none bg-card border border-border rounded-md px-3 py-1.5 text-sm"
+          >
+            <option value="">Bulk Actions</option>
+            <option value="activate">Activate</option>
+            <option value="deactivate">Deactivate</option>
+            <option value="delete">Delete</option>
+          </select>
+          <Button size="sm" onClick={executeBulk} disabled={!bulkAction}>Apply</Button>
+          <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
 
       {/* Table */}
       {loading ? (
@@ -137,6 +206,14 @@ export default function AdminProductsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-xs text-muted-foreground border-b border-border bg-muted/30">
+                  <th className="text-left px-3 py-3 font-medium w-10">
+                    <input
+                      type="checkbox"
+                      checked={products.length > 0 && selected.size === products.length}
+                      onChange={toggleSelectAll}
+                      className="rounded border-border"
+                    />
+                  </th>
                   <th className="text-left px-4 py-3 font-medium">Product</th>
                   <th className="text-left px-4 py-3 font-medium">Category</th>
                   <th className="text-left px-4 py-3 font-medium">Price</th>
@@ -151,6 +228,14 @@ export default function AdminProductsPage() {
 
                   return (
                   <tr key={p.id} className="border-b border-border/50 hover:bg-accent/20 transition-colors">
+                    <td className="px-3 py-3">
+                      <input
+                        type="checkbox"
+                        checked={selected.has(p.id)}
+                        onChange={() => toggleSelect(p.id)}
+                        className="rounded border-border"
+                      />
+                    </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-lg overflow-hidden bg-surface border border-border shrink-0">

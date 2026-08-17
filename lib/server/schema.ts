@@ -40,6 +40,19 @@ export const users = pgTable('users', {
   index('users_role_idx').on(t.role),
 ])
 
+// ─── Refresh Tokens ────────────────────────────────────────────────────────
+
+export const refreshTokens = pgTable('refresh_tokens', {
+  id:        text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId:    text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  tokenHash: text('token_hash').notNull().unique(),
+  expiresAt: timestamp('expires_at').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, t => [
+  index('refresh_tokens_user_idx').on(t.userId),
+  index('refresh_tokens_hash_idx').on(t.tokenHash),
+])
+
 // ─── User Addresses ────────────────────────────────────────────────────────
 
 export const userAddresses = pgTable('user_addresses', {
@@ -148,6 +161,8 @@ export const reviews = pgTable('reviews', {
   rating:     integer('rating').notNull(),
   title:      varchar('title', { length: 200 }),
   body:       text('body').notNull(),
+  reply:      text('reply'),
+  repliedAt:  timestamp('replied_at'),
   verified:   boolean('verified').notNull().default(false),
   isActive:   boolean('is_active').notNull().default(true),
   createdAt:  timestamp('created_at').notNull().defaultNow(),

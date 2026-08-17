@@ -17,11 +17,23 @@ export async function PATCH(
 
   try {
     const { id } = await params
-    const { isActive } = await req.json()
+    const body = await req.json()
+    const { isActive, reply } = body
+
+    const updates: Record<string, unknown> = {}
+    if (isActive !== undefined) updates.isActive = isActive
+    if (reply !== undefined) {
+      updates.reply = reply.trim() || null
+      updates.repliedAt = reply.trim() ? new Date() : null
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return apiError('No fields to update', 400)
+    }
 
     const [review] = await db
       .update(reviews)
-      .set({ isActive })
+      .set(updates)
       .where(eq(reviews.id, id))
       .returning()
 

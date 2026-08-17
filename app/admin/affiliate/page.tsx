@@ -47,6 +47,7 @@ export default function AdminAffiliatePage() {
     setLoading(true)
     fetch('/api/admin/affiliates?limit=100', {
       headers: { Authorization: `Bearer ${getToken()}` },
+      credentials: 'include',
     })
       .then(r => r.json())
       .then(d => {
@@ -69,6 +70,7 @@ export default function AdminAffiliatePage() {
       const res = await fetch(`/api/admin/affiliates/${affiliateId}/payout`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${getToken()}` },
+        credentials: 'include',
       })
       const d = await res.json()
       if (res.ok) {

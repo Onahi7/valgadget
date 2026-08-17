@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Plus, Trophy, Shuffle, XCircle, Eye } from 'lucide-react'
+import { Plus, Trophy, Shuffle, XCircle, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
@@ -30,6 +30,7 @@ export default function AdminRafflesPage() {
     const res = await fetch(`/api/admin/raffles/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+      credentials: 'include',
       body: JSON.stringify({ status: 'completed' }),
     })
     if (res.ok) {
@@ -46,6 +47,7 @@ export default function AdminRafflesPage() {
     const res = await fetch(`/api/admin/raffles/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+      credentials: 'include',
       body: JSON.stringify({ status: 'cancelled' }),
     })
     if (res.ok) {
@@ -141,6 +143,16 @@ export default function AdminRafflesPage() {
                       <Shuffle className="w-3.5 h-3.5" /> Draw Winner
                     </Button>
                   )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5 text-xs"
+                    asChild
+                  >
+                    <Link href={`/admin/raffles/${raffle.id}/edit`}>
+                      <Pencil className="w-3.5 h-3.5" /> Edit
+                    </Link>
+                  </Button>
                   {(raffle.status === 'active' || raffle.status === 'upcoming') && (
                     <Button
                       size="sm"

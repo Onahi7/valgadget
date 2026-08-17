@@ -1,7 +1,7 @@
 'use client'
 
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react'
-import { getToken, setToken, clearToken } from '@/lib/api-client'
+import { clearToken } from '@/lib/api-client'
 import { authService, type User } from '@/lib/services/auth.service'
 
 interface AuthContextValue {
@@ -20,23 +20,37 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
-  const [token, setTokenState] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   const logout = useCallback(() => {
     clearToken()
     setUser(null)
-    setTokenState(null)
+    localStorage.removeItem('vg_user')
   }, [])
 
   const refreshUser = useCallback(async () => {
-    const stored = getToken()
-    if (!stored) { setIsLoading(false); return }
     try {
       const me = await authService.me()
       setUser(me)
-      setTokenState(stored)
+      localStorage.setItem('vg_user', JSON.stringify(me))
     } catch {
+      // Try to refresh via httpOnly cookie
+      try {
+        const res = await fetch('/api/auth/refresh', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'x-requested-with': 'XMLHttpRequest' },
+        })
+        if (res.ok) {
+          const data = await res.json()
+          if (data.user) {
+            setUser(data.user)
+            localStorage.setItem('vg_user', JSON.stringify(data.user))
+            setIsLoading(false)
+            return
+          }
+        }
+      } catch {}
       logout()
     } finally {
       setIsLoading(false)
@@ -56,17 +70,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(async (email: string, password: string) => {
     const res = await authService.login({ email, password })
-    setToken(res.token)
-    setTokenState(res.token)
     setUser(res.user)
-    // Persist user for quick hydration
     localStorage.setItem('vg_user', JSON.stringify(res.user))
   }, [])
 
   const register = useCallback(async (name: string, email: string, password: string) => {
     const res = await authService.register({ name, email, password })
-    setToken(res.token)
-    setTokenState(res.token)
     setUser(res.user)
     localStorage.setItem('vg_user', JSON.stringify(res.user))
   }, [])
@@ -81,7 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, token, isLoading, isAuthenticated: !!user, login, register, logout, isRole, refreshUser }}
+      value={{ user, token: null, isLoading, isAuthenticated: !!user, login, register, logout, isRole, refreshUser }}
     >
       {children}
     </AuthContext.Provider>

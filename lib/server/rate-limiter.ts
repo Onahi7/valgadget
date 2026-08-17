@@ -9,6 +9,7 @@ interface RateLimitEntry {
 }
 
 const store = new Map<string, RateLimitEntry>()
+const MAX_ENTRIES = 10_000
 
 // Cleanup old entries every 5 minutes
 let cleanupInterval: ReturnType<typeof setInterval> | null = null
@@ -19,6 +20,13 @@ function ensureCleanup() {
       const now = Date.now()
       for (const [key, entry] of store.entries()) {
         if (entry.resetAt < now) store.delete(key)
+      }
+      // If still over cap after cleanup, delete oldest entries
+      if (store.size > MAX_ENTRIES) {
+        const entries = [...store.entries()].sort((a, b) => a[1].resetAt - b[1].resetAt)
+        for (let i = 0; i < entries.length - MAX_ENTRIES; i++) {
+          store.delete(entries[i][0])
+        }
       }
     }, 5 * 60 * 1000)
     cleanupInterval.unref?.()

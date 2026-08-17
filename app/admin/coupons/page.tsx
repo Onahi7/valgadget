@@ -65,6 +65,7 @@ export default function CouponsPage() {
     try {
       const res = await fetch('/api/admin/coupons', {
         headers: { Authorization: `Bearer ${getToken()}` },
+        credentials: 'include',
       })
       const data = await res.json()
       if (data.data) setCoupons(data.data)
@@ -99,6 +100,7 @@ export default function CouponsPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${getToken()}`,
         },
+        credentials: 'include',
         body: JSON.stringify(payload),
       })
 
@@ -124,6 +126,7 @@ export default function CouponsPage() {
       const res = await fetch(`/api/admin/coupons/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${getToken()}` },
+        credentials: 'include',
       })
 
       if (res.ok) {

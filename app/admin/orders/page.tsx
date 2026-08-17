@@ -47,6 +47,7 @@ export default function AdminOrdersPage() {
     if (search) params.set('search', search)
     fetch(`/api/admin/orders?${params}`, {
       headers: { Authorization: `Bearer ${getToken()}` },
+      credentials: 'include',
     })
       .then(r => r.json())
       .then((d: OrdersResponse) => {

@@ -34,6 +34,20 @@ export async function sendEmail(to: string, subject: string, html: string): Prom
   await getResend().emails.send({ from: FROM, to, subject, html })
 }
 
+/**
+ * Fire-and-forget email with structured error logging.
+ * Returns true if sent, false if failed.
+ */
+export async function safeSendEmail(to: string, subject: string, html: string, context = 'email'): Promise<boolean> {
+  try {
+    await sendEmail(to, subject, html)
+    return true
+  } catch (err) {
+    console.error(`[${context}] Failed to send email to ${to}:`, err instanceof Error ? err.message : err)
+    return false
+  }
+}
+
 // ─── Auth emails ───────────────────────────────────────────────────────────
 
 export async function sendVerificationEmail(to: string, name: string, token: string): Promise<void> {
@@ -131,8 +145,28 @@ export async function sendGuestOrderConfirmationEmail(
       <a href="${baseUrl}/orders/guest/${reference}"
          style="display:inline-block;margin:8px 0;padding:14px 28px;background:#e8610a;
                 color:#fff;border-radius:6px;text-decoration:none;font-weight:600;">
-        Track Order
-      </a>
-    </div>
-  `)
+         Track Order
+       </a>
+     </div>
+   `)
+}
+
+// ─── Safe fire-and-forget wrappers ─────────────────────────────────────────
+
+export function safeSendVerificationEmail(to: string, name: string, token: string, context = 'verification'): void {
+  sendVerificationEmail(to, name, token).catch(err =>
+    console.error(`[${context}] Failed to send verification email to ${to}:`, err instanceof Error ? err.message : err)
+  )
+}
+
+export function safeSendPasswordResetEmail(to: string, name: string, token: string, context = 'password-reset'): void {
+  sendPasswordResetEmail(to, name, token).catch(err =>
+    console.error(`[${context}] Failed to send password reset email to ${to}:`, err instanceof Error ? err.message : err)
+  )
+}
+
+export function safeSendRaffleWinnerEmail(to: string, name: string, raffleTitle: string, context = 'raffle-winner'): void {
+  sendRaffleWinnerEmail(to, name, raffleTitle).catch(err =>
+    console.error(`[${context}] Failed to send raffle winner email to ${to}:`, err instanceof Error ? err.message : err)
+  )
 }

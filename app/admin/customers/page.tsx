@@ -48,6 +48,7 @@ export default function AdminCustomersPage() {
     if (search) params.set('search', search)
     fetch(`/api/admin/users?${params}`, {
       headers: { Authorization: `Bearer ${getToken()}` },
+      credentials: 'include',
     })
       .then(r => r.json())
       .then((res: CustomersResponse) => {
@@ -62,9 +63,9 @@ export default function AdminCustomersPage() {
   const fetchCounts = () => {
     const headers = { Authorization: `Bearer ${getToken()}` }
     Promise.all([
-      fetch('/api/admin/users?limit=1&role=customer', { headers }).then(r => r.json()),
-      fetch('/api/admin/users?limit=1&role=affiliate', { headers }).then(r => r.json()),
-      fetch('/api/admin/users?limit=1&role=admin', { headers }).then(r => r.json()),
+      fetch('/api/admin/users?limit=1&role=customer', { headers, credentials: 'include' }).then(r => r.json()),
+      fetch('/api/admin/users?limit=1&role=affiliate', { headers, credentials: 'include' }).then(r => r.json()),
+      fetch('/api/admin/users?limit=1&role=admin', { headers, credentials: 'include' }).then(r => r.json()),
     ]).then(([c, a, ad]) => {
       setCounts({ customer: c.total ?? 0, affiliate: a.total ?? 0, admin: ad.total ?? 0 })
     }).catch(() => {})
@@ -89,6 +90,7 @@ export default function AdminCustomersPage() {
             const res = await fetch('/api/admin/users/invite', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+              credentials: 'include',
               body: JSON.stringify({ email }),
             })
             const d = await res.json()
