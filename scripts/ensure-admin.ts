@@ -7,8 +7,8 @@ const email = (process.env.ADMIN_EMAIL ?? 'admin@valgadget.ng').trim().toLowerCa
 const name = (process.env.ADMIN_NAME ?? 'ValGadget Admin').trim()
 const password = process.env.ADMIN_PASSWORD
 
-if (!password || password.length < 12) {
-  throw new Error('ADMIN_PASSWORD must be set and must be at least 12 characters long.')
+if (!password || password.length < 8) {
+  throw new Error('ADMIN_PASSWORD must be set and must be at least 8 characters long.')
 }
 const adminPassword = password
 
