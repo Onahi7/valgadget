@@ -15,6 +15,7 @@ interface SubcategorySummary {
   name: string
   slug: string
   image?: string | null
+  displayImage?: string | null
 }
 
 interface CategoryDetailClientProps {
@@ -109,10 +110,10 @@ export function CategoryDetailClient({ slug, initialCategory, subcategories }: C
                 href={`/categories/${sub.slug}`}
                 className="group flex items-center gap-3 rounded-lg border border-border bg-card p-3 transition-shadow hover:shadow-md"
               >
-                {sub.image ? (
+                {sub.displayImage || sub.image ? (
                   <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md bg-muted">
                     <Image
-                      src={sub.image}
+                      src={sub.displayImage || sub.image!}
                       alt={sub.name}
                       fill
                       sizes="48px"
@@ -138,6 +139,7 @@ export function CategoryDetailClient({ slug, initialCategory, subcategories }: C
         <ProductGrid
           products={products}
           emptyMessage={`No products in ${category.name} yet`}
+          prioritizeFirstImage
         />
       </div>
     </div>

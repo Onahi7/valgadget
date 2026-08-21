@@ -3,7 +3,6 @@ import { db } from '@/lib/server/db'
 import { raffles, raffleEntries, users } from '@/lib/server/schema'
 import { requireAuth, apiOk, apiError } from '@/lib/server/auth-helpers'
 import { eq } from 'drizzle-orm'
-import { safeSendRaffleWinnerEmail } from '@/lib/server/email'
 
 // GET /api/admin/raffles/[id]
 export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
@@ -43,12 +42,14 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
   const { id } = await context.params
   try {
     const body = await req.json()
-    const { status, winnerId, drawDate, description, title, prize, prizeValue, ticketPrice, maxTickets, image } = body
+    const { status, drawDate, description, title, prize, prizeValue, ticketPrice, maxTickets, image } = body
+    if (status !== undefined && !['upcoming', 'active'].includes(status)) {
+      return apiError('Use the dedicated draw or cancel action for this status change.', 422)
+    }
 
     const [updated] = await db.update(raffles)
       .set({
         ...(status      !== undefined && { status }),
-        ...(winnerId    !== undefined && { winnerId }),
         ...(drawDate    !== undefined && { drawDate: new Date(drawDate) }),
         ...(description !== undefined && { description }),
         ...(title       !== undefined && { title }),
@@ -63,15 +64,6 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
       .returning()
 
     if (!updated) return apiError('Raffle not found.', 404)
-
-    // If a winner was just assigned, email them
-    if (winnerId) {
-      const [winner] = await db.select({ email: users.email, name: users.name })
-        .from(users).where(eq(users.id, winnerId)).limit(1)
-      if (winner) {
-        safeSendRaffleWinnerEmail(winner.email, winner.name, updated.title, 'admin-raffle-draw')
-      }
-    }
 
     return apiOk({ ...updated, prizeValue: Number(updated.prizeValue), ticketPrice: Number(updated.ticketPrice) })
   } catch (err) {

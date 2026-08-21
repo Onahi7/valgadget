@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
 import { raffles } from '@/lib/server/schema'
 import { requireAuth, apiOk, apiError } from '@/lib/server/auth-helpers'
-import { desc, eq, sql } from 'drizzle-orm'
+import { desc, sql } from 'drizzle-orm'
 
 // GET /api/admin/raffles — list all raffles
 export async function GET(req: NextRequest) {

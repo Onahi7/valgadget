@@ -9,7 +9,6 @@ import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { raffleService } from '@/lib/services/raffle.service'
 import type { Raffle } from '@/lib/services/raffle.service'
-import { getToken } from '@/lib/api-client'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { RAFFLE_STATUS_COLORS } from '@/lib/constants/admin-status-colors'
@@ -27,35 +26,21 @@ export default function AdminRafflesPage() {
   }, [])
 
   const triggerDraw = async (id: string, title: string) => {
-    const res = await fetch(`/api/admin/raffles/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-      credentials: 'include',
-      body: JSON.stringify({ status: 'completed' }),
-    })
-    if (res.ok) {
-      const data = await res.json()
-      setRaffles(prev => prev.map(r => r.id === id ? { ...r, status: 'completed' } : r))
+    if (!confirm(`Draw a winner for "${title}"? This result is final.`)) return
+    try {
+      const data = await raffleService.draw(id)
+      setRaffles(prev => prev.map(r => r.id === id ? { ...r, status: 'completed', winner: data.winner } : r))
       toast.success(`Draw complete for "${title}"!`)
-    } else {
-      toast.error('Failed to trigger draw')
-    }
+    } catch (error) { toast.error(error instanceof Error ? error.message : 'Failed to draw a winner') }
   }
 
   const cancelRaffle = async (id: string, title: string) => {
     if (!confirm(`Cancel "${title}"?`)) return
-    const res = await fetch(`/api/admin/raffles/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-      credentials: 'include',
-      body: JSON.stringify({ status: 'cancelled' }),
-    })
-    if (res.ok) {
+    try {
+      await raffleService.cancel(id)
       setRaffles(prev => prev.map(r => r.id === id ? { ...r, status: 'cancelled' } : r))
       toast.info(`"${title}" cancelled`)
-    } else {
-      toast.error('Failed to cancel raffle')
-    }
+    } catch (error) { toast.error(error instanceof Error ? error.message : 'Failed to cancel raffle') }
   }
 
   const totalRevenue = raffles.reduce((s, r) => s + r.soldTickets * r.ticketPrice, 0)
@@ -88,6 +73,17 @@ export default function AdminRafflesPage() {
       </div>
 
       {/* Raffle cards */}
+      {loading ? (
+        <div className="rounded-lg border border-border bg-card py-16 text-center text-sm text-muted-foreground">
+          Loading raffles...
+        </div>
+      ) : raffles.length === 0 ? (
+        <div className="rounded-lg border border-border bg-card py-16 text-center">
+          <Trophy className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+          <p className="text-muted-foreground font-medium">No raffles yet</p>
+          <p className="text-xs text-muted-foreground mt-1">Create your first raffle to get started.</p>
+        </div>
+      ) : (
       <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-5">
         {raffles.map(raffle => {
           const pct = Math.round((raffle.soldTickets / raffle.maxTickets) * 100)
@@ -174,6 +170,7 @@ export default function AdminRafflesPage() {
           )
         })}
       </div>
+      )}
     </div>
   )
 }

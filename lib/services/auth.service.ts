@@ -120,5 +120,5 @@ export const authService = {
 
   /** [Admin] Change user role */
   adminChangeRole: (id: string, role: UserRole) =>
-    api.patch<User>(`/admin/users/${id}/role`, { role }),
+    api.patch<User>(`/admin/users/${id}`, { role }),
 }

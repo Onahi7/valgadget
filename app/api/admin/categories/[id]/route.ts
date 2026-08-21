@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
 import { categories } from '@/lib/server/schema'
 import { requireAuth, apiOk, apiError } from '@/lib/server/auth-helpers'
-import { eq } from 'drizzle-orm'
+import { and, eq, ne } from 'drizzle-orm'
 
 export async function PUT(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await requireAuth(req, ['admin'])
@@ -12,16 +12,47 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
   try {
     const body = await req.json()
     const { name, description, image, icon, parentId, isActive, sortOrder } = body
-    const slug = name ? name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') : undefined
+    const [current] = await db
+      .select({ id: categories.id, parentId: categories.parentId })
+      .from(categories)
+      .where(eq(categories.id, id))
+      .limit(1)
+    if (!current) return apiError('Category not found.', 404)
+
+    const normalizedName = name !== undefined ? (typeof name === 'string' ? name.trim() : '') : undefined
+    if (normalizedName !== undefined && !normalizedName) return apiError('Category name is required.')
+
+    let normalizedParentId: string | null | undefined
+    if (parentId !== undefined) {
+      normalizedParentId = typeof parentId === 'string' && parentId.trim() ? parentId.trim() : null
+      if (normalizedParentId === id) return apiError('A category cannot be its own parent.')
+
+      if (normalizedParentId) {
+        const [parent] = await db
+          .select({ id: categories.id, parentId: categories.parentId })
+          .from(categories)
+          .where(eq(categories.id, normalizedParentId))
+          .limit(1)
+        if (!parent) return apiError('Parent category not found.', 404)
+        if (parent.parentId) return apiError('Subcategories can only belong to a main category.')
+
+        const [child] = await db
+          .select({ id: categories.id })
+          .from(categories)
+          .where(and(eq(categories.parentId, id), ne(categories.id, id)))
+          .limit(1)
+        if (child) return apiError('Move or remove this category’s subcategories before making it a subcategory.')
+      }
+    }
 
     const [updated] = await db.update(categories).set({
-      ...(name        !== undefined && { name, slug }),
+      ...(normalizedName !== undefined && { name: normalizedName }),
       ...(description !== undefined && { description }),
       ...(image       !== undefined && { image }),
       ...(icon        !== undefined && { icon }),
-      ...(parentId    !== undefined && { parentId }),
+      ...(normalizedParentId !== undefined && { parentId: normalizedParentId }),
       ...(isActive    !== undefined && { isActive }),
-      ...(sortOrder   !== undefined && { sortOrder }),
+      ...(sortOrder   !== undefined && { sortOrder: Number.isFinite(Number(sortOrder)) ? Number(sortOrder) : 0 }),
       updatedAt: new Date(),
     }).where(eq(categories.id, id)).returning()
 

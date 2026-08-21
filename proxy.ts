@@ -32,9 +32,11 @@ const PUBLIC_API_PATHS = [
   '/api/products/new-arrivals',
   '/api/products/slug',
   '/api/categories',
+  '/api/chat',
   '/api/reviews',
   '/api/raffles',
   '/api/shipping-rates',
+  '/api/store-config',
   '/api/payments/webhook',
   '/api/payments/paystack',
   '/api/payments',
@@ -57,16 +59,15 @@ function isPublicApiPath(pathname: string): boolean {
   return PUBLIC_API_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'))
 }
 
+function matchesPath(pathname: string, prefix: string): boolean {
+  return pathname === prefix || pathname.startsWith(`${prefix}/`)
+}
+
 function getBodySizeLimit(pathname: string): number {
   for (const [pattern, limit] of Object.entries(BODY_SIZE_LIMITS)) {
     if (pathname.startsWith(pattern)) return limit
   }
   return DEFAULT_BODY_SIZE_LIMIT
-}
-
-function getClientIp(req: NextRequest): string {
-  const forwarded = req.headers.get('x-forwarded-for')
-  return forwarded?.split(',')[0]?.trim() ?? req.headers.get('x-real-ip') ?? 'unknown'
 }
 
 async function verifyToken(token: string) {
@@ -92,10 +93,11 @@ export async function proxy(request: NextRequest) {
   const user = token ? await verifyToken(token) : null
 
   // Check if route is protected
-  const isProtectedPath = PROTECTED_PATHS.some(path => pathname.startsWith(path))
-  const isAuthPath = AUTH_PATHS.some(path => pathname.startsWith(path))
-  const isAdminPath = ADMIN_PATHS.some(path => pathname.startsWith(path))
+  const isProtectedPath = PROTECTED_PATHS.some(path => matchesPath(pathname, path))
+  const isAuthPath = AUTH_PATHS.some(path => matchesPath(pathname, path))
+  const isAdminPath = ADMIN_PATHS.some(path => matchesPath(pathname, path))
   const isApiPath = pathname.startsWith('/api/')
+  const isLogoutPath = pathname === '/api/auth/logout'
 
   // CSRF protection for state-changing API requests
   if (isApiPath && !isPublicApiPath(pathname)) {
@@ -146,6 +148,10 @@ export async function proxy(request: NextRequest) {
       return res
     }
 
+    // Logout must remain idempotent even when the access token has expired.
+    // The custom-header CSRF check above still applies.
+    if (isLogoutPath) return NextResponse.next()
+
     // All other API routes require authentication
     if (!user) {
       return NextResponse.json({ message: 'Unauthorized. Please sign in.' }, { status: 401 })
@@ -175,7 +181,7 @@ export async function proxy(request: NextRequest) {
   // Redirect to login if accessing protected route without auth
   if (isProtectedPath && !user) {
     const url = request.nextUrl.clone()
-    url.pathname = '/login'
+    url.pathname = isAdminPath ? '/admin/login' : '/login'
     url.searchParams.set('returnUrl', `${pathname}${search}`)
     return NextResponse.redirect(url)
   }

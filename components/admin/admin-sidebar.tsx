@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, ShoppingBag, ShoppingCart, Users, Tag, Ticket,
   Share2, Settings, ChevronRight, TrendingUp, MessageCircle, Truck,
-  Star, Percent, Activity,
+  Star, Percent, Activity, Mail,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -39,6 +39,7 @@ export const NAV_GROUPS = [
     items: [
       { href: '/admin/shipping', label: 'Shipping Rates', icon: Truck },
       { href: '/admin/settings', label: 'Settings', icon: Settings },
+      { href: '/admin/email-templates', label: 'Email Templates', icon: Mail },
       { href: '/admin/reviews', label: 'Reviews', icon: Star },
       { href: '/admin/coupons', label: 'Coupons', icon: Percent },
       { href: '/admin/activity-log', label: 'Activity Log', icon: Activity },
@@ -46,7 +47,7 @@ export const NAV_GROUPS = [
   },
 ]
 
-export function AdminSidebar() {
+export function AdminNavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname()
 
   const isActive = (item: { href: string; exact?: boolean }) => {
@@ -55,47 +56,58 @@ export function AdminSidebar() {
   }
 
   return (
-    <aside className="hidden md:flex w-60 shrink-0 border-r border-border bg-card flex-col h-full overflow-y-auto">
+    <>
+      {NAV_GROUPS.map(group => (
+        <div key={group.label}>
+          <p className="px-2 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 font-mono">
+            {group.label}
+          </p>
+          <div className="flex flex-col gap-0.5">
+            {group.items.map(item => {
+              const active = isActive(item)
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={onNavigate}
+                  className={cn(
+                    'group relative flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors',
+                    active
+                      ? 'bg-[#edf3ed] text-primary'
+                      : 'text-muted-foreground hover:bg-[#f3f5f3] hover:text-foreground'
+                  )}
+                >
+                  {active && <span className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-primary" />}
+                  <item.icon className="h-4 w-4 shrink-0" strokeWidth={active ? 2.25 : 1.8} />
+                  <span className="flex-1">{item.label}</span>
+                  {active && <ChevronRight className="h-3.5 w-3.5 opacity-50" />}
+                </Link>
+              )
+            })}
+          </div>
+        </div>
+      ))}
+    </>
+  )
+}
+
+export function AdminSidebar() {
+  return (
+    <aside className="hidden h-full w-60 shrink-0 flex-col overflow-y-auto border-r border-[#e3e7e3] bg-white md:flex">
       {/* Brand */}
-      <div className="flex items-center gap-3 px-5 py-[18px] border-b border-border">
-        <Image src="/logo.png" alt="Val Gadgets" width={120} height={42} className="h-10 w-auto object-contain" priority />
-        <p className="text-[10px] text-muted-foreground font-mono uppercase tracking-widest">Admin</p>
+      <div className="flex h-16 items-center gap-3 border-b border-[#e9ece9] px-5">
+        <Image src="/logo.png" alt="Val Gadgets" width={104} height={36} className="h-8 w-auto object-contain" priority />
+        <span className="h-4 w-px bg-border" />
+        <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground">Admin</p>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 py-4 px-3 space-y-5 overflow-y-auto" aria-label="Admin navigation">
-        {NAV_GROUPS.map(group => (
-          <div key={group.label}>
-            <p className="px-2 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 font-mono">
-              {group.label}
-            </p>
-            <div className="flex flex-col gap-0.5">
-              {group.items.map(item => {
-                const active = isActive(item)
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={cn(
-                      'flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all group relative',
-                      active
-                        ? 'bg-primary text-primary-foreground shadow-sm'
-                        : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-                    )}
-                  >
-                    <item.icon className={cn('w-4 h-4 shrink-0 transition-transform', active ? '' : 'group-hover:scale-110')} />
-                    <span className="flex-1">{item.label}</span>
-                    {active && <ChevronRight className="w-3.5 h-3.5 opacity-60" />}
-                  </Link>
-                )
-              })}
-            </div>
-          </div>
-        ))}
+      <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-4" aria-label="Admin navigation">
+        <AdminNavLinks />
       </nav>
 
       {/* Bottom */}
-      <div className="px-3 py-4 border-t border-border space-y-1">
+      <div className="space-y-1 border-t border-[#e9ece9] px-3 py-3">
         <Link
           href="/"
           className="flex items-center gap-2.5 px-3 py-2 rounded-md text-xs text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"

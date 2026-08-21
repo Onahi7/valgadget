@@ -1,7 +1,7 @@
 import { db } from '@/lib/server/db'
 import { categories } from '@/lib/server/schema'
 import { apiOk } from '@/lib/server/auth-helpers'
-import { eq, asc, sql } from 'drizzle-orm'
+import { and, eq, asc, sql } from 'drizzle-orm'
 import { withCategoryDisplayImages } from '@/lib/server/category-images'
 
 export async function GET() {
@@ -21,7 +21,18 @@ export async function GET() {
     )::int`,
   })
     .from(categories)
-    .where(eq(categories.isActive, true))
+    .where(and(
+      eq(categories.isActive, true),
+      sql`exists (
+        select 1
+        from products p
+        where p.is_active = true
+          and (
+            p.category_id = ${categories.id}
+            or p.category_id in (select c2.id from categories c2 where c2.parent_id = ${categories.id} and c2.is_active = true)
+          )
+      )`,
+    ))
     .orderBy(asc(categories.sortOrder), asc(categories.name))
 
   return apiOk(await withCategoryDisplayImages(data))

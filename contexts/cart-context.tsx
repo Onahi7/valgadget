@@ -31,6 +31,8 @@ function cartReducer(state: CartState, action: CartAction): CartState {
       if (existing) {
         return {
           ...state,
+          couponCode: null,
+          couponDiscount: 0,
           items: state.items.map(i =>
             i.product.id === action.product.id
               ? { ...i, quantity: i.quantity + qty }
@@ -38,16 +40,18 @@ function cartReducer(state: CartState, action: CartAction): CartState {
           ),
         }
       }
-      return { ...state, items: [...state.items, { product: action.product, quantity: qty }] }
+      return { ...state, couponCode: null, couponDiscount: 0, items: [...state.items, { product: action.product, quantity: qty }] }
     }
     case 'REMOVE':
-      return { ...state, items: state.items.filter(i => i.product.id !== action.productId) }
+      return { ...state, couponCode: null, couponDiscount: 0, items: state.items.filter(i => i.product.id !== action.productId) }
     case 'UPDATE_QTY':
       if (action.quantity <= 0) {
-        return { ...state, items: state.items.filter(i => i.product.id !== action.productId) }
+        return { ...state, couponCode: null, couponDiscount: 0, items: state.items.filter(i => i.product.id !== action.productId) }
       }
       return {
         ...state,
+        couponCode: null,
+        couponDiscount: 0,
         items: state.items.map(i =>
           i.product.id === action.productId
             ? { ...i, quantity: action.quantity }

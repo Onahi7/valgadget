@@ -1,4 +1,5 @@
 import { api } from '@/lib/api-client'
+import type { Order } from '@/lib/services/order.service'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -37,8 +38,8 @@ export interface InitiatePaymentPayload {
 
 export interface RefundPayload {
   orderId: string
-  amount?: number          // partial refund; omit for full
-  reason?: string
+  reason: string
+  manualConfirmed?: boolean
 }
 
 export interface CouponValidation {
@@ -78,7 +79,7 @@ export const paymentService = {
 
   /** [Admin] Issue a refund */
   refund: (payload: RefundPayload) =>
-    api.post<PaymentIntent>('/admin/payments/refund', payload),
+    api.post<Order>('/admin/payments/refund', payload),
 
   /** [Admin] List all payment intents */
   getAll: (params?: { page?: number; limit?: number; status?: PaymentStatus; method?: PaymentMethod }) =>
@@ -95,7 +96,7 @@ export const paymentService = {
     api.post<Coupon>('/admin/coupons', payload),
 
   updateCoupon: (id: string, payload: Partial<Coupon>) =>
-    api.put<Coupon>(`/admin/coupons/${id}`, payload),
+    api.patch<Coupon>(`/admin/coupons/${id}`, payload),
 
   deleteCoupon: (id: string) =>
     api.delete<{ message: string }>(`/admin/coupons/${id}`),
@@ -106,12 +107,12 @@ export const paymentService = {
 export interface Coupon {
   id: string
   code: string
-  description?: string
-  discountType: 'fixed' | 'percent'
-  discountValue: number
-  minOrderAmount?: number
-  maxUses?: number
-  usedCount: number
+  type: 'fixed' | 'percentage' | 'free_shipping'
+  value: number
+  minPurchase?: number
+  maxDiscount?: number
+  usageLimit?: number
+  usageCount: number
   isActive: boolean
   expiresAt?: string
   createdAt: string

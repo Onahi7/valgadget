@@ -5,8 +5,8 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
 import { orders } from '@/lib/server/schema'
-import { requireAuth, apiError } from '@/lib/server/auth-helpers'
-import { desc, eq, ilike, sql, and, type SQL } from 'drizzle-orm'
+import { requireAuth } from '@/lib/server/auth-helpers'
+import { desc, eq, ilike, and, type SQL } from 'drizzle-orm'
 
 function escapeCsv(val: unknown): string {
   const s = String(val ?? '')

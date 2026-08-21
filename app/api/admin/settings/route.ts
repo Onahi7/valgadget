@@ -6,17 +6,17 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
 import { siteSettings } from '@/lib/server/schema'
 import { requireAuth, apiOk, apiError } from '@/lib/server/auth-helpers'
-import { eq, sql } from 'drizzle-orm'
+import { getStoreSettings } from '@/lib/server/store-settings'
+import { validateStoreSetting } from '@/lib/store-settings'
+import { sql } from 'drizzle-orm'
+import { logAdminActivity } from '@/lib/server/admin-activity'
+import { revalidateTag } from 'next/cache'
 
 export async function GET(req: NextRequest) {
   const auth = await requireAuth(req, ['admin'])
   if ('status' in auth) return auth
 
-  const rows = await db.select().from(siteSettings)
-  const map: Record<string, string> = {}
-  for (const row of rows) map[row.key] = row.value
-
-  return apiOk(map)
+  return apiOk(await getStoreSettings())
 }
 
 export async function PUT(req: NextRequest) {
@@ -24,17 +24,28 @@ export async function PUT(req: NextRequest) {
   if ('status' in auth) return auth
 
   try {
-    const { settings } = await req.json() as { settings: Record<string, string> }
+    const { settings } = await req.json() as { settings: Record<string, unknown> }
     if (!settings || typeof settings !== 'object') return apiError('settings object required', 400)
 
-    // Upsert each key
+    const validated = []
     for (const [key, value] of Object.entries(settings)) {
-      if (!key || typeof value !== 'string') continue
-      await db.insert(siteSettings).values({ key, value, updatedAt: new Date() })
-        .onConflictDoUpdate({ target: siteSettings.key, set: { value, updatedAt: new Date() } })
+      const result = validateStoreSetting(key, value)
+      if ('error' in result) return apiError(result.error, 422)
+      validated.push(result)
     }
 
-    return apiOk({ updated: Object.keys(settings).length })
+    if (validated.length > 0) {
+      await db.insert(siteSettings)
+        .values(validated.map(({ key, value }) => ({ key, value, updatedAt: new Date() })))
+        .onConflictDoUpdate({
+          target: siteSettings.key,
+          set: { value: sql`excluded.value`, updatedAt: new Date() },
+        })
+    }
+    revalidateTag('store-settings', { expire: 0 })
+    await logAdminActivity(auth.user.sub, 'updated', 'store settings', null, `${validated.length} settings saved`)
+
+    return apiOk({ updated: validated.length, settings: await getStoreSettings() })
   } catch (err) {
     console.error('[admin/settings PUT]', err)
     return apiError('Failed to save settings', 500)

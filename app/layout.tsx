@@ -3,6 +3,7 @@ import { Inter, Space_Grotesk, Space_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { Toaster } from '@/components/ui/sonner'
 import './globals.css'
+import { getStoreSettings } from '@/lib/server/store-settings'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -24,7 +25,7 @@ const spaceMono = Space_Mono({
   display: 'swap',
 })
 
-export const metadata: Metadata = {
+const defaultMetadata: Metadata = {
   title: {
     default: 'Val Gadgets — Your #1 Gadget Plug in Nigeria',
     template: '%s | Val Gadgets',
@@ -78,6 +79,35 @@ export const metadata: Metadata = {
     ],
   },
   generator: 'Next.js',
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  try {
+    const settings = await getStoreSettings()
+    const keywords = settings.seoKeywords.split(',').map(keyword => keyword.trim()).filter(Boolean)
+    return {
+      ...defaultMetadata,
+      title: { default: settings.seoTitle, template: `%s | ${settings.storeName}` },
+      description: settings.seoDescription,
+      keywords,
+      authors: [{ name: settings.storeName }],
+      creator: settings.storeName,
+      openGraph: {
+        ...defaultMetadata.openGraph,
+        title: settings.seoTitle,
+        description: settings.seoDescription,
+        siteName: settings.storeName,
+      },
+      twitter: {
+        ...defaultMetadata.twitter,
+        title: settings.seoTitle,
+        description: settings.seoDescription,
+      },
+    }
+  } catch (error) {
+    console.error('[metadata] Failed to load store settings', error)
+    return defaultMetadata
+  }
 }
 
 export const viewport: Viewport = {

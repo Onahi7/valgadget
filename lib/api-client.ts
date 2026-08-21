@@ -5,7 +5,7 @@
 
 const RAW_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? '/api'
 const BASE_URL = RAW_BASE_URL.replace(/\/$/, '')
-const TIMEOUT_MS = 15_000
+const TIMEOUT_MS = 30_000
 
 // ─── Token helpers ────────────────────────────────────────────────────────────
 
@@ -22,8 +22,6 @@ export function setToken(_token: string): void {
 export function clearToken(): void {
   if (typeof window === 'undefined') return
   localStorage.removeItem('vg_user')
-  // Call server logout to clear httpOnly cookies + revoke refresh token
-  fetch(`${BASE_URL}/auth/logout`, { method: 'POST', credentials: 'include' }).catch(() => {})
 }
 
 // ─── Typed error ──────────────────────────────────────────────────────────────
@@ -133,7 +131,7 @@ async function request<T>(
 
   // Handle 401 with automatic token refresh (only retry once)
   if (res.status === 401 && !_retry) {
-    const isAuthEndpoint = path.includes('/auth/login') || path.includes('/auth/register')
+    const isAuthEndpoint = ['/auth/login', '/auth/register', '/auth/refresh', '/auth/logout'].some(endpoint => path.includes(endpoint))
     if (!isAuthEndpoint) {
       const newToken = await refreshAccessToken()
       if (newToken) {

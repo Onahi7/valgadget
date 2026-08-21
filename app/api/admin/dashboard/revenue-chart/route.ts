@@ -20,17 +20,25 @@ export async function GET(req: NextRequest) {
   const now = new Date()
   const from = startOfDay(new Date(now.getFullYear(), now.getMonth(), now.getDate() - (days - 1)))
 
-  const rows = await db.select({
-    day: sql<string>`date_trunc('day', ${orders.createdAt})::date`,
-    revenue: sql<string>`coalesce(sum(case when ${orders.paymentStatus} = 'paid' then ${orders.total} else 0 end), '0')`,
-    orderCount: sql<number>`count(*)::int`,
-  })
-    .from(orders)
-    .where(gte(orders.createdAt, from))
-    .groupBy(sql`date_trunc('day', ${orders.createdAt})`)
-    .orderBy(desc(sql`date_trunc('day', ${orders.createdAt})`))
+  const [rows, refundRows] = await Promise.all([
+    db.select({
+      day: sql<string>`date_trunc('day', ${orders.createdAt})::date`,
+      revenue: sql<string>`coalesce(sum(case when ${orders.paymentStatus} = 'paid' then ${orders.total} else 0 end), '0')`,
+      orderCount: sql<number>`count(*)::int`,
+    }).from(orders)
+      .where(gte(orders.createdAt, from))
+      .groupBy(sql`date_trunc('day', ${orders.createdAt})`)
+      .orderBy(desc(sql`date_trunc('day', ${orders.createdAt})`)),
+    db.select({
+      day: sql<string>`date_trunc('day', ${orders.refundedAt})::date`,
+      refunds: sql<string>`coalesce(sum(${orders.refundAmount}), '0')`,
+    }).from(orders)
+      .where(gte(orders.refundedAt, from))
+      .groupBy(sql`date_trunc('day', ${orders.refundedAt})`),
+  ])
 
   const byDay = new Map(rows.map(r => [r.day, r]))
+  const refundsByDay = new Map(refundRows.map(r => [r.day, Number(r.refunds ?? 0)]))
 
   const data = [] as Array<{ date: string; revenue: number; orders: number; refunds: number }>
   for (let i = 0; i < days; i += 1) {
@@ -42,7 +50,7 @@ export async function GET(req: NextRequest) {
       date: key,
       revenue: Number(row?.revenue ?? 0),
       orders: row?.orderCount ?? 0,
-      refunds: 0,
+      refunds: refundsByDay.get(key) ?? 0,
     })
   }
 

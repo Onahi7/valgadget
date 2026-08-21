@@ -11,5 +11,6 @@ export function numericOrder(o: OrderRow) {
     shipping: Number(o.shipping),
     tax: Number(o.tax),
     total: Number(o.total),
+    refundAmount: o.refundAmount === null ? null : Number(o.refundAmount),
   }
 }

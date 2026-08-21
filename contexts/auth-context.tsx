@@ -9,9 +9,9 @@ interface AuthContextValue {
   token: string | null
   isLoading: boolean
   isAuthenticated: boolean
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string) => Promise<User>
   register: (name: string, email: string, password: string) => Promise<void>
-  logout: () => void
+  logout: () => Promise<void>
   isRole: (role: User['role'] | User['role'][]) => boolean
   refreshUser: () => Promise<void>
 }
@@ -22,10 +22,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  const logout = useCallback(() => {
-    clearToken()
-    setUser(null)
-    localStorage.removeItem('vg_user')
+  const logout = useCallback(async () => {
+    try {
+      await authService.logout()
+    } catch {
+      // Logout remains successful locally even if the session already expired.
+    } finally {
+      clearToken()
+      setUser(null)
+    }
   }, [])
 
   const refreshUser = useCallback(async () => {
@@ -34,24 +39,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(me)
       localStorage.setItem('vg_user', JSON.stringify(me))
     } catch {
-      // Try to refresh via httpOnly cookie
-      try {
-        const res = await fetch('/api/auth/refresh', {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'x-requested-with': 'XMLHttpRequest' },
-        })
-        if (res.ok) {
-          const data = await res.json()
-          if (data.user) {
-            setUser(data.user)
-            localStorage.setItem('vg_user', JSON.stringify(data.user))
-            setIsLoading(false)
-            return
-          }
-        }
-      } catch {}
-      logout()
+      clearToken()
+      setUser(null)
     } finally {
       setIsLoading(false)
     }
@@ -63,7 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Listen for 401 globally
   useEffect(() => {
-    const handler = () => logout()
+    const handler = () => { void logout() }
     window.addEventListener('vg:unauthorized', handler)
     return () => window.removeEventListener('vg:unauthorized', handler)
   }, [logout])
@@ -72,6 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const res = await authService.login({ email, password })
     setUser(res.user)
     localStorage.setItem('vg_user', JSON.stringify(res.user))
+    return res.user
   }, [])
 
   const register = useCallback(async (name: string, email: string, password: string) => {

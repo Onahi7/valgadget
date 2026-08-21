@@ -3,6 +3,7 @@ import { db } from '@/lib/server/db'
 import { coupons } from '@/lib/server/schema'
 import { requireAuth, apiOk, apiError } from '@/lib/server/auth-helpers'
 import { desc } from 'drizzle-orm'
+import { logAdminActivity } from '@/lib/server/admin-activity'
 
 export async function GET(req: NextRequest) {
   const auth = await requireAuth(req, ['admin'])
@@ -52,6 +53,7 @@ export async function POST(req: NextRequest) {
       expiresAt: expiresAt ? new Date(expiresAt) : null,
       isActive: true,
     }).returning()
+    await logAdminActivity(auth.user.sub, 'created', 'coupon', coupon.id, coupon.code)
 
     return apiOk({
       ...coupon,

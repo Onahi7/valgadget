@@ -192,6 +192,13 @@ export const orders = pgTable('orders', {
   couponCode:      varchar('coupon_code', { length: 50 }),
   affiliateCode:   varchar('affiliate_code', { length: 30 }),
   shippingAddress: json('shipping_address').$type<Address>(),
+  trackingNumber:   varchar('tracking_number', { length: 200 }),
+  trackingUrl:      text('tracking_url'),
+  refundAmount:     numeric('refund_amount', { precision: 10, scale: 2 }),
+  refundReason:     text('refund_reason'),
+  refundReference:  text('refund_reference'),
+  refundStatus:     varchar('refund_status', { length: 30 }),
+  refundedAt:       timestamp('refunded_at'),
   notes:           text('notes'),
   createdAt:       timestamp('created_at').notNull().defaultNow(),
   updatedAt:       timestamp('updated_at').notNull().defaultNow(),
@@ -346,6 +353,21 @@ export const siteSettings = pgTable('site_settings', {
   value:     text('value').notNull().default(''),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 })
+
+// ─── Admin Activity Log ────────────────────────────────────────────────────
+
+export const adminActivityLogs = pgTable('admin_activity_logs', {
+  id:         text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  adminId:    text('admin_id').references(() => users.id, { onDelete: 'set null' }),
+  action:     varchar('action', { length: 100 }).notNull(),
+  entityType: varchar('entity_type', { length: 100 }).notNull(),
+  entityId:   text('entity_id'),
+  details:    text('details'),
+  createdAt:  timestamp('created_at').notNull().defaultNow(),
+}, table => [
+  index('admin_activity_created_idx').on(table.createdAt),
+  index('admin_activity_admin_idx').on(table.adminId),
+])
 
 // ─── Relations ─────────────────────────────────────────────────────────────
 

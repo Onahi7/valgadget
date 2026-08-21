@@ -11,6 +11,7 @@ import { ImageCropModal } from '@/components/admin/image-crop-modal'
 import { categoryService } from '@/lib/services/category.service'
 import type { Category, CreateCategoryPayload } from '@/lib/services/category.service'
 import { toast } from 'sonner'
+import { isApiError } from '@/lib/api-client'
 
 type CategoryForm = {
   name: string
@@ -177,8 +178,8 @@ export default function AdminCategoriesPage() {
         toast.success('Category created')
       }
       closeEditor()
-    } catch {
-      toast.error(editingId ? 'Failed to update category' : 'Failed to create category')
+    } catch (error) {
+      toast.error(isApiError(error) ? error.message : editingId ? 'Failed to update category' : 'Failed to create category')
     } finally {
       setSaving(false)
     }
@@ -270,13 +271,14 @@ export default function AdminCategoriesPage() {
               >
                 <option value="">No parent</option>
                 {categories
-                  .filter(category => category.id !== editingId)
+                  .filter(category => !category.parentId && category.id !== editingId)
                   .map(category => (
                     <option key={category.id} value={category.id}>
                       {category.name}
                     </option>
                   ))}
               </select>
+              <p className="text-xs text-muted-foreground">Choose “No parent” for a main category, or choose a main category to create a subcategory.</p>
             </div>
             <div className="space-y-2 md:col-span-2">
               <label className="text-sm font-medium">Description</label>
@@ -387,6 +389,7 @@ export default function AdminCategoriesPage() {
                 </tr>
               ) : categories.map((category, index) => {
                 const displayImage = getDisplayImage(category)
+                const hasStorefrontProducts = (category.productCount ?? 0) > 0
 
                 return (
                 <tr key={category.id} className="border-b border-border/50 transition-colors hover:bg-accent/20">
@@ -421,8 +424,12 @@ export default function AdminCategoriesPage() {
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <Badge className={category.isActive ? 'border border-green-200 bg-green-100 text-[11px] text-green-700' : 'border text-[11px] text-muted-foreground'}>
-                      {category.isActive ? 'Active' : 'Inactive'}
+                    <Badge className={!category.isActive
+                      ? 'border text-[11px] text-muted-foreground'
+                      : hasStorefrontProducts
+                        ? 'border border-green-200 bg-green-100 text-[11px] text-green-700'
+                        : 'border border-amber-200 bg-amber-50 text-[11px] text-amber-700'}>
+                      {!category.isActive ? 'Inactive' : hasStorefrontProducts ? 'Visible' : 'Waiting for product'}
                     </Badge>
                   </td>
                   <td className="px-4 py-3 text-right">

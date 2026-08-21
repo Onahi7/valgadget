@@ -9,11 +9,12 @@ import { Separator } from '@/components/ui/separator'
 interface CheckoutSummaryProps {
   shipping?: number
   shippingKnown?: boolean
+  tax?: number
 }
 
-export function CheckoutSummary({ shipping = 0, shippingKnown = false }: CheckoutSummaryProps) {
+export function CheckoutSummary({ shipping = 0, shippingKnown = false, tax = 0 }: CheckoutSummaryProps) {
   const { items, subtotal, discount, total, updateQuantity } = useCart()
-  const grandTotal = total + shipping
+  const grandTotal = total + shipping + tax
 
   return (
     <aside className="sticky top-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_rgba(15,23,42,0.06)] sm:p-6">
@@ -85,6 +86,12 @@ export function CheckoutSummary({ shipping = 0, shippingKnown = false }: Checkou
             {shippingKnown ? `₦${shipping.toLocaleString('en-NG')}` : 'Calculated next'}
           </dd>
         </div>
+        {tax > 0 ? (
+          <div className="flex justify-between gap-4">
+            <dt className="text-slate-500">Tax</dt>
+            <dd className="font-medium text-slate-900">₦{tax.toLocaleString('en-NG')}</dd>
+          </div>
+        ) : null}
       </dl>
 
       <Separator className="my-6 bg-slate-200" />
@@ -96,7 +103,7 @@ export function CheckoutSummary({ shipping = 0, shippingKnown = false }: Checkou
 
       <p className="mt-6 flex items-center justify-center gap-2 text-xs font-medium text-slate-500">
         <LockKeyhole className="h-4 w-4 text-slate-700" />
-        Payments secured by Paystack
+        Secure checkout and protected order details
       </p>
     </aside>
   )

@@ -20,41 +20,15 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     shipping: Number(order.shipping),
     tax:      Number(order.tax),
     total:    Number(order.total),
+    refundAmount: order.refundAmount === null ? null : Number(order.refundAmount),
   })
 }
 
-// PATCH /api/admin/orders/[id] — update status / payment status
+// PATCH /api/admin/orders/[id] — internal notes only; sensitive actions use dedicated routes.
 export async function PATCH(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await requireAuth(req, ['admin'])
   if ('status' in auth) return auth
-
-  const { id } = await context.params
-  try {
-    const { status, paymentStatus, paymentRef, notes, trackingNumber } = await req.json()
-
-    // Validate status values
-    const validStatuses = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded']
-    const validPaymentStatuses = ['unpaid', 'pending', 'pending_verification', 'paid', 'failed', 'refunded']
-    if (status && !validStatuses.includes(status)) return apiError('Invalid status', 400)
-    if (paymentStatus && !validPaymentStatuses.includes(paymentStatus)) return apiError('Invalid paymentStatus', 400)
-
-    const [updated] = await db.update(orders)
-      .set({
-        ...(status        !== undefined && { status }),
-        ...(paymentStatus !== undefined && { paymentStatus }),
-        ...(paymentRef    !== undefined && { paymentRef }),
-        ...(notes         !== undefined && { notes }),
-        ...(trackingNumber !== undefined && { trackingNumber }),
-        updatedAt: new Date(),
-      })
-      .where(eq(orders.id, id))
-      .returning()
-
-    if (!updated) return apiError('Order not found.', 404)
-    return apiOk({ ...updated, total: Number(updated.total) })
-  } catch (err) {
-    console.error('[admin patch order]', err)
-    return apiError('Failed to update order.', 500)
-  }
+  await context.params
+  return apiError('Use the dedicated status, payment-status, tracking, notes, or refund action.', 405)
 }
 

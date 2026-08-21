@@ -7,7 +7,11 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog'
 import { getToken } from '@/lib/api-client'
+import { useDebounce } from '@/hooks/use-debounce'
 import { toast } from 'sonner'
 
 type Customer = {
@@ -38,14 +42,18 @@ export default function AdminCustomersPage() {
   const [totalPages, setTotalPages] = useState(1)
   const [total, setTotal]         = useState(0)
   const [counts, setCounts]       = useState({ customer: 0, affiliate: 0, admin: 0 })
+  const [inviteOpen, setInviteOpen]   = useState(false)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviting, setInviting]       = useState(false)
 
   const PAGE_SIZE = 20
+  const debouncedSearch = useDebounce(search, 300)
 
   const fetchCustomers = (p: number) => {
     setLoading(true)
     const params = new URLSearchParams({ page: String(p), limit: String(PAGE_SIZE) })
     if (roleFilter !== 'all') params.set('role', roleFilter)
-    if (search) params.set('search', search)
+    if (debouncedSearch) params.set('search', debouncedSearch)
     fetch(`/api/admin/users?${params}`, {
       headers: { Authorization: `Bearer ${getToken()}` },
       credentials: 'include',
@@ -74,7 +82,33 @@ export default function AdminCustomersPage() {
   useEffect(() => {
     fetchCustomers(1)
     fetchCounts()
-  }, [search, roleFilter])
+  }, [debouncedSearch, roleFilter])
+
+  const sendInvite = async () => {
+    const email = inviteEmail.trim()
+    if (!email) return
+    setInviting(true)
+    try {
+      const res = await fetch('/api/admin/users/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+        credentials: 'include',
+        body: JSON.stringify({ email }),
+      })
+      const d = await res.json()
+      if (res.ok) {
+        toast.success(`Invitation sent to ${email}`)
+        setInviteOpen(false)
+        setInviteEmail('')
+      } else {
+        toast.error(d.error ?? 'Failed to invite user')
+      }
+    } catch {
+      toast.error('Failed to send invitation')
+    } finally {
+      setInviting(false)
+    }
+  }
 
   return (
     <div className="space-y-6 animate-page-reveal">
@@ -83,23 +117,7 @@ export default function AdminCustomersPage() {
           <h1 className="text-2xl font-bold tracking-tight">Customers</h1>
           <p className="text-sm text-muted-foreground">{total} registered users</p>
         </div>
-        <Button className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90 w-full sm:w-auto" size="sm" onClick={async () => {
-          const email = prompt('Enter email address to invite:')
-          if (!email) return
-          try {
-            const res = await fetch('/api/admin/users/invite', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-              credentials: 'include',
-              body: JSON.stringify({ email }),
-            })
-            const d = await res.json()
-            if (res.ok) toast.success(`Invitation sent to ${email}`)
-            else toast.error(d.error ?? 'Failed to invite user')
-          } catch {
-            toast.error('Failed to send invitation')
-          }
-        }}>
+        <Button className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90 w-full sm:w-auto" size="sm" onClick={() => setInviteOpen(true)}>
           <UserPlus className="w-4 h-4" /> Invite User
         </Button>
       </div>
@@ -194,9 +212,6 @@ export default function AdminCustomersPage() {
             </tbody>
           </table>
         </div>
-        {!loading && customers.length === 0 && (
-          <div className="py-12 text-center text-sm text-muted-foreground">No customers match your search.</div>
-        )}
 
         {/* Pagination */}
         {totalPages > 1 && (
@@ -225,6 +240,30 @@ export default function AdminCustomersPage() {
           </div>
         )}
       </div>
+
+      {/* Invite dialog */}
+      <Dialog open={inviteOpen} onOpenChange={open => { setInviteOpen(open); if (!open) setInviteEmail('') }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Invite User</DialogTitle>
+            <DialogDescription>Send an invitation email to join the store.</DialogDescription>
+          </DialogHeader>
+          <Input
+            type="email"
+            placeholder="name@example.com"
+            value={inviteEmail}
+            onChange={e => setInviteEmail(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') sendInvite() }}
+            autoFocus
+          />
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setInviteOpen(false)}>Cancel</Button>
+            <Button size="sm" onClick={sendInvite} disabled={inviting || !inviteEmail.trim()}>
+              {inviting ? 'Sending...' : 'Send Invite'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

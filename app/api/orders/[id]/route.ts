@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
 import { orders } from '@/lib/server/schema'
 import { requireAuth, apiOk, apiError } from '@/lib/server/auth-helpers'
-import { eq, and } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 
 export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await requireAuth(req)
@@ -31,26 +31,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
 export async function PATCH(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await requireAuth(req, ['admin'])
   if ('status' in auth) return auth
-
-  const { id } = await context.params
-  try {
-    const body = await req.json()
-    const { status, paymentStatus, paymentRef } = body
-
-    const validStatuses = ['pending', 'processing', 'confirmed', 'shipped', 'delivered', 'cancelled', 'refunded']
-    const validPaymentStatuses = ['unpaid', 'pending', 'pending_verification', 'paid', 'failed', 'refunded']
-    if (status && !validStatuses.includes(status)) return apiError('Invalid status value', 400)
-    if (paymentStatus && !validPaymentStatuses.includes(paymentStatus)) return apiError('Invalid paymentStatus value', 400)
-    const [updated] = await db.update(orders)
-      .set({ status, paymentStatus, paymentRef, updatedAt: new Date() })
-      .where(eq(orders.id, id))
-      .returning()
-
-    if (!updated) return apiError('Order not found.', 404)
-    return apiOk({ ...updated, subtotal: Number(updated.subtotal), total: Number(updated.total) })
-  } catch (err) {
-    console.error('[order patch]', err)
-    return apiError('Failed to update order.', 500)
-  }
+  await context.params
+  return apiError('Use the dedicated admin status, payment, tracking, or refund action.', 405)
 }
 

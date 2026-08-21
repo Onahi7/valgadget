@@ -51,7 +51,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
   useEffect(() => {
     Promise.all([
       productService.getAdminById(id),
-      categoryService.getFlat(),
+      categoryService.getAdminAll(),
     ]).then(([pr, cr]) => {
       const p = pr as any
       if (p?.id) {
@@ -104,8 +104,8 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!form.name || !form.price || !form.sku) {
-      toast.error('Name, price, and SKU are required')
+    if (!form.name || !form.price || !form.sku || !form.categoryId) {
+      toast.error('Name, price, SKU, and category are required')
       return
     }
     if (variants.some(variant => !variant.name.trim() || !variant.sku.trim())) {
@@ -126,7 +126,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
       brand: form.brand.trim() || undefined,
       stock: Number(form.stock || 0),
       lowStockThreshold: Number(form.lowStockThreshold || 5),
-      categoryId: form.categoryId || undefined,
+      categoryId: form.categoryId,
       tags: updateConditionInTags(form.tags.split(',').map(t => t.trim()).filter(Boolean), condition),
       condition,
       variants: serializeVariantDrafts(variants),
@@ -374,6 +374,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                 categories={categories}
                 value={form.categoryId}
                 onChange={handleCategoryChange}
+                label="Category *"
               />
               <ConditionSelect value={condition} onChange={setCondition} />
               {isIphoneCategory ? (

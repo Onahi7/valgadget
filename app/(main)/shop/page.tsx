@@ -62,7 +62,6 @@ async function getShopData() {
   const categorySections = await Promise.all(
     categoryRows
       .filter(c => !c.parentId && c.productCount > 0)
-      .slice(0, 6)
       .map(async cat => {
         const children = await db
           .select({ id: categories.id })
@@ -71,7 +70,7 @@ async function getShopData() {
         const categoryIds = [cat.id, ...children.map(c => c.id)]
 
         const prods = await getProducts({
-          where: inArray(products.categoryId, categoryIds),
+          where: and(activeProducts, inArray(products.categoryId, categoryIds)),
           orderBy: desc(products.createdAt),
           limit: 6,
         })
@@ -85,11 +84,10 @@ async function getShopData() {
   )
 
   // Get subcategory banner cards
-  const subcategoryBanners = [
-    { label: 'Speakers', slug: 'speakers', image: 'https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?auto=format&fit=crop&w=800&q=80' },
-    { label: 'Rechargeable Fans', slug: 'rechargeable-fans', image: 'https://images.unsplash.com/photo-1585771724684-38269d6639fd?auto=format&fit=crop&w=800&q=80' },
-    { label: 'Monitors', slug: 'monitors', image: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=800&q=80' },
-  ]
+  const subcategoryBanners = categoryRows
+    .filter(category => category.parentId && category.image && category.productCount > 0)
+    .slice(0, 3)
+    .map(category => ({ label: category.name, slug: category.slug, image: category.image! }))
 
   return {
     categoryIcons,
@@ -182,10 +180,9 @@ export default async function ShopPage() {
                     unoptimized
                   />
                 </div>
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                <div className="absolute bottom-0 left-0 p-4">
-                  <h3 className="text-sm font-bold uppercase tracking-wide text-white">{card.label}</h3>
-                  <span className="mt-1 inline-flex items-center text-xs font-medium text-white/80 group-hover:text-white">
+                <div className="border-t border-border bg-card p-4">
+                  <h3 className="text-sm font-bold uppercase tracking-wide text-foreground">{card.label}</h3>
+                  <span className="mt-1 inline-flex items-center text-xs font-medium text-muted-foreground group-hover:text-foreground">
                     Shop Now
                     <ArrowRight className="ml-1 h-3 w-3 transition-transform group-hover:translate-x-0.5" />
                   </span>

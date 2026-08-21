@@ -28,8 +28,8 @@ export default function AdminCustomerDetailPage({ params }: { params: Promise<{ 
       fetch(`/api/admin/users/${id}`, { headers, credentials: 'include' }).then(r => r.json()),
       fetch(`/api/admin/orders?userId=${id}&limit=20`, { headers, credentials: 'include' }).then(r => r.json()),
     ]).then(([userRes, ordersRes]) => {
-      if (userRes.data) setCustomer(userRes.data)
-      if (ordersRes.data?.data) setOrders(ordersRes.data.data)
+      if (userRes.id || userRes.data) setCustomer(userRes.data ?? userRes)
+      if (Array.isArray(ordersRes.data)) setOrders(ordersRes.data)
     }).finally(() => setLoading(false))
   }, [id])
 

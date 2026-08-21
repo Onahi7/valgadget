@@ -153,6 +153,41 @@ async function main() {
     `
     await sql`CREATE INDEX IF NOT EXISTS products_condition_idx ON products(condition);`
 
+    // ── Migration 0009: Persisted order shipment tracking ────────────────
+    await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_number VARCHAR(200);`
+    await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_url TEXT;`
+
+    // ── Migration 0010: Refresh-token persistence for cookie auth ────────
+    await sql`CREATE TABLE IF NOT EXISTS refresh_tokens (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      token_hash TEXT NOT NULL UNIQUE,
+      expires_at TIMESTAMP NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    );`
+    await sql`CREATE INDEX IF NOT EXISTS refresh_tokens_user_idx ON refresh_tokens(user_id);`
+    await sql`CREATE INDEX IF NOT EXISTS refresh_tokens_hash_idx ON refresh_tokens(token_hash);`
+
+    // ── Migration 0011: Persisted admin activity log ─────────────────────
+    await sql`CREATE TABLE IF NOT EXISTS admin_activity_logs (
+      id TEXT PRIMARY KEY,
+      admin_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      action VARCHAR(100) NOT NULL,
+      entity_type VARCHAR(100) NOT NULL,
+      entity_id TEXT,
+      details TEXT,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    );`
+    await sql`CREATE INDEX IF NOT EXISTS admin_activity_created_idx ON admin_activity_logs(created_at);`
+    await sql`CREATE INDEX IF NOT EXISTS admin_activity_admin_idx ON admin_activity_logs(admin_id);`
+
+    // ── Migration 0012: First-class refund audit fields ─────────────────
+    await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS refund_amount NUMERIC(10, 2);`
+    await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS refund_reason TEXT;`
+    await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS refund_reference TEXT;`
+    await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS refund_status VARCHAR(30);`
+    await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS refunded_at TIMESTAMP;`
+
     console.log('All migrations applied successfully.')
   } catch (err) {
     console.error('Migration failed:', err)

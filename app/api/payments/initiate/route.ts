@@ -4,6 +4,8 @@ import { orders } from '@/lib/server/schema'
 import { getRequestUser, apiOk, apiError } from '@/lib/server/auth-helpers'
 import { and, eq } from 'drizzle-orm'
 import { toPaymentIntent } from '@/lib/server/payment-intents'
+import { getStoreSettings } from '@/lib/server/store-settings'
+import { toPublicStoreConfig } from '@/lib/store-settings'
 
 export async function POST(req: NextRequest) {
   try {
@@ -35,6 +37,10 @@ export async function POST(req: NextRequest) {
     if (method === 'crypto') {
       return apiOk(toPaymentIntent(order))
     }
+
+    if (order.paymentMethod !== 'paystack') return apiError('This order was created with a different payment method.', 409)
+    const config = toPublicStoreConfig(await getStoreSettings())
+    if (!config.paymentMethods.paystack) return apiError('Paystack is currently unavailable.', 503)
 
     const secretKey = process.env.PAYSTACK_SECRET_KEY
     if (!secretKey || secretKey.includes('replace') || secretKey.includes('placeholder')) {

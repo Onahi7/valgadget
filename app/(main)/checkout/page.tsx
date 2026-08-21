@@ -36,6 +36,7 @@ import { addressService, type UserAddress } from '@/lib/services/address.service
 import { NIGERIA_STATES_LGAS, getLGAsForState } from '@/lib/data/nigeria-locations'
 import { toast } from 'sonner'
 import type { ApiError } from '@/lib/api-client'
+import type { PublicStoreConfig } from '@/lib/store-settings'
 
 interface ShippingRate {
   id: string
@@ -56,6 +57,19 @@ const EMPTY_CRYPTO_ADDRESSES: CryptoAddresses = {
   eth: '',
   usdt_erc20: '',
   usdt_trc20: '',
+}
+
+const DEFAULT_PUBLIC_CONFIG: PublicStoreConfig = {
+  storeName: 'Val Gadgets',
+  storeEmail: 'support@valgadgets.com',
+  storePhone: '+234 703 857 2046',
+  shippingEnabled: true,
+  freeShippingEnabled: true,
+  freeShippingThreshold: 500000,
+  taxEnabled: false,
+  taxRate: 0,
+  pricesIncludeTax: true,
+  paymentMethods: { paystack: true, cod: true, btc: false, eth: false, usdtTrc20: false, usdtErc20: false },
 }
 
 const CRYPTO_METHODS = [
@@ -146,13 +160,14 @@ function CheckoutPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const affiliateCode = searchParams.get('ref') ?? undefined
-  const { items, total, clearCart, isHydrated } = useCart()
-  const { user, token, isLoading: authIsLoading } = useAuth()
+  const { items, subtotal, total, couponCode, clearCart, isHydrated } = useCart()
+  const { user, isLoading: authIsLoading } = useAuth()
   const [step, setStep] = useState<CheckoutStep>('delivery')
   const [cryptoTxHash, setCryptoTxHash] = useState('')
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(null)
   const [createdOrderRef, setCreatedOrderRef] = useState<string | null>(null)
   const [createdOrderTotal, setCreatedOrderTotal] = useState(0)
+  const [guestAccessToken, setGuestAccessToken] = useState('')
   const [shippingRates, setShippingRates] = useState<ShippingRate[]>([])
   const [selectedRate, setSelectedRate] = useState<ShippingRate | null>(null)
   const [savedAddresses, setSavedAddresses] = useState<UserAddress[]>([])
@@ -160,6 +175,7 @@ function CheckoutPageContent() {
   const [showNewAddressForm, setShowNewAddressForm] = useState(false)
   const [initializingPayment, setInitializingPayment] = useState(false)
   const [cryptoAddresses, setCryptoAddresses] = useState<CryptoAddresses>(EMPTY_CRYPTO_ADDRESSES)
+  const [storeConfig, setStoreConfig] = useState<PublicStoreConfig>(DEFAULT_PUBLIC_CONFIG)
 
   const {
     register,
@@ -182,26 +198,43 @@ function CheckoutPageContent() {
   const watchedState = watch('state')
   const watchedSaveAddress = watch('saveAddress')
   const availableLGAs = watchedState ? getLGAsForState(watchedState) : []
-  const shippingCost = selectedRate ? Number(selectedRate.price) : 0
-  const orderTotal = total + shippingCost
-  const isCrypto = selectedPayment !== 'paystack'
+  const qualifiesForFreeShipping = storeConfig.freeShippingEnabled && subtotal >= storeConfig.freeShippingThreshold
+  const shippingCost = !storeConfig.shippingEnabled || qualifiesForFreeShipping ? 0 : selectedRate ? Number(selectedRate.price) : 0
+  const tax = storeConfig.taxEnabled && !storeConfig.pricesIncludeTax ? Math.round(total * storeConfig.taxRate) / 100 : 0
+  const orderTotal = total + shippingCost + tax
+  const isCrypto = CRYPTO_METHODS.some(method => method.id === selectedPayment)
 
   const paymentMethods = useMemo(() => {
-    const paystack = [{ id: 'paystack', label: 'Pay with Paystack', description: 'Card, bank transfer, USSD and more', icon: CreditCard }]
-    if (!user) return paystack
+    const methods = []
+    if (storeConfig.paymentMethods.paystack) {
+      methods.push({ id: 'paystack', label: 'Pay with Paystack', description: 'Card, bank transfer, USSD and more', icon: CreditCard })
+    }
+    if (storeConfig.paymentMethods.cod) {
+      methods.push({ id: 'cod', label: 'Cash on delivery', description: 'Pay when your order arrives', icon: Truck })
+    }
+    if (!user) return methods
     return [
-      ...paystack,
+      ...methods,
       ...CRYPTO_METHODS
-        .filter(method => cryptoAddresses[method.id])
+        .filter(method => {
+          const enabled = method.id === 'btc' ? storeConfig.paymentMethods.btc
+            : method.id === 'eth' ? storeConfig.paymentMethods.eth
+              : method.id === 'usdt_trc20' ? storeConfig.paymentMethods.usdtTrc20
+                : storeConfig.paymentMethods.usdtErc20
+          return enabled && cryptoAddresses[method.id]
+        })
         .map(method => ({ ...method, icon: Bitcoin })),
     ]
-  }, [cryptoAddresses, user])
+  }, [cryptoAddresses, storeConfig.paymentMethods, user])
 
   useEffect(() => {
-    fetch('/api/shipping-rates')
-      .then(response => response.json())
-      .then(json => {
-        if (Array.isArray(json)) setShippingRates(json)
+    Promise.all([
+      fetch('/api/shipping-rates').then(response => response.ok ? response.json() : Promise.reject()),
+      fetch('/api/store-config').then(response => response.ok ? response.json() : Promise.reject()),
+    ])
+      .then(([rates, config]) => {
+        if (Array.isArray(rates)) setShippingRates(rates)
+        if (config && typeof config === 'object') setStoreConfig(config)
       })
       .catch(() => toast.error('We could not load delivery rates. Please refresh and try again.'))
   }, [])
@@ -230,7 +263,7 @@ function CheckoutPageContent() {
 
   useEffect(() => {
     if (!paymentMethods.some(method => method.id === selectedPayment)) {
-      setValue('paymentMethod', 'paystack')
+      setValue('paymentMethod', paymentMethods[0]?.id ?? '')
     }
   }, [paymentMethods, selectedPayment, setValue])
 
@@ -272,7 +305,7 @@ function CheckoutPageContent() {
     const valid = await trigger(deliveryFields, { shouldFocus: true })
     if (!valid) return
 
-    if (!selectedRate) {
+    if (storeConfig.shippingEnabled && !selectedRate) {
       toast.error('A delivery rate is not available for the selected state yet.')
       return
     }
@@ -286,7 +319,7 @@ function CheckoutPageContent() {
       await continueToPayment()
       return
     }
-    if (!selectedRate) {
+    if (storeConfig.shippingEnabled && !selectedRate) {
       toast.error('Select a valid delivery address before paying.')
       setStep('delivery')
       return
@@ -319,6 +352,7 @@ function CheckoutPageContent() {
 
       let orderId = createdOrderId
       let orderReference = createdOrderRef
+      let orderGuestToken = guestAccessToken
 
       if (!orderId) {
         const order = await orderService.create({
@@ -333,7 +367,8 @@ function CheckoutPageContent() {
             country: data.country,
             phone: data.phone,
           },
-          paymentMethod: isCrypto ? 'crypto' : 'paystack',
+          paymentMethod: isCrypto ? 'crypto' : data.paymentMethod,
+          couponCode: couponCode ?? undefined,
           affiliateCode,
           guestEmail: user ? undefined : data.guestEmail,
         })
@@ -341,12 +376,14 @@ function CheckoutPageContent() {
         orderReference = order.reference
         setCreatedOrderId(order.id)
         setCreatedOrderRef(order.reference)
-        setCreatedOrderTotal(orderTotal)
+        setCreatedOrderTotal(order.total)
+        setGuestAccessToken(order.guestAccessToken ?? '')
+        orderGuestToken = order.guestAccessToken ?? ''
       }
 
       if (data.paymentMethod === 'paystack') {
         setInitializingPayment(true)
-        const destination = user ? `/account/orders/${orderId}` : `/orders/guest/${orderId}`
+        const destination = user ? `/account/orders/${orderId}` : `/orders/guest/${orderId}?token=${encodeURIComponent(orderGuestToken)}`
         const intent = await paymentService.initiate({
           orderId,
           method: 'card',
@@ -361,9 +398,15 @@ function CheckoutPageContent() {
         return
       }
 
+      if (data.paymentMethod === 'cod') {
+        clearCart()
+        toast.success('Order confirmed. You can pay when it arrives.')
+        router.push(user ? `/account/orders/${orderId}?new=1` : `/orders/guest/${orderId}?token=${encodeURIComponent(orderGuestToken)}&new=1`)
+        return
+      }
+
       setCreatedOrderId(orderId)
       setCreatedOrderRef(orderReference)
-      setCreatedOrderTotal(orderTotal)
       clearCart()
       toast.success('Order placed. Complete the crypto transfer below.')
     } catch (error) {
@@ -375,10 +418,11 @@ function CheckoutPageContent() {
   }
 
   const submitCryptoHash = async () => {
-    if (!cryptoTxHash.trim() || !createdOrderId || !token) return
+    if (!cryptoTxHash.trim() || !createdOrderId) return
     const response = await fetch('/api/payments/crypto', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      headers: { 'Content-Type': 'application/json', 'x-requested-with': 'XMLHttpRequest' },
+      credentials: 'include',
       body: JSON.stringify({ orderId: createdOrderId, txHash: cryptoTxHash.trim(), coin: selectedPayment }),
     })
     const json = await response.json()
@@ -470,6 +514,8 @@ function CheckoutPageContent() {
                           <p className="text-xs text-slate-500">Order updates will be sent here</p>
                         </div>
                       </div>
+                    ) : selectedPayment === 'cod' ? (
+                      <>Confirm cash-on-delivery order <ArrowRight className="h-4 w-4" /></>
                     ) : (
                       <FormField label="Email address" htmlFor="guestEmail" error={errors.guestEmail?.message}>
                         <Input id="guestEmail" type="email" autoComplete="email" placeholder="you@example.com" className={fieldClassName} {...register('guestEmail')} />
@@ -599,6 +645,11 @@ function CheckoutPageContent() {
                   </div>
 
                   <div className="mt-6 space-y-3">
+                    {paymentMethods.length === 0 ? (
+                      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                        No payment method is currently available. Please contact support or try again later.
+                      </div>
+                    ) : null}
                     {paymentMethods.map(method => {
                       const Icon = method.icon
                       const active = selectedPayment === method.id
@@ -616,7 +667,7 @@ function CheckoutPageContent() {
                     })}
                   </div>
 
-                  <Button type="submit" size="lg" disabled={isSubmitting || initializingPayment} className="mt-7 h-12 w-full rounded-lg text-base font-semibold">
+                  <Button type="submit" size="lg" disabled={isSubmitting || initializingPayment || paymentMethods.length === 0} className="mt-7 h-12 w-full rounded-lg text-base font-semibold">
                     {isSubmitting || initializingPayment ? (
                       <><Loader2 className="h-4 w-4 animate-spin" /> Preparing secure payment…</>
                     ) : selectedPayment === 'paystack' ? (
@@ -630,7 +681,7 @@ function CheckoutPageContent() {
             )}
           </form>
 
-          <CheckoutSummary shipping={shippingCost} shippingKnown={Boolean(selectedRate)} />
+          <CheckoutSummary shipping={shippingCost} shippingKnown={!storeConfig.shippingEnabled || Boolean(selectedRate)} tax={tax} />
         </div>
       </div>
     </div>

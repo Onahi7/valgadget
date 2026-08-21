@@ -57,7 +57,7 @@ export default function AdminReviewsPage() {
         credentials: 'include',
       })
       const data = await res.json()
-      if (data.data) setReviews(data.data)
+      setReviews(Array.isArray(data) ? data : data.data ?? [])
     } catch (err) {
       toast.error('Failed to load reviews')
     } finally {

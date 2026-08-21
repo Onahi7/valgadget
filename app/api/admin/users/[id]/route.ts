@@ -3,6 +3,7 @@ import { db } from '@/lib/server/db'
 import { users } from '@/lib/server/schema'
 import { requireAuth, apiOk, apiError } from '@/lib/server/auth-helpers'
 import { eq } from 'drizzle-orm'
+import { logAdminActivity } from '@/lib/server/admin-activity'
 
 export async function GET(
   req: NextRequest,
@@ -50,6 +51,7 @@ export async function PATCH(
       })
 
     if (!updated) return apiError('User not found.', 404)
+    await logAdminActivity(auth.user.sub, 'updated', 'customer', id, `Updated ${updated.email}`)
     return apiOk(updated)
   } catch (err) {
     console.error('[admin/users/[id] patch]', err)
@@ -69,5 +71,6 @@ export async function DELETE(
 
   const [deleted] = await db.delete(users).where(eq(users.id, id)).returning({ id: users.id })
   if (!deleted) return apiError('User not found.', 404)
+  await logAdminActivity(auth.user.sub, 'deleted', 'customer', id)
   return apiOk({ message: 'User deleted.' })
 }

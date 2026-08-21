@@ -1,20 +1,31 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { X } from 'lucide-react'
-
-const ANNOUNCEMENTS = [
-  'Free shipping on orders over ₦500,000 — nationwide delivery across Nigeria.',
-  'Live raffles are active now - win premium gadgets from low ticket prices.',
-  'Flash deals are updated daily - check the shop for today\'s best offers.',
-  'Secure checkout - pay with card, bank transfer, or USSD via Paystack.',
-  'Same-day dispatch on orders placed before 2PM on weekdays.',
-]
 
 export function AnnouncementBar() {
   const [visible, setVisible] = useState(true)
   const [current, setCurrent] = useState(0)
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
+  const [freeShippingThreshold, setFreeShippingThreshold] = useState(500000)
+  const [freeShippingEnabled, setFreeShippingEnabled] = useState(true)
+  const announcements = useMemo(() => [
+    ...(freeShippingEnabled ? [`Free shipping on orders over ₦${freeShippingThreshold.toLocaleString('en-NG')} — nationwide delivery across Nigeria.`] : []),
+    'Live raffles are active now - win premium gadgets from low ticket prices.',
+    'Flash deals are updated daily - check the shop for today\'s best offers.',
+    'Secure checkout with flexible payment options.',
+    'Same-day dispatch on orders placed before 2PM on weekdays.',
+  ], [freeShippingEnabled, freeShippingThreshold])
+
+  useEffect(() => {
+    fetch('/api/store-config')
+      .then(response => response.ok ? response.json() : Promise.reject())
+      .then(config => {
+        setFreeShippingEnabled(Boolean(config.freeShippingEnabled))
+        if (Number.isFinite(Number(config.freeShippingThreshold))) setFreeShippingThreshold(Number(config.freeShippingThreshold))
+      })
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (!visible) {
@@ -22,10 +33,10 @@ export function AnnouncementBar() {
       return
     }
     intervalRef.current = setInterval(() => {
-      setCurrent(c => (c + 1) % ANNOUNCEMENTS.length)
+      setCurrent(c => (c + 1) % announcements.length)
     }, 4000)
     return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
-  }, [visible])
+  }, [announcements.length, visible])
 
   if (!visible) return null
 
@@ -36,7 +47,7 @@ export function AnnouncementBar() {
           key={current}
           className="animate-fade-in px-8 text-center leading-relaxed"
         >
-          {ANNOUNCEMENTS[current]}
+          {announcements[current % announcements.length]}
         </span>
         <button
           onClick={() => setVisible(false)}

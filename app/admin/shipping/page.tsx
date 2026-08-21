@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import { getToken } from '@/lib/api-client'
-import { Truck, Pencil, Check, X, MapPin } from 'lucide-react'
+import { Pencil, Check, X, MapPin, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { NIGERIA_STATES } from '@/lib/data/nigeria-locations'
 
 interface ShippingRate {
   id: string
@@ -25,17 +26,48 @@ export default function AdminShippingPage() {
   const [editDays, setEditDays] = useState('')
   const [search, setSearch] = useState('')
   const [saving, setSaving] = useState(false)
+  const [newState, setNewState] = useState('')
+  const [newPrice, setNewPrice] = useState('2500')
+  const [newDays, setNewDays] = useState('3')
 
   useEffect(() => { fetchRates() }, [])
 
   async function fetchRates() {
-    const res = await fetch('/api/shipping-rates', {
-      headers: { Authorization: `Bearer ${getToken()}` },
-      credentials: 'include',
-    })
-    const json = await res.json()
-    if (json.data) setRates(json.data)
-    setLoading(false)
+    try {
+      const res = await fetch('/api/shipping-rates', {
+        headers: { Authorization: `Bearer ${getToken()}` },
+        credentials: 'include',
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.message ?? 'Failed to load rates')
+      if (Array.isArray(json)) setRates(json)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to load shipping rates')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function addRate() {
+    if (!newState) return toast.error('Select a state')
+    setSaving(true)
+    try {
+      const res = await fetch('/api/shipping-rates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+        credentials: 'include',
+        body: JSON.stringify({ state: newState, price: Number(newPrice), estimatedDays: Number(newDays) }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.message ?? 'Failed to add rate')
+      setRates(prev => [...prev.filter(rate => rate.id !== json.id), json].sort((a, b) => a.state.localeCompare(b.state)))
+      setNewState('')
+      toast.success(`${json.state} delivery rate added`)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to add rate')
+    } finally {
+      setSaving(false)
+    }
   }
 
   function startEdit(r: ShippingRate) {
@@ -46,40 +78,47 @@ export default function AdminShippingPage() {
 
   async function saveEdit(id: string) {
     setSaving(true)
-    const res = await fetch(`/api/shipping-rates/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-      credentials: 'include',
-      body: JSON.stringify({ price: Number(editPrice), estimatedDays: Number(editDays) }),
-    })
-    const json = await res.json()
-    if (res.ok) {
-      setRates(prev => prev.map(r => r.id === id ? json.data : r))
+    try {
+      const res = await fetch(`/api/shipping-rates/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+        credentials: 'include',
+        body: JSON.stringify({ price: Number(editPrice), estimatedDays: Number(editDays) }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.message ?? 'Failed to update')
+      setRates(prev => prev.map(r => r.id === id ? json : r))
       toast.success('Rate updated')
       setEditId(null)
-    } else {
-      toast.error(json.message ?? 'Failed to update')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to update')
+    } finally {
+      setSaving(false)
     }
-    setSaving(false)
   }
 
   async function toggleActive(r: ShippingRate) {
-    const res = await fetch(`/api/shipping-rates/${r.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-      credentials: 'include',
-      body: JSON.stringify({ isActive: !r.isActive }),
-    })
-    const json = await res.json()
-    if (res.ok) {
-      setRates(prev => prev.map(x => x.id === r.id ? json.data : x))
+    try {
+      const res = await fetch(`/api/shipping-rates/${r.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+        credentials: 'include',
+        body: JSON.stringify({ isActive: !r.isActive }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.message ?? 'Failed to update state')
+      setRates(prev => prev.map(x => x.id === r.id ? json : x))
       toast.success(r.isActive ? 'State disabled' : 'State enabled')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to update state')
     }
   }
 
   const filtered = rates.filter(r => r.state.toLowerCase().includes(search.toLowerCase()))
   const totalActive = rates.filter(r => r.isActive).length
   const avgPrice = rates.length ? (rates.reduce((sum, r) => sum + Number(r.price), 0) / rates.length) : 0
+  const configuredStates = new Set(rates.map(rate => rate.state))
+  const missingStates = NIGERIA_STATES.filter(state => !configuredStates.has(state))
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -103,6 +142,29 @@ export default function AdminShippingPage() {
       </div>
 
       <div className="bg-card border border-border rounded-lg overflow-hidden">
+        {missingStates.length > 0 ? (
+          <div className="border-b border-border bg-muted/30 p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <Plus className="h-4 w-4 text-primary" />
+              <p className="text-sm font-semibold">Add a missing state</p>
+              <span className="ml-auto text-xs text-muted-foreground">{missingStates.length} remaining</span>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-[1fr_120px_90px_auto]">
+              <select
+                value={newState}
+                onChange={event => setNewState(event.target.value)}
+                className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                aria-label="State to add"
+              >
+                <option value="">Select state</option>
+                {missingStates.map(state => <option key={state} value={state}>{state}</option>)}
+              </select>
+              <Input type="number" min="0" value={newPrice} onChange={event => setNewPrice(event.target.value)} aria-label="Delivery price" />
+              <Input type="number" min="1" max="60" value={newDays} onChange={event => setNewDays(event.target.value)} aria-label="Delivery days" />
+              <Button onClick={addRate} disabled={saving || !newState} className="gap-2"><Plus className="h-4 w-4" /> Add</Button>
+            </div>
+          </div>
+        ) : null}
         <div className="px-5 py-4 border-b border-border flex items-center gap-3">
           <MapPin className="w-4 h-4 text-primary shrink-0" />
           <Input

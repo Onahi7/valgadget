@@ -93,7 +93,7 @@ export const raffleService = {
 
   /** [Admin] Update raffle details */
   update: (id: string, payload: Partial<CreateRafflePayload>) =>
-    api.put<Raffle>(`/admin/raffles/${id}`, payload),
+    api.patch<Raffle>(`/admin/raffles/${id}`, payload),
 
   /** [Admin] Trigger the draw and pick a winner */
   draw: (id: string) =>

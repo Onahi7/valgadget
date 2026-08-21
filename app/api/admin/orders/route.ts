@@ -1,9 +1,9 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
-import { orders, users } from '@/lib/server/schema'
-import { requireAuth, apiOk, apiError } from '@/lib/server/auth-helpers'
+import { orders } from '@/lib/server/schema'
+import { requireAuth, apiOk } from '@/lib/server/auth-helpers'
 import { numericOrder } from '@/lib/server/order-helpers'
-import { desc, eq, ilike, sql, and, type SQL } from 'drizzle-orm'
+import { desc, eq, sql, and, type SQL } from 'drizzle-orm'
 
 // GET /api/admin/orders — paginated list with optional status/search filter
 export async function GET(req: NextRequest) {
@@ -15,9 +15,11 @@ export async function GET(req: NextRequest) {
   const limit  = Math.min(100, Math.max(1, Number(searchParams.get('limit') ?? '20')))
   const status = searchParams.get('status') ?? undefined
   const search = searchParams.get('search')?.trim() ?? undefined
+  const userId = searchParams.get('userId')?.trim() ?? undefined
 
   const conditions: SQL[] = []
   if (status) conditions.push(eq(orders.status, status))
+  if (userId) conditions.push(eq(orders.userId, userId))
   if (search) {
     conditions.push(sql`(${orders.reference} ilike ${`%${search}%`} or coalesce(${orders.shippingAddress}->>'fullName', '') ilike ${`%${search}%`})`)
   }

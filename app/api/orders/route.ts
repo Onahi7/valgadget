@@ -7,6 +7,11 @@ import { rateLimit, getRateLimitKey } from '@/lib/server/rate-limiter'
 import { numericOrder } from '@/lib/server/order-helpers'
 import { eq, desc, and, sql, inArray } from 'drizzle-orm'
 import type { OrderItem, Address } from '@/lib/server/schema'
+import { getStoreSettings } from '@/lib/server/store-settings'
+import { settingIsTrue, settingNumber, toPublicStoreConfig } from '@/lib/store-settings'
+import { sendPurchaseConfirmationForOrder } from '@/lib/server/order-email'
+import { createGuestOrderAccessToken } from '@/lib/server/guest-order-access'
+import { safeSendEmail } from '@/lib/server/email'
 
 class ApiFailure extends Error {
   constructor(message: string, public status = 400) {
@@ -53,6 +58,8 @@ export async function POST(req: NextRequest) {
   let scopedIdempotencyKey: string | undefined
 
   try {
+    const storeSettings = await getStoreSettings()
+    const storeConfig = toPublicStoreConfig(storeSettings)
     const body = await req.json()
     const { items: rawItems, shippingAddress, couponCode, affiliateCode, paymentMethod, notes, guestEmail, idempotencyKey: bodyIdempotencyKey } = body as {
       items: Array<{ productId: string; quantity?: number; qty?: number }>
@@ -71,8 +78,17 @@ export async function POST(req: NextRequest) {
     if (items.some(i => !i.productId || !Number.isInteger(i.qty) || i.qty < 1)) {
       return apiError('Each order item must include a product and a quantity of at least 1.', 422)
     }
-    if ((paymentMethod ?? 'paystack') !== 'paystack') {
-      return apiError('Only Paystack payment is currently enabled.', 400)
+    const requestedPaymentMethod = (paymentMethod ?? 'paystack').toLowerCase()
+    if (!['paystack', 'crypto', 'cod'].includes(requestedPaymentMethod)) return apiError('Invalid payment method.', 422)
+    if (requestedPaymentMethod === 'paystack' && !storeConfig.paymentMethods.paystack) return apiError('Paystack is currently unavailable.', 422)
+    if (requestedPaymentMethod === 'cod' && !storeConfig.paymentMethods.cod) return apiError('Cash on delivery is currently unavailable.', 422)
+    if (requestedPaymentMethod === 'crypto') {
+      const cryptoEnabled = storeConfig.paymentMethods.btc || storeConfig.paymentMethods.eth || storeConfig.paymentMethods.usdtTrc20 || storeConfig.paymentMethods.usdtErc20
+      if (!cryptoEnabled) return apiError('Crypto payments are currently unavailable.', 422)
+      if (!user) return apiError('Sign in to pay with crypto.', 401)
+    }
+    if (settingIsTrue(storeSettings, 'maintenanceMode') && user?.role !== 'admin') {
+      return apiError('Checkout is temporarily unavailable while the store is under maintenance.', 503)
     }
     if (!shippingAddress) return apiError('Shipping address is required.')
 
@@ -135,19 +151,20 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Look up shipping rate from DB based on state.
+      // Look up shipping from the configured state rates. Never trust a client total.
       let shipping = 0
       const addrState = (shippingAddress as unknown as Record<string, unknown>)?.state as string | undefined
-      if (addrState && addrState !== 'Other' && subtotal < 50000) {
+      if (settingIsTrue(storeSettings, 'shippingEnabled')) {
+        if (!addrState) throw new ApiFailure('Select a delivery state.', 422)
         const [rate] = await tx.select({ price: shippingRates.price })
           .from(shippingRates)
           .where(and(eq(shippingRates.state, addrState), eq(shippingRates.isActive, true)))
           .limit(1)
-        shipping = rate ? Number(rate.price) : 2500
-      } else if (addrState !== 'Other' && subtotal < 50000) {
-        shipping = 2500 // fallback flat rate
+        if (!rate) throw new ApiFailure('Delivery is not currently available for the selected state.', 422)
+        const qualifiesForFreeShipping = settingIsTrue(storeSettings, 'freeShippingEnabled')
+          && subtotal >= settingNumber(storeSettings, 'freeShippingThreshold')
+        shipping = qualifiesForFreeShipping ? 0 : Number(rate.price)
       }
-      const tax = 0 // No VAT added (prices are tax-inclusive)
 
       // Validate and apply coupon if provided
       let discount = 0
@@ -173,6 +190,8 @@ export async function POST(req: NextRequest) {
         } else if (coupon.type === 'fixed') {
           discount = Number(coupon.value)
           discount = Math.min(discount, subtotal)
+        } else if (coupon.type === 'free_shipping') {
+          shipping = 0
         }
 
         discount = Math.round(discount * 100) / 100
@@ -184,6 +203,10 @@ export async function POST(req: NextRequest) {
           .where(eq(coupons.id, coupon.id))
       }
 
+      const taxableAmount = Math.max(0, subtotal - discount)
+      const tax = settingIsTrue(storeSettings, 'taxEnabled') && !settingIsTrue(storeSettings, 'pricesIncludeTax')
+        ? Math.round(taxableAmount * settingNumber(storeSettings, 'taxRate')) / 100
+        : 0
       const total = Math.max(0, subtotal - discount + shipping + tax)
 
       const [createdOrder] = await tx.insert(orders).values({
@@ -191,9 +214,9 @@ export async function POST(req: NextRequest) {
         idempotencyKey: scopedIdempotencyKey,
         userId: user?.sub || null,
         guestEmail: user ? null : guestEmail,
-        status: 'pending',
+        status: requestedPaymentMethod === 'cod' ? 'confirmed' : 'pending',
         paymentStatus: 'unpaid',
-        paymentMethod: 'paystack',
+        paymentMethod: requestedPaymentMethod,
         items: orderItems,
         subtotal: String(subtotal.toFixed(2)),
         discount: String(discount.toFixed(2)),
@@ -220,7 +243,27 @@ export async function POST(req: NextRequest) {
       return createdOrder
     })
 
-    return apiOk(numericOrder(order), 201)
+    if (requestedPaymentMethod === 'cod' && settingIsTrue(storeSettings, 'emailOrderConfirm')) {
+      void sendPurchaseConfirmationForOrder(order, 'cash-on-delivery order email').catch(error => {
+        console.error('[cash-on-delivery order email]', error)
+      })
+    }
+    if (settingIsTrue(storeSettings, 'alertNewOrder')) {
+      const amount = `₦${Number(order.total).toLocaleString('en-NG')}`
+      void safeSendEmail(
+        storeSettings.storeEmail,
+        `New order — ${order.reference}`,
+        `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;"><h2>New order received</h2><p><strong>${order.reference}</strong> was placed for ${amount} via ${requestedPaymentMethod}.</p><p>Open the admin dashboard to review and fulfil it.</p></div>`,
+        'new-order-alert',
+      )
+    }
+
+    return apiOk({
+      ...numericOrder(order),
+      ...(!order.userId && order.guestEmail
+        ? { guestAccessToken: createGuestOrderAccessToken(order.id, order.guestEmail) }
+        : {}),
+    }, 201)
   } catch (err) {
     if (err instanceof ApiFailure) {
       return apiError(err.message, err.status)

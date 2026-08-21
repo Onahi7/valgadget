@@ -35,8 +35,8 @@ export default function EditRafflePage({ params }: { params: Promise<{ id: strin
     })
       .then(r => r.json())
       .then(data => {
-        if (data.data) {
-          const r = data.data
+        if (data.id || data.data) {
+          const r = data.data ?? data
           setForm({
             title: r.title ?? '',
             description: r.description ?? '',

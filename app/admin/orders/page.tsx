@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { getToken } from '@/lib/api-client'
+import { useDebounce } from '@/hooks/use-debounce'
+import { toast } from 'sonner'
 import { ORDER_STATUS_COLORS, PAYMENT_STATUS_COLORS } from '@/lib/constants/admin-status-colors'
 
 const STATUS_OPTIONS = ['all', 'pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded']
@@ -39,17 +41,21 @@ export default function AdminOrdersPage() {
   const [summary, setSummary]     = useState<Record<string, number>>({})
 
   const PAGE_SIZE = 20
+  const debouncedSearch = useDebounce(search, 300)
 
   const fetchOrders = (p: number) => {
     setLoading(true)
     const params = new URLSearchParams({ page: String(p), limit: String(PAGE_SIZE) })
     if (statusFilter !== 'all') params.set('status', statusFilter)
-    if (search) params.set('search', search)
+    if (debouncedSearch) params.set('search', debouncedSearch)
     fetch(`/api/admin/orders?${params}`, {
       headers: { Authorization: `Bearer ${getToken()}` },
       credentials: 'include',
     })
-      .then(r => r.json())
+      .then(async r => {
+        if (!r.ok) throw new Error(`Request failed (${r.status})`)
+        return r.json()
+      })
       .then((d: OrdersResponse) => {
         if (d.data) setOrders(d.data)
         if (d.totalPages) setTotalPages(d.totalPages)
@@ -57,12 +63,18 @@ export default function AdminOrdersPage() {
         setSummary(d.summary ?? {})
         setPage(p)
       })
+      .catch(() => {
+        setOrders([])
+        setTotal(0)
+        setSummary({})
+        toast.error('Failed to load orders')
+      })
       .finally(() => setLoading(false))
   }
 
   useEffect(() => {
     fetchOrders(1)
-  }, [search, statusFilter])
+  }, [debouncedSearch, statusFilter])
 
   const revenue = Number(summary.revenue ?? 0)
 
@@ -93,7 +105,7 @@ export default function AdminOrdersPage() {
           return (
             <button
               key={status}
-              onClick={() => setStatus(status)}
+              onClick={() => setStatus(statusFilter === status ? 'all' : status)}
               className={cn(
                 'bg-card border border-border rounded-lg px-3 py-2.5 text-center transition-all hover:border-primary/40',
                 statusFilter === status && 'border-primary ring-1 ring-primary/20'

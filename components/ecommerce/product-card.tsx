@@ -17,9 +17,10 @@ import { toCartItem, toWishlistItem } from '@/lib/cart-helpers'
 interface ProductCardProps {
   product: Product
   className?: string
+  priority?: boolean
 }
 
-export function ProductCard({ product, className }: ProductCardProps) {
+export function ProductCard({ product, className, priority = false }: ProductCardProps) {
   const { addToCart } = useCart()
   const { toggle, has } = useWishlist()
   const isWishlisted = has(product.id)
@@ -115,6 +116,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
             'object-contain p-3 transition-all duration-500 sm:p-4',
             hoverImage ? 'group-hover:opacity-0' : 'group-hover:scale-[1.03]'
           )}
+          priority={priority}
           unoptimized
         />
         {hoverImage && (

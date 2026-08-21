@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
 import { users, orders } from '@/lib/server/schema'
 import { requireAuth, apiOk, apiError } from '@/lib/server/auth-helpers'
-import { desc, ilike, eq, sql, and, type SQL, count, sum } from 'drizzle-orm'
+import { desc, ilike, eq, sql, and, or, inArray, type SQL, count } from 'drizzle-orm'
 
 export async function GET(req: NextRequest) {
   const auth = await requireAuth(req, ['admin'])
@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
 
   const conditions: SQL[] = []
   if (role)   conditions.push(eq(users.role, role))
-  if (search) conditions.push(ilike(users.name, `%${search}%`))
+  if (search) conditions.push(or(ilike(users.name, `%${search}%`), ilike(users.email, `%${search}%`))!)
 
   const where = conditions.length ? and(...conditions) : undefined
 
@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
       spent: sql<number>`COALESCE(SUM(${orders.total})::int, 0)`.as('spent'),
     })
     .from(orders)
-    .where(sql`${orders.userId} IN (${userIds.join(',')})`)
+    .where(inArray(orders.userId, userIds))
     .groupBy(orders.userId)
 
     ordersData = result as any

@@ -1,7 +1,8 @@
 import type { Metadata } from 'next'
+import { cache } from 'react'
 import { db } from '@/lib/server/db'
 import { categories } from '@/lib/server/schema'
-import { asc, eq } from 'drizzle-orm'
+import { and, asc, eq, sql } from 'drizzle-orm'
 import { CategoryDetailClient } from './category-detail-client'
 import { withCategoryDisplayImages } from '@/lib/server/category-images'
 
@@ -9,7 +10,7 @@ interface PageProps {
   params: Promise<{ slug: string }>
 }
 
-async function getCategory(slug: string) {
+const getCategory = cache(async (slug: string) => {
   const [category] = await db
     .select({
       id: categories.id,
@@ -26,10 +27,22 @@ async function getCategory(slug: string) {
       updatedAt: categories.updatedAt,
     })
     .from(categories)
-    .where(eq(categories.slug, slug))
+    .where(and(
+      eq(categories.slug, slug),
+      eq(categories.isActive, true),
+      sql`exists (
+        select 1
+        from products p
+        where p.is_active = true
+          and (
+            p.category_id = ${categories.id}
+            or p.category_id in (select c2.id from categories c2 where c2.parent_id = ${categories.id} and c2.is_active = true)
+          )
+      )`,
+    ))
     .limit(1)
 
-  if (!category || !category.isActive) return null
+  if (!category) return null
 
   const [categoryWithImage] = await withCategoryDisplayImages([{
     ...category,
@@ -44,7 +57,7 @@ async function getCategory(slug: string) {
   }])
 
   return categoryWithImage
-}
+})
 
 async function getSubcategories(parentId: string) {
   const rows = await db
@@ -55,9 +68,13 @@ async function getSubcategories(parentId: string) {
       image: categories.image,
     })
     .from(categories)
-    .where(eq(categories.parentId, parentId))
+    .where(and(
+      eq(categories.parentId, parentId),
+      eq(categories.isActive, true),
+      sql`exists (select 1 from products p where p.is_active = true and p.category_id = ${categories.id})`,
+    ))
     .orderBy(asc(categories.sortOrder))
-  return rows
+  return withCategoryDisplayImages(rows)
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {

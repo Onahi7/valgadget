@@ -18,6 +18,7 @@ export function normalizeProductCondition(value: string | null | undefined): Pro
 }
 
 const optionalText = (max: number) => z.string().trim().max(max).optional().nullable()
+const requiredCategoryId = z.string().trim().min(1, 'Select a category.').max(100)
 
 const specsSchema = z.array(z.object({
   label: z.string().trim().min(1).max(80),
@@ -68,6 +69,7 @@ export const createAdminProductSchema = z.object({
   sku: z.string().trim().min(1).max(100),
   price: z.number().positive(),
   ...commonProductFields,
+  categoryId: requiredCategoryId,
 }).superRefine((value, ctx) => validateProductRelationships(value, ctx))
 
 export const updateAdminProductSchema = z.object({
@@ -79,7 +81,7 @@ export const updateAdminProductSchema = z.object({
   specs: specsSchema.optional(),
   comparePrice: commonProductFields.comparePrice,
   cost: commonProductFields.cost,
-  categoryId: commonProductFields.categoryId,
+  categoryId: requiredCategoryId.optional(),
   stock: commonProductFields.stock.optional(),
   lowStockThreshold: commonProductFields.lowStockThreshold.optional(),
   barcode: commonProductFields.barcode,

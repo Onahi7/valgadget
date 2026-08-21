@@ -92,9 +92,10 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
               ))}
             </div>
             {order.trackingNumber && (
-              <p className="text-xs text-muted-foreground mt-4">
-                Tracking: <span className="font-mono font-bold text-foreground">{order.trackingNumber}</span>
-              </p>
+              <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                <span>Tracking: <span className="font-mono font-bold text-foreground">{order.trackingNumber}</span></span>
+                {order.trackingUrl && <Button asChild size="sm" variant="outline" className="h-8"><a href={order.trackingUrl} target="_blank" rel="noreferrer">Track shipment</a></Button>}
+              </div>
             )}
           </div>
         )}

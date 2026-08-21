@@ -53,36 +53,32 @@ export default function CategoriesPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-6 stagger-children md:grid-cols-2 lg:grid-cols-3">
-          {parentGroups.map(({ parent, children }) => (
+          {parentGroups.map(({ parent, children }, groupIndex) => (
             <div
               key={parent.id}
               className="animate-fade-up overflow-hidden rounded-xl border border-border bg-card transition-all hover:border-primary/40 hover:shadow-md"
             >
               <Link
-                href={`/shop?category=${parent.slug}`}
+                href={`/categories/${parent.slug}`}
                 className="group block"
               >
-                <div className="relative h-40 bg-muted overflow-hidden">
-                  {parent.displayImage ? (
+                {parent.displayImage ? (
+                  <div className="relative h-36 overflow-hidden bg-muted">
                     <Image
                       src={parent.displayImage}
                       alt={parent.name}
                       fill
                       className="object-cover group-hover:scale-105 transition-transform duration-500"
+                      priority={groupIndex === 0}
                       unoptimized
                     />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-muted-foreground/20 text-5xl font-bold font-mono">
-                      —
-                    </div>
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-                  <div className="absolute bottom-0 left-0 right-0 p-4">
-                    <h2 className="text-lg font-bold text-white drop-shadow-sm">{parent.name}</h2>
-                    <p className="text-xs text-white/80">
-                      {parent.productCount ?? 0} {parent.productCount === 1 ? 'product' : 'products'}
-                    </p>
                   </div>
+                ) : null}
+                <div className="border-t border-border p-4">
+                  <h2 className="text-lg font-bold text-foreground">{parent.name}</h2>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {parent.productCount ?? 0} {parent.productCount === 1 ? 'product' : 'products'}
+                  </p>
                 </div>
               </Link>
 
@@ -91,7 +87,7 @@ export default function CategoriesPage() {
                   {children.slice(0, 6).map(child => (
                     <li key={child.id}>
                       <Link
-                        href={`/shop?category=${child.slug}`}
+                        href={`/categories/${child.slug}`}
                         className="group flex items-center justify-between px-4 py-2.5 text-sm transition-colors hover:bg-accent"
                       >
                         <span className="text-foreground group-hover:text-primary">{child.name}</span>

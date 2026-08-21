@@ -82,29 +82,31 @@ async function getHomeData() {
     .filter(product => product.comparePrice && product.comparePrice > product.price)
     .slice(0, 10)
 
+  const categoryById = new Map(categoryRows.map(category => [category.id, category]))
   const productsByCategory = new Map<string, Product[]>()
   for (const product of catalog) {
-    const slug = product.category?.slug
-    if (!slug) continue
-    const categoryProducts = productsByCategory.get(slug) ?? []
-    categoryProducts.push(product)
-    productsByCategory.set(slug, categoryProducts)
+    let categoryId: string | null | undefined = product.categoryId
+    const visited = new Set<string>()
+
+    while (categoryId && !visited.has(categoryId)) {
+      visited.add(categoryId)
+      const category = categoryById.get(categoryId)
+      if (!category) break
+
+      const categoryProducts = productsByCategory.get(category.slug) ?? []
+      categoryProducts.push(product)
+      productsByCategory.set(category.slug, categoryProducts)
+      categoryId = category.parentId
+    }
   }
 
-  const categoryShelves = [
-    { slug: 'iphones-uk-used', title: 'iPhones UK Used' },
-    { slug: 'android-phones-tablets', title: 'Android Phones & Tablets' },
-    { slug: 'laptops-monitors', title: 'Laptops & Computing' },
-    { slug: 'gaming-consoles', title: 'Gaming & Consoles' },
-    { slug: 'speakers', title: 'Speakers & Audio' },
-    { slug: 'smartwatches', title: 'Smartwatches & Wearables' },
-    { slug: 'rechargeable-fans', title: 'Rechargeable Fans' },
-    { slug: 'monitors', title: 'Monitors & Displays' },
-  ]
-    .map(shelf => ({
-      ...shelf,
-      href: `/categories/${shelf.slug}`,
-      products: (productsByCategory.get(shelf.slug) ?? []).slice(0, 8),
+  const categoryShelves = categoryRows
+    .filter(category => !category.parentId && category.productCount > 0)
+    .map(category => ({
+      slug: category.slug,
+      title: category.name,
+      href: `/categories/${category.slug}`,
+      products: (productsByCategory.get(category.slug) ?? []).slice(0, 4),
     }))
     .filter(shelf => shelf.products.length > 0)
 
@@ -149,6 +151,7 @@ export default async function HomePage() {
     <div className="animate-page-reveal bg-background">
       <Hero />
       <CategoryIconGrid title="Shop what you need" categories={categoryIcons} />
+      <ProductShelf title="Latest arrivals" href="/shop?sort=newest" products={newest} columns={4} className="bg-[#EEF0EE]" />
       <ProductShelf title="Featured picks" href="/shop?sort=popular" products={featured} columns={4} className="bg-[#EEF0EE]" />
       <HotDealsCarousel products={hotDeals} />
 
@@ -176,7 +179,6 @@ export default async function HomePage() {
         />
       ))}
 
-      <ProductShelf title="Latest arrivals" href="/shop?sort=newest" products={newest} columns={4} className="bg-[#EEF0EE]" />
       <BrandLogos brands={brands} />
 
       <section className="bg-secondary py-14 text-secondary-foreground sm:py-16">

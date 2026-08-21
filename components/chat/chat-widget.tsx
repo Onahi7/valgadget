@@ -28,6 +28,7 @@ export function ChatWidget() {
   const [sending, setSending] = useState(false)
   const [starting, setStarting] = useState(false)
   const [unread, setUnread] = useState(0)
+  const [guestAccessToken, setGuestAccessToken] = useState('')
 
   // Guest info form
   const [guestName, setGuestName] = useState('')
@@ -51,11 +52,12 @@ export function ChatWidget() {
 
   const fetchMessages = useCallback(async (sid: string) => {
     try {
-      const res = await fetch(`/api/chat/${sid}/messages`)
+      const res = await fetch(`/api/chat/${sid}/messages${guestAccessToken ? `?accessToken=${encodeURIComponent(guestAccessToken)}` : ''}`)
       const json = await res.json()
-      if (json.data) {
+      const list = Array.isArray(json) ? json : json.data
+      if (Array.isArray(list)) {
         setMessages(prev => {
-          const newMsgs = json.data as ChatMessage[]
+          const newMsgs = list as ChatMessage[]
           if (!open && newMsgs.length > prev.length) {
             setUnread(u => u + (newMsgs.length - prev.length))
           }
@@ -63,7 +65,7 @@ export function ChatWidget() {
         })
       }
     } catch { /* silent */ }
-  }, [open])
+  }, [guestAccessToken, open])
 
   // Poll for new messages when session is open
   useEffect(() => {
@@ -96,17 +98,19 @@ export function ChatWidget() {
         }),
       })
       const json = await res.json()
-      if (json.data?.id) {
-        setSessionId(json.data.id)
+      const session = json.data ?? json
+      if (session.id) {
+        setSessionId(session.id)
+        setGuestAccessToken(session.guestAccessToken ?? '')
         setShowForm(false)
         // Send welcome context message
-        setTimeout(() => sendMessage("Hello! I'd like to ask about your products.", json.data.id), 300)
+        setTimeout(() => sendMessage("Hello! I'd like to ask about your products.", session.id, session.guestAccessToken ?? ''), 300)
       }
     } catch { /* ignore */ }
     setStarting(false)
   }
 
-  const sendMessage = async (text?: string, sid?: string) => {
+  const sendMessage = async (text?: string, sid?: string, accessToken?: string) => {
     const content = (text ?? input).trim()
     const activeSession = sid ?? sessionId
     if (!content || !activeSession) return
@@ -116,6 +120,8 @@ export function ChatWidget() {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
     const token = localStorage.getItem('vg_token')
     if (token) headers['Authorization'] = `Bearer ${token}`
+    const chatToken = accessToken ?? guestAccessToken
+    if (chatToken) headers['x-chat-access-token'] = chatToken
 
     try {
       const res = await fetch(`/api/chat/${activeSession}/messages`, {
@@ -124,7 +130,7 @@ export function ChatWidget() {
         body: JSON.stringify({ content, senderName: user?.name ?? guestName }),
       })
       const json = await res.json()
-      if (json.data) setMessages(prev => [...prev, json.data])
+      if (json.id || json.data) setMessages(prev => [...prev, json.data ?? json])
       setTimeout(scrollToBottom, 50)
     } catch { /* ignore */ }
     setSending(false)

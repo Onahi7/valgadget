@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { getToken } from '@/lib/api-client'
-import { MessageCircle, Send, Loader2, User, Clock, CheckCircle, XCircle, ChevronLeft } from 'lucide-react'
+import { MessageCircle, Send, Loader2, User, Clock, ChevronLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -54,14 +54,14 @@ export default function AdminChatPage() {
   async function fetchSessions() {
     const res = await fetch('/api/chat', { headers: { Authorization: `Bearer ${getToken()}` }, credentials: 'include' })
     const json = await res.json()
-    if (json.data) setSessions(json.data)
+    setSessions(Array.isArray(json) ? json : json.data ?? [])
   }
 
   async function fetchMessages(sid: string) {
     setLoadingMsgs(true)
     const res = await fetch(`/api/chat/${sid}/messages`, { headers: { Authorization: `Bearer ${getToken()}` }, credentials: 'include' })
     const json = await res.json()
-    if (json.data) setMessages(json.data)
+    setMessages(Array.isArray(json) ? json : json.data ?? [])
     setLoadingMsgs(false)
   }
 
@@ -75,7 +75,7 @@ export default function AdminChatPage() {
       body: JSON.stringify({ content: reply.trim(), role: 'admin', senderName: 'Support' }),
     })
     const json = await res.json()
-    if (json.data) { setMessages(prev => [...prev, json.data]); setReply('') }
+    if (json.id || json.data) { setMessages(prev => [...prev, json.data ?? json]); setReply('') }
     setSending(false)
   }
 

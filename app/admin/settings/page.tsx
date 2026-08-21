@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Separator } from '@/components/ui/separator'
 import { getToken } from '@/lib/api-client'
 import { toast } from 'sonner'
+import Link from 'next/link'
 
 const TABS = [
   { id: 'store', label: 'Store', Icon: Store },
@@ -32,7 +33,7 @@ export default function AdminSettingsPage() {
   useEffect(() => {
     fetch('/api/admin/settings', { headers: { Authorization: `Bearer ${getToken()}` }, credentials: 'include' })
       .then(r => r.json())
-      .then(d => { if (d.data) setS(d.data) })
+      .then(d => { if (d && typeof d === 'object' && !d.message) setS(d) })
       .finally(() => setLoading(false))
   }, [])
 
@@ -51,8 +52,11 @@ export default function AdminSettingsPage() {
         credentials: 'include',
         body: JSON.stringify({ settings: s }),
       })
-      if (res.ok) toast.success('Settings saved successfully.')
-      else toast.error('Failed to save settings.')
+      const json = await res.json().catch(() => ({}))
+      if (res.ok) {
+        if (json.settings) setS(json.settings)
+        toast.success('Settings saved successfully.')
+      } else toast.error(json.message ?? 'Failed to save settings.')
     } catch {
       toast.error('Failed to save settings.')
     } finally {
@@ -133,9 +137,23 @@ export default function AdminSettingsPage() {
               <h2 className="text-base font-semibold mb-4">Shipping</h2>
               <p className="text-sm text-muted-foreground mb-4">
                 Per-state shipping rates are managed on the{' '}
-                <a href="/admin/shipping" className="text-primary hover:underline">Shipping Rates</a> page.
+                <Link href="/admin/shipping" className="text-primary hover:underline">Shipping Rates</Link> page.
               </p>
               <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 border border-border rounded-md">
+                  <div>
+                    <p className="font-medium text-sm">Enable Shipping</p>
+                    <p className="text-xs text-muted-foreground">Charge delivery fees and require an active state rate at checkout.</p>
+                  </div>
+                  <Switch checked={getBool('shippingEnabled', true)} onCheckedChange={v => set('shippingEnabled', v)} />
+                </div>
+                <div className="flex items-center justify-between p-4 border border-border rounded-md">
+                  <div>
+                    <p className="font-medium text-sm">Free Shipping</p>
+                    <p className="text-xs text-muted-foreground">Automatically waive delivery above the configured threshold.</p>
+                  </div>
+                  <Switch checked={getBool('freeShippingEnabled', true)} onCheckedChange={v => set('freeShippingEnabled', v)} />
+                </div>
                 <div className="flex items-center justify-between p-4 border border-border rounded-md">
                   <div>
                     <p className="font-medium text-sm">Free Shipping Threshold</p>
@@ -143,7 +161,7 @@ export default function AdminSettingsPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm">₦</span>
-                    <Input className="w-28 text-right" value={get('freeShippingThreshold', '50000')} onChange={e => set('freeShippingThreshold', e.target.value)} />
+                    <Input type="number" min="0" className="w-32 text-right" value={get('freeShippingThreshold', '500000')} onChange={e => set('freeShippingThreshold', e.target.value)} disabled={!getBool('freeShippingEnabled', true)} />
                   </div>
                 </div>
                 <div className="flex items-center justify-between p-4 border border-border rounded-md">
@@ -183,7 +201,7 @@ export default function AdminSettingsPage() {
 
           {activeTab === 'email' && (
             <div>
-              <h2 className="text-base font-semibold mb-4">Email Notifications (Customer)</h2>
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><h2 className="text-base font-semibold">Email Notifications (Customer)</h2><Button asChild variant="outline" size="sm"><Link href="/admin/email-templates">Preview Templates</Link></Button></div>
               <div className="space-y-3">
                 <div className="flex items-center justify-between p-4 border border-border rounded-md">
                   <div>
@@ -194,8 +212,8 @@ export default function AdminSettingsPage() {
                 </div>
                 <div className="flex items-center justify-between p-4 border border-border rounded-md">
                   <div>
-                    <p className="text-sm font-medium">Shipping Updates</p>
-                    <p className="text-xs text-muted-foreground">Notify customer when order ships.</p>
+                    <p className="text-sm font-medium">Order Status & Tracking Updates</p>
+                    <p className="text-xs text-muted-foreground">Notify customers when an admin confirms, processes, ships, or delivers an order.</p>
                   </div>
                   <Switch checked={getBool('emailShippingUpdate', true)} onCheckedChange={v => set('emailShippingUpdate', v)} />
                 </div>
@@ -240,6 +258,36 @@ export default function AdminSettingsPage() {
                     <p className="text-xs text-muted-foreground">Get notified when a new order is placed.</p>
                   </div>
                   <Switch checked={getBool('alertNewOrder', true)} onCheckedChange={v => set('alertNewOrder', v)} />
+                </div>
+                <Separator />
+                <div>
+                  <h3 className="mb-3 text-sm font-semibold">Tax</h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between p-4 border border-border rounded-md">
+                      <div>
+                        <p className="font-medium text-sm">Collect Tax</p>
+                        <p className="text-xs text-muted-foreground">Calculate tax during checkout using the rate below.</p>
+                      </div>
+                      <Switch checked={getBool('taxEnabled', false)} onCheckedChange={v => set('taxEnabled', v)} />
+                    </div>
+                    <div className="flex items-center justify-between p-4 border border-border rounded-md">
+                      <div>
+                        <p className="font-medium text-sm">Tax Rate</p>
+                        <p className="text-xs text-muted-foreground">Percentage applied after discounts.</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Input type="number" min="0" max="100" step="0.01" className="w-24 text-right" value={get('taxRate', '0')} onChange={e => set('taxRate', e.target.value)} disabled={!getBool('taxEnabled', false)} />
+                        <span className="text-sm">%</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between p-4 border border-border rounded-md">
+                      <div>
+                        <p className="font-medium text-sm">Prices Include Tax</p>
+                        <p className="text-xs text-muted-foreground">Keep this on when catalogue prices already include tax.</p>
+                      </div>
+                      <Switch checked={getBool('pricesIncludeTax', true)} onCheckedChange={v => set('pricesIncludeTax', v)} disabled={!getBool('taxEnabled', false)} />
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

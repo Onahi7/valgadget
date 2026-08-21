@@ -4,10 +4,11 @@
  */
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
-import { chatSessions, chatMessages } from '@/lib/server/schema'
+import { chatSessions } from '@/lib/server/schema'
 import { requireAuth, apiOk, apiError, apiRateLimited } from '@/lib/server/auth-helpers'
 import { rateLimit, rateLimitPresets, getRateLimitKey } from '@/lib/server/rate-limiter'
-import { desc, eq } from 'drizzle-orm'
+import { desc } from 'drizzle-orm'
+import { createGuestChatToken } from '@/lib/server/chat-access'
 
 export async function POST(req: NextRequest) {
   try {
@@ -42,7 +43,10 @@ export async function POST(req: NextRequest) {
       productId: productId ?? null,
     }).returning()
 
-    return apiOk(session)
+    return apiOk({
+      ...session,
+      ...(!userId && session.guestEmail ? { guestAccessToken: createGuestChatToken(session.id, session.guestEmail) } : {}),
+    })
   } catch (err) {
     console.error('[chat POST]', err)
     return apiError('Failed to create chat session', 500)

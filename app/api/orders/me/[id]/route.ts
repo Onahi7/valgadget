@@ -29,6 +29,7 @@ export async function GET(
     shipping: Number(order.shipping),
     tax:      Number(order.tax),
     total:    Number(order.total),
+    refundAmount: order.refundAmount === null ? null : Number(order.refundAmount),
   })
 }
 

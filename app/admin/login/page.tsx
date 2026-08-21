@@ -41,24 +41,19 @@ export default function AdminLoginPage() {
 }
 
 function AdminLoginContent() {
-  const { login, user, isAuthenticated, isLoading } = useAuth()
+  const { login, logout, user, isAuthenticated, isLoading } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
   const returnUrl = searchParams.get('returnUrl') ?? '/admin'
   const [showPw, setShowPw] = useState(false)
   const [apiError, setApiError] = useState<string | null>(null)
-  const [loginAttempted, setLoginAttempted] = useState(false)
 
   useEffect(() => {
     if (isLoading) return
     if (isAuthenticated && user?.role === 'admin') {
       router.replace(getSafeReturnUrl(returnUrl))
     }
-    if (loginAttempted && isAuthenticated && user?.role !== 'admin') {
-      setApiError('Access denied. Admin credentials required.')
-      setLoginAttempted(false)
-    }
-  }, [isAuthenticated, isLoading, user, router, returnUrl, loginAttempted])
+  }, [isAuthenticated, isLoading, user, router, returnUrl])
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -66,11 +61,16 @@ function AdminLoginContent() {
 
   const onSubmit = async (data: FormValues) => {
     setApiError(null)
-    setLoginAttempted(false)
     try {
-      await login(data.email, data.password)
-      setLoginAttempted(true)
+      const signedInUser = await login(data.email, data.password)
+      if (signedInUser.role !== 'admin') {
+        await logout()
+        setApiError('Access denied. Admin credentials required.')
+        return
+      }
       toast.success('Welcome back!')
+      router.replace(getSafeReturnUrl(returnUrl))
+      router.refresh()
     } catch (err) {
       const e = err as ApiError
       setApiError(e.message ?? 'Login failed. Please try again.')

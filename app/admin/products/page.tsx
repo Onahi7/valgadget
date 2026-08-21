@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from '@/components/ui/empty'
 import { productService, type Product } from '@/lib/services/product.service'
 import { categoryService, type Category } from '@/lib/services/category.service'
+import { useDebounce } from '@/hooks/use-debounce'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
@@ -31,6 +32,7 @@ export default function AdminProductsPage() {
   const [bulkAction, setBulkAction] = useState<string>('')
 
   const PAGE_SIZE = 20
+  const debouncedSearch = useDebounce(search, 300)
 
   useEffect(() => {
     categoryService.getFlat().then(r => { if (Array.isArray(r)) setCategories(r as any[]) })
@@ -41,7 +43,7 @@ export default function AdminProductsPage() {
     productService.getAdminAll({
       limit: PAGE_SIZE,
       page,
-      search: search || undefined,
+      search: debouncedSearch || undefined,
       category: categoryFilter !== 'all' ? categoryFilter : undefined,
       isActive: activeFilter === 'all' ? undefined : activeFilter === 'active',
     })
@@ -51,11 +53,9 @@ export default function AdminProductsPage() {
         if (res?.totalPages) setTotalPages(res.totalPages)
         if (res?.total) setTotal(res.total)
       })
+      .catch(() => toast.error('Failed to load products'))
       .finally(() => setLoading(false))
-  }, [search, categoryFilter, activeFilter, page])
-
-  // Reset to page 1 when filters change
-  useEffect(() => { setPage(1) }, [search, categoryFilter, activeFilter])
+  }, [debouncedSearch, categoryFilter, activeFilter, page])
 
   const filtered = products
   const parentCategoryIds = new Set(categories.filter(c => !c.parentId).map(c => c.id))
@@ -128,11 +128,11 @@ export default function AdminProductsPage() {
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Search products..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+          <Input placeholder="Search products..." value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} className="pl-9" />
         </div>
         <select
           value={categoryFilter}
-          onChange={e => setCategoryFilter(e.target.value)}
+          onChange={e => { setCategoryFilter(e.target.value); setPage(1) }}
           className="appearance-none bg-card border border-border rounded-md px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <option value="all">All Categories</option>
@@ -140,7 +140,7 @@ export default function AdminProductsPage() {
         </select>
         <select
           value={activeFilter}
-          onChange={e => setActiveFilter(e.target.value)}
+          onChange={e => { setActiveFilter(e.target.value); setPage(1) }}
           className="appearance-none bg-card border border-border rounded-md px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <option value="all">All Statuses</option>
@@ -152,12 +152,12 @@ export default function AdminProductsPage() {
         </Button>
       </div>
 
-      {/* Stats row */}
+      {/* Stats row (scoped to the current page of results) */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[
-          { label: 'Total', value: total, icon: Package },
-          { label: 'Active', value: products.filter(p => p.isActive).length, icon: Package },
-          { label: 'Needs Image', value: products.filter(p => !getDisplayImage(p)).length, icon: Package },
+          { label: 'Total Products', value: total, icon: Package },
+          { label: 'Active · this page', value: products.filter(p => p.isActive).length, icon: Package },
+          { label: 'Needs image · this page', value: products.filter(p => !getDisplayImage(p)).length, icon: Package },
         ].map(({ label, value }) => (
           <div key={label} className="bg-card border border-border rounded-lg px-4 py-3 text-center">
             <p className="text-xl font-bold font-mono">{value}</p>

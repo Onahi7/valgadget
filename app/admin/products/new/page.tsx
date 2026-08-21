@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Plus, Loader2, Upload, X, ImagePlus } from 'lucide-react'
+import { ArrowLeft, Plus, Loader2, X, ImagePlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -22,7 +22,6 @@ export default function NewProductPage() {
   const router = useRouter()
   const [categories, setCategories] = useState<Category[]>([])
   const [saving, setSaving] = useState(false)
-  const [selectedImages, setSelectedImages] = useState<File[]>([])
   const [uploadingImages, setUploadingImages] = useState(false)
   const [specs, setSpecs] = useState<ProductSpec[]>([])
   const [condition, setCondition] = useState<ProductCondition>('brand-new')
@@ -37,7 +36,7 @@ export default function NewProductPage() {
   })
 
   useEffect(() => {
-    categoryService.getFlat().then(r => { if (Array.isArray(r)) setCategories(r as any[]) })
+    categoryService.getAdminAll().then(r => { if (Array.isArray(r)) setCategories(r as any[]) })
   }, [])
 
   const set = (field: string, value: string | boolean) =>
@@ -95,14 +94,10 @@ export default function NewProductPage() {
     setCroppedBlobs(prev => prev.filter((_, i) => i !== index))
   }
 
-  const removeSelectedImage = (index: number) => {
-    setSelectedImages(prev => prev.filter((_, i) => i !== index))
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!form.name || !form.price || !form.sku) {
-      toast.error('Name, price, and SKU are required')
+    if (!form.name || !form.price || !form.sku || !form.categoryId) {
+      toast.error('Name, price, SKU, and category are required')
       return
     }
     if (variants.some(variant => !variant.name.trim() || !variant.sku.trim())) {
@@ -141,12 +136,6 @@ export default function NewProductPage() {
         })
         await productService.uploadImages(res.id, formData)
         toast.success(`"${form.name}" created with ${croppedBlobs.length} image(s).`)
-      } else if (selectedImages.length > 0) {
-        setUploadingImages(true)
-        const formData = new FormData()
-        selectedImages.forEach(file => formData.append('images', file))
-        await productService.uploadImages(res.id, formData)
-        toast.success(`"${form.name}" created with ${selectedImages.length} image(s).`)
       } else {
         toast.success(`"${form.name}" created.`)
       }
@@ -302,6 +291,7 @@ export default function NewProductPage() {
               categories={categories}
               value={form.categoryId}
               onChange={handleCategoryChange}
+              label="Category *"
             />
             <ConditionSelect value={condition} onChange={setCondition} />
             {isIphoneCategory ? (

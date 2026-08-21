@@ -3,6 +3,7 @@ import { db } from '@/lib/server/db'
 import { coupons } from '@/lib/server/schema'
 import { requireAuth, apiOk, apiError } from '@/lib/server/auth-helpers'
 import { eq } from 'drizzle-orm'
+import { logAdminActivity } from '@/lib/server/admin-activity'
 
 export async function PATCH(
   req: NextRequest,
@@ -40,6 +41,7 @@ export async function PATCH(
     if (!coupon) {
       return apiError('Coupon not found', 404)
     }
+    await logAdminActivity(auth.user.sub, 'updated', 'coupon', id, coupon.code)
 
     return apiOk({
       ...coupon,
@@ -70,7 +72,9 @@ export async function DELETE(
   try {
     const { id } = await params
 
-    await db.delete(coupons).where(eq(coupons.id, id))
+    const [deleted] = await db.delete(coupons).where(eq(coupons.id, id)).returning({ id: coupons.id, code: coupons.code })
+    if (!deleted) return apiError('Coupon not found', 404)
+    await logAdminActivity(auth.user.sub, 'deleted', 'coupon', id, deleted.code)
 
     return apiOk({ message: 'Coupon deleted successfully' })
   } catch (err) {

@@ -1,6 +1,6 @@
 import { ProductCard } from './product-card'
 import { ProductCardSkeleton } from './product-card-skeleton'
-import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from '@/components/ui/empty'
+import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from '@/components/ui/empty'
 import { cn } from '@/lib/utils'
 import type { Product } from '@/lib/services/product.service'
 
@@ -10,6 +10,7 @@ interface ProductGridProps {
   skeletonCount?: number
   className?: string
   emptyMessage?: string
+  prioritizeFirstImage?: boolean
 }
 
 export function ProductGrid({
@@ -18,6 +19,7 @@ export function ProductGrid({
   skeletonCount = 8,
   className,
   emptyMessage = 'No products found',
+  prioritizeFirstImage = false,
 }: ProductGridProps) {
   const gridClass = cn(
     'grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4',
@@ -47,11 +49,12 @@ export function ProductGrid({
 
   return (
     <div className={cn(gridClass, 'stagger-children')}>
-      {products.map(product => (
+      {products.map((product, index) => (
         <ProductCard
           key={product.id}
           product={product}
           className="animate-fade-up"
+          priority={prioritizeFirstImage && index === 0}
         />
       ))}
     </div>

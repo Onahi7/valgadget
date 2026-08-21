@@ -68,7 +68,7 @@ export default function CouponsPage() {
         credentials: 'include',
       })
       const data = await res.json()
-      if (data.data) setCoupons(data.data)
+      setCoupons(Array.isArray(data) ? data : data.data ?? [])
     } catch (err) {
       toast.error('Failed to load coupons')
     } finally {
@@ -137,6 +137,26 @@ export default function CouponsPage() {
       }
     } catch (err) {
       toast.error('Failed to delete coupon')
+    }
+  }
+
+  const toggleActive = async (coupon: Coupon) => {
+    try {
+      const res = await fetch(`/api/admin/coupons/${coupon.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+        credentials: 'include',
+        body: JSON.stringify({ isActive: !coupon.isActive }),
+      })
+
+      if (res.ok) {
+        toast.success(coupon.isActive ? 'Coupon deactivated' : 'Coupon activated')
+        loadCoupons()
+      } else {
+        toast.error('Failed to update coupon')
+      }
+    } catch {
+      toast.error('Failed to update coupon')
     }
   }
 
@@ -350,6 +370,9 @@ export default function CouponsPage() {
                   </div>
                 </div>
                 <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => toggleActive(coupon)}>
+                    {coupon.isActive ? 'Deactivate' : 'Activate'}
+                  </Button>
                   <Button size="sm" variant="outline" onClick={() => handleEdit(coupon)}>
                     <Edit className="w-4 h-4" />
                   </Button>

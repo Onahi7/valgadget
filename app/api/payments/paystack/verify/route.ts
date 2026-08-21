@@ -8,6 +8,7 @@ import { db } from '@/lib/server/db'
 import { orders } from '@/lib/server/schema'
 import { sendPurchaseConfirmationForOrder } from '@/lib/server/order-email'
 import { eq, and, sql } from 'drizzle-orm'
+import { createGuestOrderAccessToken } from '@/lib/server/guest-order-access'
 
 async function confirmPayment(reference: string): Promise<{ ok: boolean; alreadyPaid: boolean }> {
   // Atomic: only updates if paymentStatus is NOT 'paid' — prevents race with webhook
@@ -30,7 +31,6 @@ async function confirmPayment(reference: string): Promise<{ ok: boolean; already
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const reference = searchParams.get('reference')
-  const orderId = searchParams.get('orderId')
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
 
   if (!reference) {
@@ -51,10 +51,20 @@ export async function GET(req: NextRequest) {
 
     if (data.status && data.data.status === 'success') {
       // Idempotent — safe even if webhook already marked as paid
-      await confirmPayment(reference)
+      const confirmation = await confirmPayment(reference)
+      if (!confirmation.ok) return NextResponse.redirect(`${appUrl}/checkout?error=order_not_found`)
 
-      const id = orderId ?? ''
-      return NextResponse.redirect(`${appUrl}/account/orders/${id}?paid=1`)
+      const [order] = await db.select({ id: orders.id, userId: orders.userId, guestEmail: orders.guestEmail })
+        .from(orders)
+        .where(eq(orders.reference, reference))
+        .limit(1)
+      if (!order) return NextResponse.redirect(`${appUrl}/checkout?error=order_not_found`)
+      if (order.userId) return NextResponse.redirect(`${appUrl}/account/orders/${order.id}?paid=1`)
+      if (order.guestEmail) {
+        const token = createGuestOrderAccessToken(order.id, order.guestEmail)
+        return NextResponse.redirect(`${appUrl}/orders/guest/${order.id}?token=${token}&paid=1`)
+      }
+      return NextResponse.redirect(`${appUrl}/payment/success?orderId=${order.id}`)
     } else {
       return NextResponse.redirect(`${appUrl}/checkout?error=payment_failed`)
     }

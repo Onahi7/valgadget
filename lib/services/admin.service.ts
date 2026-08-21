@@ -1,4 +1,5 @@
 import { api } from '@/lib/api-client'
+import type { StoreSettings } from '@/lib/store-settings'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -68,29 +69,6 @@ export interface RecentOrder {
   itemCount?: number
 }
 
-export interface SiteSettings {
-  siteName: string
-  siteEmail: string
-  supportEmail: string
-  currency: string
-  currencySymbol: string
-  taxRate: number
-  freeShippingThreshold: number
-  defaultShippingCost: number
-  maintenanceMode: boolean
-  allowRegistration: boolean
-  affiliateEnabled: boolean
-  raffleEnabled: boolean
-  defaultCommissionRate: number
-  socialLinks: {
-    twitter?: string
-    facebook?: string
-    instagram?: string
-    tiktok?: string
-    youtube?: string
-  }
-}
-
 // ─── Service ──────────────────────────────────────────────────────────────────
 
 export const adminService = {
@@ -112,11 +90,11 @@ export const adminService = {
 
   /** Site settings */
   getSettings: () =>
-    api.get<SiteSettings>('/admin/settings'),
+    api.get<StoreSettings>('/admin/settings'),
 
   /** Update site settings */
-  updateSettings: (payload: Partial<SiteSettings>) =>
-    api.patch<SiteSettings>('/admin/settings', payload),
+  updateSettings: (payload: Partial<StoreSettings>) =>
+    api.put<{ updated: number; settings: StoreSettings }>('/admin/settings', { settings: payload }),
 
   /** Upload site asset (logo, favicon, banner) */
   uploadAsset: (type: 'logo' | 'favicon' | 'banner', formData: FormData) =>
@@ -128,11 +106,15 @@ export const adminService = {
       data: {
         id: string
         action: string
-        entity: string
-        entityId: string
-        user: { name: string; email: string }
+        entityType: string
+        entityId: string | null
+        userId: string | null
+        userName: string
+        details: string | null
         createdAt: string
       }[]
       total: number
+      page: number
+      limit: number
     }>('/admin/activity-log', params),
 }

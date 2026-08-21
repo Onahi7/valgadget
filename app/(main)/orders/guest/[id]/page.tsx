@@ -37,31 +37,33 @@ interface Order {
   }
   createdAt: string
   guestEmail?: string
+  trackingNumber?: string
+  trackingUrl?: string
 }
 
 export default function GuestOrderPage() {
   const params = useParams()
   const searchParams = useSearchParams()
   const orderId = params.id as string
-  const orderRef = searchParams.get('ref')
+  const accessToken = searchParams.get('token') ?? ''
   const [order, setOrder] = useState<Order | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (!orderId) return
 
-    fetch(`/api/orders/guest/${orderId}`)
+    fetch(`/api/orders/guest/${orderId}?token=${encodeURIComponent(accessToken)}`)
       .then(res => res.json())
       .then(data => {
-        if (data.data) {
-          setOrder(data.data)
+        if (data.id) {
+          setOrder(data)
         } else {
           toast.error('Order not found')
         }
       })
       .catch(() => toast.error('Failed to load order'))
       .finally(() => setLoading(false))
-  }, [orderId])
+  }, [accessToken, orderId])
 
   if (loading) {
     return (
@@ -130,6 +132,12 @@ export default function GuestOrderPage() {
             <span className="capitalize">{order.paymentMethod.replace('_', ' ')}</span>
           </div>
         </div>
+        {order.trackingNumber && (
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/30 p-4 text-sm">
+            <span>Tracking: <strong className="font-mono">{order.trackingNumber}</strong></span>
+            {order.trackingUrl && <Button asChild size="sm" variant="outline"><a href={order.trackingUrl} target="_blank" rel="noreferrer">Track shipment</a></Button>}
+          </div>
+        )}
       </div>
 
       {/* Order Status Timeline */}
@@ -145,7 +153,6 @@ export default function GuestOrderPage() {
             {statusSteps.map((step, i) => {
               const Icon = step.icon
               const isActive = i <= currentStepIndex
-              const isCurrent = i === currentStepIndex
               return (
                 <div key={step.key} className="flex flex-col items-center gap-2">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all ${

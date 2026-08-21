@@ -8,6 +8,8 @@ import { db } from '@/lib/server/db'
 import { orders } from '@/lib/server/schema'
 import { requireAuth, apiOk, apiError } from '@/lib/server/auth-helpers'
 import { and, eq, sql } from 'drizzle-orm'
+import { getStoreSettings } from '@/lib/server/store-settings'
+import { toPublicStoreConfig } from '@/lib/store-settings'
 
 /** Validate crypto transaction hash format per coin */
 function validateTxHash(txHash: string, coin: string): boolean {
@@ -40,12 +42,21 @@ export async function POST(req: NextRequest) {
     const validCoins = ['btc', 'eth', 'usdt_erc20', 'usdt_trc20']
     if (!validCoins.includes(coin.toLowerCase())) return apiError('Invalid coin', 400)
 
+    const config = toPublicStoreConfig(await getStoreSettings())
+    const coinEnabled = coin === 'btc' ? config.paymentMethods.btc
+      : coin === 'eth' ? config.paymentMethods.eth
+        : coin === 'usdt_trc20' ? config.paymentMethods.usdtTrc20
+          : config.paymentMethods.usdtErc20
+    if (!coinEnabled) return apiError('That crypto payment method is currently unavailable.', 422)
+
     if (!validateTxHash(txHash, coin)) {
       return apiError('Invalid transaction hash format for the selected coin', 400)
     }
 
-    const [order] = await db.select({ id: orders.id, notes: orders.notes }).from(orders).where(eq(orders.id, orderId)).limit(1)
+    const [order] = await db.select({ id: orders.id, userId: orders.userId, paymentMethod: orders.paymentMethod, notes: orders.notes }).from(orders).where(eq(orders.id, orderId)).limit(1)
     if (!order) return apiError('Order not found', 404)
+    if (order.userId !== auth.user.sub) return apiError('Forbidden', 403)
+    if (order.paymentMethod !== 'crypto') return apiError('This order was not created for crypto payment.', 409)
 
     const [updated] = await db.update(orders)
       .set({
@@ -88,10 +99,11 @@ export async function POST(req: NextRequest) {
  * Returns the configured wallet addresses (public).
  */
 export async function GET() {
+  const config = toPublicStoreConfig(await getStoreSettings())
   return apiOk({
-    btc: process.env.CRYPTO_BTC_ADDRESS ?? '',
-    eth: process.env.CRYPTO_ETH_ADDRESS ?? '',
-    usdt_erc20: process.env.CRYPTO_USDT_ERC20_ADDRESS ?? '',
-    usdt_trc20: process.env.CRYPTO_USDT_TRC20_ADDRESS ?? '',
+    btc: config.paymentMethods.btc ? process.env.CRYPTO_BTC_ADDRESS ?? '' : '',
+    eth: config.paymentMethods.eth ? process.env.CRYPTO_ETH_ADDRESS ?? '' : '',
+    usdt_erc20: config.paymentMethods.usdtErc20 ? process.env.CRYPTO_USDT_ERC20_ADDRESS ?? '' : '',
+    usdt_trc20: config.paymentMethods.usdtTrc20 ? process.env.CRYPTO_USDT_TRC20_ADDRESS ?? '' : '',
   })
 }

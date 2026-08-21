@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
       shipped: sql<number>`sum(case when ${orders.status} = 'shipped' then 1 else 0 end)::int`,
       delivered: sql<number>`sum(case when ${orders.status} = 'delivered' then 1 else 0 end)::int`,
       cancelled: sql<number>`sum(case when ${orders.status} = 'cancelled' then 1 else 0 end)::int`,
-      revenueTotal: sum(orders.total),
+      revenueTotal: sql<string>`coalesce(sum(case when ${orders.paymentStatus} = 'paid' then ${orders.total} else 0 end), '0')`,
       revenueToday: sql<string>`coalesce(sum(case when ${orders.paymentStatus} = 'paid' and ${orders.createdAt} >= ${todayStart} then ${orders.total} else 0 end), '0')`,
       revenueThisMonth: sql<string>`coalesce(sum(case when ${orders.paymentStatus} = 'paid' and ${orders.createdAt} >= ${monthStart} then ${orders.total} else 0 end), '0')`,
       revenueLastMonth: sql<string>`coalesce(sum(case when ${orders.paymentStatus} = 'paid' and ${orders.createdAt} >= ${lastMonthStart} and ${orders.createdAt} < ${lastMonthEnd} then ${orders.total} else 0 end), '0')`,

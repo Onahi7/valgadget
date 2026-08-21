@@ -50,12 +50,18 @@ export interface Order {
   shippingAddress: Address
   trackingNumber?: string
   trackingUrl?: string
+  refundAmount?: number
+  refundReason?: string
+  refundReference?: string
+  refundStatus?: string
+  refundedAt?: string
   paymentRef?: string
   couponCode?: string
   affiliateCode?: string
   notes?: string
   createdAt: string
   updatedAt: string
+  guestAccessToken?: string
 }
 
 export interface OrdersResponse {
@@ -123,12 +129,12 @@ export const orderService = {
     api.patch<Order>(`/admin/orders/${id}/status`, { status }),
 
   /** [Admin] Update payment status */
-  updatePaymentStatus: (id: string, paymentStatus: PaymentStatus) =>
-    api.patch<Order>(`/admin/orders/${id}/payment-status`, { paymentStatus }),
+  updatePaymentStatus: (id: string, paymentStatus: PaymentStatus, options?: { paymentRef?: string; confirmed?: boolean }) =>
+    api.patch<Order>(`/admin/orders/${id}/payment-status`, { paymentStatus, ...options }),
 
   /** [Admin] Add tracking info */
-  addTracking: (id: string, trackingNumber: string, trackingUrl?: string) =>
-    api.patch<Order>(`/admin/orders/${id}/tracking`, { trackingNumber, trackingUrl }),
+  addTracking: (id: string, trackingNumber: string, trackingUrl?: string, notifyCustomer = false) =>
+    api.patch<Order>(`/admin/orders/${id}/tracking`, { trackingNumber, trackingUrl, notifyCustomer }),
 
   /** [Admin] Add admin notes */
   addAdminNote: (id: string, note: string) =>

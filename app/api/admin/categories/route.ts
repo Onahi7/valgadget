@@ -41,9 +41,22 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
     const { name, description, image, icon, parentId, isActive = true, sortOrder = 0 } = body
-    if (!name) return apiError('name is required.')
+    const normalizedName = typeof name === 'string' ? name.trim() : ''
+    const normalizedParentId = typeof parentId === 'string' && parentId.trim() ? parentId.trim() : null
+    if (!normalizedName) return apiError('Category name is required.')
 
-    let slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+    if (normalizedParentId) {
+      const [parent] = await db
+        .select({ id: categories.id, parentId: categories.parentId })
+        .from(categories)
+        .where(eq(categories.id, normalizedParentId))
+        .limit(1)
+      if (!parent) return apiError('Parent category not found.', 404)
+      if (parent.parentId) return apiError('Subcategories can only belong to a main category.')
+    }
+
+    let slug = normalizedName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+    if (!slug) return apiError('Category name must contain letters or numbers.')
 
     // Ensure slug is unique
     const [existing] = await db.select({ slug: categories.slug }).from(categories).where(eq(categories.slug, slug)).limit(1)
@@ -52,8 +65,16 @@ export async function POST(req: NextRequest) {
       slug = `${slug}-${timestamp}`
     }
 
-    const result = await db.insert(categories).values({ name, slug, description, image, icon, parentId, isActive, sortOrder }).returning()
-    const cat = (result as unknown as any[])?.[0]
+    const [cat] = await db.insert(categories).values({
+      name: normalizedName,
+      slug,
+      description,
+      image,
+      icon,
+      parentId: normalizedParentId,
+      isActive: Boolean(isActive),
+      sortOrder: Number.isFinite(Number(sortOrder)) ? Number(sortOrder) : 0,
+    }).returning()
     return apiOk(cat, 201)
   } catch (err) {
     console.error('[admin create category]', err)
