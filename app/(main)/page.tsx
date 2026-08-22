@@ -145,14 +145,14 @@ async function getHomeData() {
 export default async function HomePage() {
   const { categoryIcons, categoryShelves, brands, featured, hotDeals, newest, raffles: activeRaffles } = await getHomeData()
 
-  const shelfBackgrounds = ['bg-white', 'bg-[#EEF0EE]', 'bg-[#F5F0E6]']
+  const shelfBackgrounds = ['bg-background', 'bg-muted']
 
   return (
     <div className="animate-page-reveal bg-background">
       <Hero />
       <CategoryIconGrid title="Shop what you need" categories={categoryIcons} />
-      <ProductShelf title="Latest arrivals" href="/shop?sort=newest" products={newest} columns={4} className="bg-[#EEF0EE]" />
-      <ProductShelf title="Featured picks" href="/shop?sort=popular" products={featured} columns={4} className="bg-[#EEF0EE]" />
+      <ProductShelf title="Latest arrivals" href="/shop?sort=newest" products={newest} columns={4} className="bg-muted" />
+      <ProductShelf title="Featured picks" href="/shop?sort=popular" products={featured} columns={4} className="bg-background" />
       <HotDealsCarousel products={hotDeals} />
 
       {categoryShelves.slice(0, 3).map((shelf, index) => (

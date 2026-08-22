@@ -64,7 +64,7 @@ export default function AccountDashboardPage() {
       <div className="space-y-8">
 
         {/* Welcome banner */}
-        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-primary to-primary/70 p-6 text-white shadow-lg">
+        <div className="relative overflow-hidden rounded-xl bg-secondary p-6 text-white shadow-lg">
           <div className="absolute -right-8 -top-8 w-36 h-36 rounded-full bg-white/10" />
           <div className="absolute -right-2 -bottom-10 w-24 h-24 rounded-full bg-white/5" />
           <div className="relative z-10 flex items-start justify-between gap-4">

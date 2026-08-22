@@ -13,8 +13,8 @@ export default function CheckoutLayout({ children }: { children: React.ReactNode
     <>
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <Link href="/" aria-label="Val Gadgets home" className="shrink-0">
-            <Image src="/logo.png" alt="Val Gadgets" width={142} height={50} className="h-10 w-auto object-contain" priority />
+          <Link href="/" aria-label="Val Gadgets home" className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden">
+            <Image src="/logo.png" alt="Val Gadgets" width={112} height={112} className="h-full w-full scale-[1.9] object-contain" priority />
           </Link>
           <p className="hidden items-center gap-2 text-sm font-medium text-slate-600 sm:flex">
             <LockKeyhole className="h-4 w-4 text-slate-900" />

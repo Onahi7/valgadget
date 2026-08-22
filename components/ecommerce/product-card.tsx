@@ -73,7 +73,7 @@ export function ProductCard({ product, className, priority = false }: ProductCar
           </Badge>
         )}
         {discount && (
-          <Badge variant="secondary" className="border-0 bg-foreground font-mono text-[10px] uppercase tracking-wider text-background">
+          <Badge variant="secondary" className="border-0 bg-tangerine font-mono text-[10px] uppercase tracking-wider text-tangerine-foreground">
             -{discount}%
           </Badge>
         )}
@@ -170,7 +170,7 @@ export function ProductCard({ product, className, priority = false }: ProductCar
         {/* Price + Add to cart */}
         <div className="mt-auto flex flex-col gap-2 pt-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
-            <span className="block break-words text-base font-bold leading-tight tracking-tight text-foreground sm:text-lg">
+            <span className="block break-words text-base font-bold leading-tight tracking-tight text-tangerine sm:text-lg">
               ₦{product.price.toLocaleString('en-NG')}
             </span>
             {product.comparePrice && (

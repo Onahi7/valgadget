@@ -4,61 +4,63 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Val Gadgets brand guide: green-led 60 / 30 / 10 system */
-  --background: #ffffff;
-  --foreground: #1f2421;
+  /* Val Gadgets: warm white + forest + tangerine, used as a 70 / 20 / 10 system */
+  --background: #fafaf7;
+  --foreground: #171b18;
   --card: #ffffff;
-  --card-foreground: #1f2421;
+  --card-foreground: #171b18;
   --popover: #ffffff;
-  --popover-foreground: #1f2421;
+  --popover-foreground: #171b18;
 
-  --primary: #324c33;
+  --primary: #2f7148;
   --primary-foreground: #ffffff;
-  --secondary: #233523;
+  --secondary: #183d2a;
   --secondary-foreground: #ffffff;
 
-  --muted: #eef0ee;
-  --muted-foreground: #5f6b60;
-  --accent: #f5f0e6;
-  --accent-foreground: #1f2421;
+  --muted: #edf5ef;
+  --muted-foreground: #58675d;
+  --accent: #fff0e8;
+  --accent-foreground: #171b18;
 
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(1 0 0);
 
-  --border: #cbd2cc;
-  --input: #cbd2cc;
-  --ring: #324c33;
+  --border: #dce4de;
+  --input: #dce4de;
+  --ring: #2f7148;
 
   --radius: 0.5rem;
 
   /* Chart */
-  --chart-1: #324c33;
-  --chart-2: #3e6e7e;
-  --chart-3: #c1653a;
-  --chart-4: #849384;
-  --chart-5: #233523;
+  --chart-1: #2f7148;
+  --chart-2: #f26a32;
+  --chart-3: #183d2a;
+  --chart-4: #78a88a;
+  --chart-5: #f5a27e;
 
   /* Sidebar */
-  --sidebar: #233523;
-  --sidebar-foreground: #eef0ee;
-  --sidebar-primary: #cbd2cc;
-  --sidebar-primary-foreground: #233523;
-  --sidebar-accent: #324c33;
+  --sidebar: #183d2a;
+  --sidebar-foreground: #fafaf7;
+  --sidebar-primary: #f26a32;
+  --sidebar-primary-foreground: #171b18;
+  --sidebar-accent: #2f7148;
   --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #324c33;
-  --sidebar-ring: #849384;
+  --sidebar-border: #2f7148;
+  --sidebar-ring: #f26a32;
 
   /* Brand tokens */
-  --brand: #324c33;
+  --brand: #183d2a;
   --brand-foreground: #ffffff;
-  --brand-hover: #233523;
-  --surface: #eef0ee;
+  --brand-hover: #2f7148;
+  --surface: #edf5ef;
   --surface-elevated: #ffffff;
-  --ink: #1f2421;
-  --ink-muted: #5f6b60;
-  --ink-subtle: #849384;
-  --terracotta: #c1653a;
-  --slate-teal: #3e6e7e;
+  --ink: #171b18;
+  --ink-muted: #58675d;
+  --ink-subtle: #7b8a80;
+  --tangerine: #f26a32;
+  --tangerine-foreground: #171b18;
+  --terracotta: #f26a32;
+  --slate-teal: #2f7148;
   --badge-success: oklch(0.55 0.15 145);
   --badge-warning: oklch(0.72 0.18 65);
   --badge-danger: oklch(0.577 0.245 27.325);
@@ -66,30 +68,30 @@
 }
 
 .dark {
-  --background: #1f2421;
-  --foreground: #eef0ee;
-  --card: #233523;
+  --background: #111713;
+  --foreground: #fafaf7;
+  --card: #183d2a;
   --card-foreground: #ffffff;
   --popover: #233523;
   --popover-foreground: #ffffff;
-  --primary: #849384;
-  --primary-foreground: #1f2421;
-  --secondary: #324c33;
+  --primary: #78a88a;
+  --primary-foreground: #111713;
+  --secondary: #183d2a;
   --secondary-foreground: #ffffff;
   --muted: #324c33;
   --muted-foreground: #cbd2cc;
-  --accent: #3e6e7e;
-  --accent-foreground: #ffffff;
+  --accent: #5b2b1d;
+  --accent-foreground: #fff0e8;
   --destructive: oklch(0.45 0.2 25);
   --destructive-foreground: oklch(0.95 0 0);
   --border: #324c33;
   --input: #324c33;
-  --ring: #849384;
-  --chart-1: #849384;
-  --chart-2: #3e6e7e;
-  --chart-3: #c1653a;
-  --chart-4: #cbd2cc;
-  --chart-5: #f5f0e6;
+  --ring: #78a88a;
+  --chart-1: #78a88a;
+  --chart-2: #f26a32;
+  --chart-3: #dce4de;
+  --chart-4: #2f7148;
+  --chart-5: #f5a27e;
   --sidebar: #1f2421;
   --sidebar-foreground: #eef0ee;
   --sidebar-primary: #849384;
@@ -98,14 +100,16 @@
   --sidebar-accent-foreground: #ffffff;
   --sidebar-border: #324c33;
   --sidebar-ring: #849384;
-  --brand: #849384;
-  --brand-foreground: #1f2421;
-  --brand-hover: #cbd2cc;
-  --surface: #233523;
-  --surface-elevated: #324c33;
-  --ink: #eef0ee;
-  --ink-muted: #cbd2cc;
-  --ink-subtle: #849384;
+  --brand: #78a88a;
+  --brand-foreground: #111713;
+  --brand-hover: #a9c9b4;
+  --surface: #183d2a;
+  --surface-elevated: #24583c;
+  --ink: #fafaf7;
+  --ink-muted: #dce4de;
+  --ink-subtle: #a9b7ad;
+  --tangerine: #f26a32;
+  --tangerine-foreground: #171b18;
 }
 
 @theme inline {
@@ -150,6 +154,8 @@
   --color-sidebar-ring: var(--sidebar-ring);
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
+  --color-tangerine: var(--tangerine);
+  --color-tangerine-foreground: var(--tangerine-foreground);
   --color-terracotta: var(--terracotta);
   --color-slate-teal: var(--slate-teal);
   --color-surface: var(--surface);
@@ -164,7 +170,7 @@
     @apply bg-background font-sans text-foreground antialiased;
   }
   ::selection {
-    background: rgb(50 76 51 / 0.22);
+    background: rgb(242 106 50 / 0.24);
   }
   h1, h2 {
     @apply font-display tracking-tight;
@@ -236,7 +242,7 @@
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: oklch(0.7 0 0); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #324c33; }
+::-webkit-scrollbar-thumb:hover { background: #2f7148; }
 
 /* Print styles — receipt */
 @media print {

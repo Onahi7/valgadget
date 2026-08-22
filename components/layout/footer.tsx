@@ -52,8 +52,8 @@ export function Footer() {
         <div className="grid grid-cols-2 gap-8 py-16 md:grid-cols-6">
           {/* Brand — spans two columns */}
           <div className="col-span-2">
-            <Link href="/" className="flex items-center">
-              <Image src="/logo.png" alt="Val Gadgets" width={160} height={56} className="h-12 w-auto object-contain" />
+            <Link href="/" className="flex h-24 w-24 items-center justify-center overflow-hidden">
+              <Image src="/logo.png" alt="Val Gadgets" width={192} height={192} className="h-full w-full scale-[1.9] object-contain brightness-0 invert" />
             </Link>
             <p className="mt-4 max-w-[220px] text-sm leading-relaxed text-secondary-foreground/60">
               Your number 1 gadget plug. Solution to every gadget need — with

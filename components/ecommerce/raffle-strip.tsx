@@ -34,13 +34,13 @@ export function RaffleStrip({ raffles }: RaffleStripProps) {
               Enter active draws for a chance to win quality tech. Ticket prices and availability are always shown upfront.
             </p>
             <div className="mt-7 flex flex-wrap items-center gap-4">
-              <Button className="h-11 rounded-md bg-primary px-5 font-semibold text-white hover:bg-primary/90" asChild>
+              <Button className="h-11 rounded-md bg-tangerine px-5 font-semibold text-tangerine-foreground hover:bg-tangerine/90" asChild>
                 <Link href="/raffles">
                   See live raffles <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
               <span className="inline-flex items-center gap-2 text-sm text-white/60">
-                <Ticket className="h-4 w-4 text-primary" />
+                <Ticket className="h-4 w-4 text-tangerine" />
                 {raffles.length} active {raffles.length === 1 ? 'draw' : 'draws'}
               </span>
             </div>
@@ -57,11 +57,11 @@ export function RaffleStrip({ raffles }: RaffleStripProps) {
                 unoptimized
               />
             ) : (
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,86,0,.2),transparent_65%)]" />
+              <div className="absolute inset-0 bg-primary/25" />
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent" />
+            <div className="absolute inset-0 bg-black/55" />
             <div className="absolute inset-x-0 bottom-0 p-6 sm:p-8">
-              <p className="text-sm font-semibold text-primary">Featured draw</p>
+              <p className="text-sm font-semibold text-tangerine">Featured draw</p>
               <h3 className="mt-1 text-xl font-bold">{featured.title}</h3>
               <p className="mt-1 text-sm text-white/70">
                 {featured.prize} · ₦{featured.ticketPrice.toLocaleString()} per ticket

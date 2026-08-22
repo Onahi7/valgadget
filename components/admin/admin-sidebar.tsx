@@ -96,7 +96,9 @@ export function AdminSidebar() {
     <aside className="hidden h-full w-60 shrink-0 flex-col overflow-y-auto border-r border-[#e3e7e3] bg-white md:flex">
       {/* Brand */}
       <div className="flex h-16 items-center gap-3 border-b border-[#e9ece9] px-5">
-        <Image src="/logo.png" alt="Val Gadgets" width={104} height={36} className="h-8 w-auto object-contain" priority />
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden">
+          <Image src="/logo.png" alt="Val Gadgets" width={96} height={96} className="h-full w-full scale-[1.9] object-contain" priority />
+        </div>
         <span className="h-4 w-px bg-border" />
         <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground">Admin</p>
       </div>
@@ -119,4 +121,3 @@ export function AdminSidebar() {
     </aside>
   )
 }
-

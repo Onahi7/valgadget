@@ -29,7 +29,7 @@ export function HotDealsCarousel({ products }: Props) {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mb-5 flex items-end justify-between gap-4">
           <div className="min-w-0">
-            <p className="mb-1.5 flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-widest text-primary">
+            <p className="mb-1.5 flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-widest text-tangerine">
               <Flame className="h-3.5 w-3.5" />
               Price drops
             </p>

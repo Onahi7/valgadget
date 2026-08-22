@@ -72,10 +72,10 @@ export function Header() {
       {/* Top bar */}
       <div className="border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex h-14 items-center gap-4 sm:h-[60px]">
+          <div className="flex h-16 items-center gap-4 sm:h-[72px]">
             {/* Logo */}
-            <Link href="/" className="flex items-center shrink-0">
-              <Image src="/logo.png" alt="Val Gadgets" width={180} height={62} className="h-11 w-auto object-contain sm:h-14" priority />
+            <Link href="/" className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden sm:h-16 sm:w-16">
+              <Image src="/logo.png" alt="Val Gadgets" width={128} height={128} className="h-full w-full scale-[1.9] object-contain" priority />
             </Link>
 
             {/* Search bar - center, prominent */}

@@ -56,7 +56,7 @@ export function CategoryIconGrid({
   if (categories.length === 0) return null
 
   return (
-    <section className={`bg-white py-10 sm:py-12 ${className}`}>
+    <section className={`bg-background py-10 sm:py-12 ${className}`}>
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mb-6 flex items-end justify-between gap-4">
           <div>
