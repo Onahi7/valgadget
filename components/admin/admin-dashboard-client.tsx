@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { adminService, type DashboardStats, type RecentOrder, type TopProduct, type RevenueChartData } from '@/lib/services/admin.service'
 import { ORDER_STATUS_COLORS } from '@/lib/constants/admin-status-colors'
+import { AdminPageHeader } from '@/components/admin/admin-controls'
 
 export function AdminDashboardClient() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
@@ -54,6 +55,8 @@ export function AdminDashboardClient() {
   const affiliatesTotal = stats?.affiliates.total ?? 0
   const productsTotal = stats?.products.total ?? 0
   const maxChartRevenue = Math.max(...chartData.map(item => item.revenue), 1)
+  const chartOrders = chartData.reduce((sum, item) => sum + item.orders, 0)
+  const hasRevenueActivity = chartData.some(item => item.revenue > 0 || item.orders > 0)
 
   const statCards = [
     { label: 'Total Revenue', value: formatNaira(revenueTotal), sub: `${formatNaira(stats?.revenue.today ?? 0)} today`, icon: DollarSign, color: 'bg-green-50 text-green-600 dark:bg-green-950' },
@@ -64,10 +67,7 @@ export function AdminDashboardClient() {
 
   return (
     <div className="animate-page-reveal space-y-5">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-[28px] font-semibold leading-tight tracking-[-0.03em]">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">Store performance, recent orders, and catalog health at a glance.</p>
-      </div>
+      <AdminPageHeader title="Dashboard" description="Store performance, recent orders, and catalog health at a glance." />
 
       {loadError && (
         <div className="flex items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
@@ -85,7 +85,7 @@ export function AdminDashboardClient() {
 
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         {statCards.map(({ label, value, sub, icon: Icon, color }) => (
-          <div key={label} className="group min-w-0 rounded-xl border border-[#e0e5e0] bg-white p-4 shadow-[0_1px_2px_rgba(31,36,33,0.03)] transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-[#cbd5cb] hover:shadow-[0_8px_24px_rgba(31,36,33,0.06)] sm:p-5">
+          <div key={label} className="group min-w-0 rounded-xl border border-border bg-card p-4 shadow-sm transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md sm:p-5">
             <div className="mb-3 flex items-start justify-between">
               <div className={`flex h-9 w-9 items-center justify-center rounded-[10px] sm:h-10 sm:w-10 ${color}`}>
                 <Icon className="h-[18px] w-[18px] sm:h-5 sm:w-5" strokeWidth={2} />
@@ -101,22 +101,32 @@ export function AdminDashboardClient() {
       </div>
 
       {/* Revenue Chart */}
-      <div className="rounded-xl border border-[#e0e5e0] bg-white p-5 shadow-[0_1px_2px_rgba(31,36,33,0.03)] sm:p-6">
+      <div className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-[15px] font-semibold">Revenue <span className="font-normal text-muted-foreground">(Last 14 Days)</span></h2>
           <span className="text-xs text-muted-foreground">
-            {chartData.reduce((s, d) => s + d.orders, 0)} orders
+            {chartOrders} orders
           </span>
         </div>
         {loading ? (
-          <p className="text-sm text-muted-foreground">Loading chart...</p>
-        ) : chartData.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No revenue data yet.</p>
+          <div className="flex h-20 items-end gap-2" aria-label="Loading revenue chart">
+            {[42, 68, 50, 82, 58, 74, 46].map((height, index) => (
+              <span
+                key={index}
+                className="flex-1 animate-pulse rounded-t bg-muted"
+                style={{ height: `${height}%` }}
+              />
+            ))}
+          </div>
+        ) : chartData.length === 0 || !hasRevenueActivity ? (
+          <div className="flex min-h-20 items-center justify-center rounded-lg border border-dashed border-border bg-muted/25 px-4 text-center">
+            <p className="text-sm text-muted-foreground">Revenue activity will appear here after the first paid order.</p>
+          </div>
         ) : (
-          <div className="relative flex h-36 items-stretch gap-1.5 border-b border-[#dfe5df] pb-4 sm:h-44 sm:pb-0" role="group" aria-label="Revenue by day for the last 14 days">
-            <span className="pointer-events-none absolute inset-x-0 top-1/4 border-t border-dashed border-[#e6eae6]" />
-            <span className="pointer-events-none absolute inset-x-0 top-1/2 border-t border-dashed border-[#e6eae6]" />
-            <span className="pointer-events-none absolute inset-x-0 top-3/4 border-t border-dashed border-[#e6eae6]" />
+          <div className="relative flex h-36 items-stretch gap-1.5 border-b border-border pb-4 sm:h-44 sm:pb-0" role="group" aria-label="Revenue by day for the last 14 days">
+            <span className="pointer-events-none absolute inset-x-0 top-1/4 border-t border-dashed border-border/70" />
+            <span className="pointer-events-none absolute inset-x-0 top-1/2 border-t border-dashed border-border/70" />
+            <span className="pointer-events-none absolute inset-x-0 top-3/4 border-t border-dashed border-border/70" />
             {chartData.map(d => {
               const pct = (d.revenue / maxChartRevenue) * 100
               return (
@@ -149,7 +159,7 @@ export function AdminDashboardClient() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <div className="rounded-xl border border-[#e0e5e0] bg-white p-5 shadow-[0_1px_2px_rgba(31,36,33,0.03)] lg:col-span-2 sm:p-6">
+        <div className="rounded-xl border border-border bg-card p-5 shadow-sm lg:col-span-2 sm:p-6">
           <div className="mb-5 flex items-center justify-between">
             <h2 className="text-[15px] font-semibold">Order Overview</h2>
             <Button variant="ghost" size="sm" asChild className="h-7 text-xs">
@@ -167,7 +177,7 @@ export function AdminDashboardClient() {
               { label: 'Cancelled', count: stats?.orders.cancelled ?? 0, color: 'bg-red-500' },
               { label: 'Total', count: ordersTotal, color: 'bg-primary' },
             ].map(item => (
-              <div key={item.label} className="rounded-lg border border-[#e7ebe7] bg-[#f7f8f7] px-2 py-3 text-center">
+              <div key={item.label} className="rounded-lg border border-border bg-muted/35 px-2 py-3 text-center">
                 <div className={`mx-auto mb-2 h-1.5 w-1.5 rounded-full ${item.color}`} />
                 <p className="font-display text-lg font-semibold tabular-nums">{loading ? '...' : (item.count ?? 0).toLocaleString()}</p>
                 <p className="mt-0.5 truncate text-[9px] text-muted-foreground sm:text-[10px]">{item.label}</p>
@@ -179,7 +189,7 @@ export function AdminDashboardClient() {
           </p>
         </div>
 
-        <div className="rounded-xl border border-[#e0e5e0] bg-white p-5 shadow-[0_1px_2px_rgba(31,36,33,0.03)] sm:p-6">
+        <div className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-[15px] font-semibold">Top Products</h2>
             <Button variant="ghost" size="sm" asChild className="h-7 text-xs">
@@ -207,8 +217,8 @@ export function AdminDashboardClient() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-[#e0e5e0] bg-white shadow-[0_1px_2px_rgba(31,36,33,0.03)]">
-        <div className="flex items-center justify-between border-b border-[#e7ebe7] px-5 py-4 sm:px-6">
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+        <div className="flex items-center justify-between border-b border-border px-5 py-4 sm:px-6">
           <h2 className="text-[15px] font-semibold">Recent Orders</h2>
           <Button variant="ghost" size="sm" asChild className="h-7 text-xs">
             <Link href="/admin/orders">
@@ -238,7 +248,7 @@ export function AdminDashboardClient() {
                   <td colSpan={6} className="py-10 text-center text-sm text-muted-foreground">No orders yet</td>
                 </tr>
               ) : recentOrders.map(order => (
-                <tr key={order.id} className="border-b border-[#edf0ed] transition-colors last:border-0 hover:bg-[#f7f8f7]">
+                <tr key={order.id} className="border-b border-border/60 transition-colors last:border-0 hover:bg-muted/35">
                   <td className="px-6 py-3">
                     <Link href={`/admin/orders/${order.id}`} className="font-mono text-xs text-primary hover:underline">
                       {order.reference}
@@ -265,13 +275,13 @@ export function AdminDashboardClient() {
             </tbody>
           </table>
         </div>
-        <div className="divide-y divide-[#edf0ed] md:hidden">
+        <div className="divide-y divide-border/60 md:hidden">
           {loading ? (
             <p className="px-5 py-10 text-center text-sm text-muted-foreground">Loading recent orders...</p>
           ) : recentOrders.length === 0 ? (
             <p className="px-5 py-10 text-center text-sm text-muted-foreground">No orders yet</p>
           ) : recentOrders.map(order => (
-            <Link key={order.id} href={`/admin/orders/${order.id}`} className="flex items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-[#f7f8f7]">
+            <Link key={order.id} href={`/admin/orders/${order.id}`} className="flex items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-muted/35">
               <div className="min-w-0">
                 <p className="truncate font-mono text-xs font-bold text-primary">{order.reference}</p>
                 <p className="mt-1 truncate text-xs text-muted-foreground">{order.customer?.name ?? 'Guest customer'} · {order.itemCount ?? 0} item{order.itemCount === 1 ? '' : 's'}</p>

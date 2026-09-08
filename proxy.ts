@@ -85,6 +85,7 @@ export async function proxy(request: NextRequest) {
 
   // Get token from cookie (preferred) or Authorization header
   const cookieToken = request.cookies.get('vg_token')?.value
+  const hasRefreshToken = Boolean(request.cookies.get('vg_refresh')?.value)
   const authHeader = request.headers.get('authorization')
   const headerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
   const token = cookieToken || headerToken
@@ -179,7 +180,9 @@ export async function proxy(request: NextRequest) {
 
   // Page route protection
   // Redirect to login if accessing protected route without auth
-  if (isProtectedPath && !user) {
+  // Let the client refresh an expired access token when a refresh cookie exists.
+  // Redirecting here would prevent AuthProvider from ever reaching /api/auth/refresh.
+  if (isProtectedPath && !user && !hasRefreshToken) {
     const url = request.nextUrl.clone()
     url.pathname = isAdminPath ? '/admin/login' : '/login'
     url.searchParams.set('returnUrl', `${pathname}${search}`)
@@ -194,7 +197,7 @@ export async function proxy(request: NextRequest) {
   }
 
   // Check admin access for pages
-  if (isAdminPath && user?.role !== 'admin') {
+  if (isAdminPath && user && user.role !== 'admin') {
     const url = request.nextUrl.clone()
     url.pathname = '/unauthorized'
     return NextResponse.redirect(url)

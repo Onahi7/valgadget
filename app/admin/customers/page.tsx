@@ -10,9 +10,10 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog'
-import { getToken } from '@/lib/api-client'
+import { apiFetch } from '@/lib/api-client'
 import { useDebounce } from '@/hooks/use-debounce'
 import { toast } from 'sonner'
+import { AdminPageHeader, AdminSelect } from '@/components/admin/admin-controls'
 
 type Customer = {
   id: string; name: string; email: string; role: string;
@@ -54,10 +55,7 @@ export default function AdminCustomersPage() {
     const params = new URLSearchParams({ page: String(p), limit: String(PAGE_SIZE) })
     if (roleFilter !== 'all') params.set('role', roleFilter)
     if (debouncedSearch) params.set('search', debouncedSearch)
-    fetch(`/api/admin/users?${params}`, {
-      headers: { Authorization: `Bearer ${getToken()}` },
-      credentials: 'include',
-    })
+    apiFetch(`/api/admin/users?${params}`)
       .then(r => r.json())
       .then((res: CustomersResponse) => {
         if (res.data) setCustomers(res.data)
@@ -69,11 +67,10 @@ export default function AdminCustomersPage() {
   }
 
   const fetchCounts = () => {
-    const headers = { Authorization: `Bearer ${getToken()}` }
     Promise.all([
-      fetch('/api/admin/users?limit=1&role=customer', { headers, credentials: 'include' }).then(r => r.json()),
-      fetch('/api/admin/users?limit=1&role=affiliate', { headers, credentials: 'include' }).then(r => r.json()),
-      fetch('/api/admin/users?limit=1&role=admin', { headers, credentials: 'include' }).then(r => r.json()),
+      apiFetch('/api/admin/users?limit=1&role=customer').then(r => r.json()),
+      apiFetch('/api/admin/users?limit=1&role=affiliate').then(r => r.json()),
+      apiFetch('/api/admin/users?limit=1&role=admin').then(r => r.json()),
     ]).then(([c, a, ad]) => {
       setCounts({ customer: c.total ?? 0, affiliate: a.total ?? 0, admin: ad.total ?? 0 })
     }).catch(() => {})
@@ -89,10 +86,9 @@ export default function AdminCustomersPage() {
     if (!email) return
     setInviting(true)
     try {
-      const res = await fetch('/api/admin/users/invite', {
+      const res = await apiFetch('/api/admin/users/invite', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       })
       const d = await res.json()
@@ -112,15 +108,11 @@ export default function AdminCustomersPage() {
 
   return (
     <div className="space-y-6 animate-page-reveal">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Customers</h1>
-          <p className="text-sm text-muted-foreground">{total} registered users</p>
-        </div>
-        <Button className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90 w-full sm:w-auto" size="sm" onClick={() => setInviteOpen(true)}>
+      <AdminPageHeader title="Customers" description={`${total} registered users`} actions={
+        <Button className="w-full gap-2 sm:w-auto" onClick={() => setInviteOpen(true)}>
           <UserPlus className="w-4 h-4" /> Invite User
         </Button>
-      </div>
+      } />
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -142,16 +134,17 @@ export default function AdminCustomersPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input placeholder="Search by name or email..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
         </div>
-        <select
+        <AdminSelect
           value={roleFilter}
           onChange={e => setRole(e.target.value)}
-          className="appearance-none bg-card border border-border rounded-md px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label="Filter customers by role"
+          containerClassName="w-full sm:w-44"
         >
           <option value="all">All Roles</option>
           <option value="customer">Customer</option>
           <option value="affiliate">Affiliate</option>
           <option value="admin">Admin</option>
-        </select>
+        </AdminSelect>
       </div>
 
       {/* Table */}

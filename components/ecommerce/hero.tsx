@@ -1,58 +1,46 @@
 import Image from 'next/image'
 import Link from 'next/link'
-import { ArrowRight, LockKeyhole, MapPin } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+
+const HERO_ASSET = '/campaigns/power-up-storefront-hero.png'
+
+const desktopHotspots = [
+  { label: 'Shop now', href: '/shop', className: 'left-[5.2%] top-[49%] h-[8%] w-[8.5%]' },
+  { label: 'Explore deals', href: '/deals', className: 'left-[14.3%] top-[49%] h-[8%] w-[8.8%]' },
+  { label: 'Shop top sellers', href: '/shop?sort=popular', className: 'left-[61.7%] top-[4%] h-[34%] w-[16.6%]' },
+  { label: 'Shop smart-home products', href: '/shop?search=smart%20home', className: 'left-[79%] top-[4%] h-[34%] w-[17.2%]' },
+  { label: 'Shop speakers and audio', href: '/categories/speakers', className: 'left-[61.7%] top-[40%] h-[34%] w-[16.6%]' },
+  { label: 'Shop rechargeable fans', href: '/categories/rechargeable-fans', className: 'left-[79%] top-[40%] h-[34%] w-[17.2%]' },
+]
 
 export function Hero() {
   return (
-    <section className="relative isolate min-h-[520px] overflow-hidden bg-[#0d0e10] text-white">
-      <Image
-        src="/hero-gadgets-dark.png"
-        alt="Premium phones, audio gear and accessories available at Val Gadgets"
-        fill
-        sizes="100vw"
-        className="-z-10 object-cover object-[62%_center] sm:object-center"
-        priority
-      />
+    <section className="bg-[#F5F6F5] px-3 pb-3 pt-4 sm:px-6 sm:pt-5 lg:px-8">
+      <div className="mx-auto max-w-[1440px] overflow-hidden rounded-lg border border-border bg-white shadow-sm">
+        <div className="relative h-[258px] overflow-hidden sm:h-auto">
+          <Image
+            src={HERO_ASSET}
+            alt="Power up your world — laptops, phones, watches, headphones, speakers, smart-home devices and rechargeable fans"
+            width={922}
+            height={288}
+            priority
+            unoptimized
+            className="h-full w-auto max-w-none object-cover object-left sm:h-auto sm:w-full"
+          />
 
-      <div className="mx-auto flex min-h-[520px] max-w-7xl items-center px-4 py-14 sm:px-6 lg:px-8">
-        <div className="max-w-xl">
-          <h1 className="text-[2.65rem] font-bold leading-[0.98] tracking-[-0.04em] sm:text-6xl lg:text-7xl">
-            <span className="block">Tech that works.</span>
-            <span className="mt-2 block text-terracotta">Prices that don&apos;t stress.</span>
-          </h1>
+          <Link
+            href="/shop"
+            aria-label="Shop now"
+            className="absolute left-[46px] top-[126px] h-[22px] w-[78px] rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:hidden"
+          />
 
-          <p className="mt-6 max-w-lg text-base leading-7 text-white/70 sm:text-lg">
-            Quality-checked gadgets, fair prices and nationwide delivery — without the guesswork.
-          </p>
-
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
-            <Button size="lg" className="h-12 rounded-md bg-primary px-6 text-base font-semibold text-white hover:bg-primary/90" asChild>
-              <Link href="/shop">
-                Shop gadgets
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
+          {desktopHotspots.map(hotspot => (
             <Link
-              href="/raffles"
-              className="inline-flex h-12 items-center gap-2 px-1 text-sm font-semibold text-white underline decoration-terracotta decoration-2 underline-offset-8 transition-colors hover:text-terracotta sm:px-4"
-            >
-              Explore live raffles
-              <ArrowRight className="h-4 w-4 text-terracotta" />
-            </Link>
-          </div>
-
-          <div className="mt-9 flex flex-col gap-3 border-t border-white/15 pt-5 text-sm text-white/70 sm:flex-row sm:items-center sm:gap-6">
-            <span className="inline-flex items-center gap-2">
-              <LockKeyhole className="h-4 w-4 text-terracotta" />
-              Paystack-secured checkout
-            </span>
-            <span className="hidden h-4 w-px bg-white/25 sm:block" />
-            <span className="inline-flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-terracotta" />
-              Delivery across Nigeria
-            </span>
-          </div>
+              key={hotspot.label}
+              href={hotspot.href}
+              aria-label={hotspot.label}
+              className={`absolute hidden rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:block ${hotspot.className}`}
+            />
+          ))}
         </div>
       </div>
     </section>

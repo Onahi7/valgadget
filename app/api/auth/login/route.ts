@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { db } from '@/lib/server/db'
+import { db, withDbRetry } from '@/lib/server/db'
 import { users, refreshTokens } from '@/lib/server/schema'
 import { comparePassword, signToken, generateRefreshToken, getRefreshTokenCookieOptions, apiOk, apiError, apiRateLimited } from '@/lib/server/auth-helpers'
 import { rateLimit, rateLimitPresets, getScopedRateLimitKey } from '@/lib/server/rate-limiter'
@@ -15,7 +15,9 @@ export async function POST(request: NextRequest) {
     const { email, password } = body ?? {}
     if (!email || !password) return apiError('Email and password are required.')
 
-    const [user] = await db.select().from(users).where(eq(users.email, email.toLowerCase())).limit(1)
+    const [user] = await withDbRetry(() => (
+      db.select().from(users).where(eq(users.email, email.toLowerCase())).limit(1)
+    ))
     if (!user) return apiError('Invalid email or password.', 401)
 
     const valid = await comparePassword(password, user.passwordHash)
@@ -26,11 +28,11 @@ export async function POST(request: NextRequest) {
 
     // Issue refresh token (stored in DB, set as httpOnly cookie)
     const refresh = generateRefreshToken()
-    await db.insert(refreshTokens).values({
+    await withDbRetry(() => db.insert(refreshTokens).values({
       userId: user.id,
       tokenHash: refresh.hash,
       expiresAt: refresh.expiresAt,
-    })
+    }))
 
     const userData = {
       id: user.id, name: user.name, email: user.email, role: user.role,

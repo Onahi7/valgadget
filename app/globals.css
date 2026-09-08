@@ -256,3 +256,28 @@
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
+
+/* Shared admin interaction language */
+.admin-shell :is(input, textarea, select, button, a):focus-visible {
+  outline: none;
+}
+
+.admin-shell :is(input, textarea, select):disabled {
+  cursor: not-allowed;
+}
+
+.admin-shell table tbody tr {
+  content-visibility: auto;
+  contain-intrinsic-size: 60px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-shell *,
+  .admin-shell *::before,
+  .admin-shell *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

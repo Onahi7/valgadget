@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { getToken } from '@/lib/api-client'
+import { apiFetch, getToken } from '@/lib/api-client'
 import { toast } from 'sonner'
 
 export default function EditRafflePage({ params }: { params: Promise<{ id: string }> }) {
@@ -29,7 +29,7 @@ export default function EditRafflePage({ params }: { params: Promise<{ id: strin
   })
 
   useEffect(() => {
-    fetch(`/api/admin/raffles/${id}`, {
+    apiFetch(`/api/admin/raffles/${id}`, {
       headers: { Authorization: `Bearer ${getToken()}` },
       credentials: 'include',
     })
@@ -60,7 +60,7 @@ export default function EditRafflePage({ params }: { params: Promise<{ id: strin
     e.preventDefault()
     setSaving(true)
     try {
-      const res = await fetch(`/api/admin/raffles/${id}`, {
+      const res = await apiFetch(`/api/admin/raffles/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
         credentials: 'include',

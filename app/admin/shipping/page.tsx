@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { getToken } from '@/lib/api-client'
+import { apiFetch } from '@/lib/api-client'
 import { Pencil, Check, X, MapPin, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { NIGERIA_STATES } from '@/lib/data/nigeria-locations'
+import { AdminIconButton, AdminPageHeader, AdminSelect } from '@/components/admin/admin-controls'
 
 interface ShippingRate {
   id: string
@@ -34,10 +35,7 @@ export default function AdminShippingPage() {
 
   async function fetchRates() {
     try {
-      const res = await fetch('/api/shipping-rates', {
-        headers: { Authorization: `Bearer ${getToken()}` },
-        credentials: 'include',
-      })
+      const res = await apiFetch('/api/shipping-rates')
       const json = await res.json()
       if (!res.ok) throw new Error(json.message ?? 'Failed to load rates')
       if (Array.isArray(json)) setRates(json)
@@ -52,10 +50,9 @@ export default function AdminShippingPage() {
     if (!newState) return toast.error('Select a state')
     setSaving(true)
     try {
-      const res = await fetch('/api/shipping-rates', {
+      const res = await apiFetch('/api/shipping-rates', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ state: newState, price: Number(newPrice), estimatedDays: Number(newDays) }),
       })
       const json = await res.json()
@@ -79,10 +76,9 @@ export default function AdminShippingPage() {
   async function saveEdit(id: string) {
     setSaving(true)
     try {
-      const res = await fetch(`/api/shipping-rates/${id}`, {
+      const res = await apiFetch(`/api/shipping-rates/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ price: Number(editPrice), estimatedDays: Number(editDays) }),
       })
       const json = await res.json()
@@ -99,10 +95,9 @@ export default function AdminShippingPage() {
 
   async function toggleActive(r: ShippingRate) {
     try {
-      const res = await fetch(`/api/shipping-rates/${r.id}`, {
+      const res = await apiFetch(`/api/shipping-rates/${r.id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isActive: !r.isActive }),
       })
       const json = await res.json()
@@ -121,11 +116,8 @@ export default function AdminShippingPage() {
   const missingStates = NIGERIA_STATES.filter(state => !configuredStates.has(state))
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Shipping Rates</h1>
-        <p className="text-muted-foreground text-sm mt-1">Manage delivery prices per Nigerian state</p>
-      </div>
+    <div className="mx-auto max-w-5xl space-y-6 animate-page-reveal">
+      <AdminPageHeader title="Shipping Rates" description="Manage delivery prices per Nigerian state" />
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -150,17 +142,16 @@ export default function AdminShippingPage() {
               <span className="ml-auto text-xs text-muted-foreground">{missingStates.length} remaining</span>
             </div>
             <div className="grid gap-2 sm:grid-cols-[1fr_120px_90px_auto]">
-              <select
+              <AdminSelect
                 value={newState}
                 onChange={event => setNewState(event.target.value)}
-                className="h-9 rounded-md border border-input bg-background px-3 text-sm"
                 aria-label="State to add"
               >
                 <option value="">Select state</option>
                 {missingStates.map(state => <option key={state} value={state}>{state}</option>)}
-              </select>
-              <Input type="number" min="0" value={newPrice} onChange={event => setNewPrice(event.target.value)} aria-label="Delivery price" />
-              <Input type="number" min="1" max="60" value={newDays} onChange={event => setNewDays(event.target.value)} aria-label="Delivery days" />
+              </AdminSelect>
+              <Input type="number" min="0" value={newPrice} onChange={event => setNewPrice(event.target.value)} aria-label="Delivery price in naira" placeholder="Price" />
+              <Input type="number" min="1" max="60" value={newDays} onChange={event => setNewDays(event.target.value)} aria-label="Estimated delivery days" placeholder="Days" />
               <Button onClick={addRate} disabled={saving || !newState} className="gap-2"><Plus className="h-4 w-4" /> Add</Button>
             </div>
           </div>
@@ -208,12 +199,12 @@ export default function AdminShippingPage() {
                       <span className="text-xs text-muted-foreground">days</span>
                     </div>
                     <div className="flex gap-1 shrink-0">
-                      <Button size="icon" className="w-7 h-7" onClick={() => saveEdit(r.id)} disabled={saving}>
+                      <AdminIconButton size="sm" label={`Save ${r.state} shipping rate`} className="w-8 h-8 bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground" onClick={() => saveEdit(r.id)} disabled={saving}>
                         <Check className="w-3.5 h-3.5" />
-                      </Button>
-                      <Button size="icon" variant="ghost" className="w-7 h-7" onClick={() => setEditId(null)}>
+                      </AdminIconButton>
+                      <AdminIconButton size="sm" label={`Cancel editing ${r.state}`} className="w-8 h-8" onClick={() => setEditId(null)}>
                         <X className="w-3.5 h-3.5" />
-                      </Button>
+                      </AdminIconButton>
                     </div>
                   </>
                 ) : (
@@ -226,12 +217,12 @@ export default function AdminShippingPage() {
                       <Badge variant={r.isActive ? 'default' : 'secondary'} className="text-[10px]">
                         {r.isActive ? 'Active' : 'Disabled'}
                       </Badge>
-                      <Button size="icon" variant="ghost" className="w-7 h-7" onClick={() => startEdit(r)}>
+                      <AdminIconButton size="sm" label={`Edit ${r.state} shipping rate`} className="w-8 h-8" onClick={() => startEdit(r)}>
                         <Pencil className="w-3.5 h-3.5" />
-                      </Button>
+                      </AdminIconButton>
                       <button
                         onClick={() => toggleActive(r)}
-                        className={cn('text-[11px] font-medium transition-colors', r.isActive ? 'text-destructive hover:text-destructive/80' : 'text-primary hover:text-primary/80')}
+                        className={cn('min-h-8 rounded-md px-2 text-xs font-semibold transition-colors focus-visible:ring-3 focus-visible:ring-ring/20', r.isActive ? 'text-destructive hover:bg-destructive/10' : 'text-primary hover:bg-primary/10')}
                       >
                         {r.isActive ? 'Disable' : 'Enable'}
                       </button>

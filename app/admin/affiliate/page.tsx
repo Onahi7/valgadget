@@ -5,8 +5,9 @@ import { Users, TrendingUp, DollarSign, Link2, Copy, CheckCircle, Search } from 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { getToken } from '@/lib/api-client'
+import { apiFetch, getToken } from '@/lib/api-client'
 import { toast } from 'sonner'
+import { AdminPageHeader } from '@/components/admin/admin-controls'
 
 type Affiliate = {
   id: string
@@ -45,7 +46,7 @@ export default function AdminAffiliatePage() {
 
   const loadAffiliates = () => {
     setLoading(true)
-    fetch('/api/admin/affiliates?limit=100', {
+    apiFetch('/api/admin/affiliates?limit=100', {
       headers: { Authorization: `Bearer ${getToken()}` },
       credentials: 'include',
     })
@@ -67,7 +68,7 @@ export default function AdminAffiliatePage() {
 
   const markAsPaid = async (affiliateId: string) => {
     try {
-      const res = await fetch(`/api/admin/affiliates/${affiliateId}/payout`, {
+      const res = await apiFetch(`/api/admin/affiliates/${affiliateId}/payout`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${getToken()}` },
         credentials: 'include',
@@ -92,10 +93,7 @@ export default function AdminAffiliatePage() {
 
   return (
     <div className="space-y-6 animate-page-reveal">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Affiliate Programme</h1>
-        <p className="text-muted-foreground text-sm mt-1">Track affiliate performance and manage payouts.</p>
-      </div>
+      <AdminPageHeader title="Affiliate Programme" description="Track affiliate performance and manage payouts." />
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

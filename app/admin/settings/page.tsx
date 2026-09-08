@@ -8,9 +8,10 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { Separator } from '@/components/ui/separator'
-import { getToken } from '@/lib/api-client'
+import { apiFetch } from '@/lib/api-client'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import { AdminPageHeader } from '@/components/admin/admin-controls'
 
 const TABS = [
   { id: 'store', label: 'Store', Icon: Store },
@@ -31,7 +32,7 @@ export default function AdminSettingsPage() {
 
   // Load settings from backend
   useEffect(() => {
-    fetch('/api/admin/settings', { headers: { Authorization: `Bearer ${getToken()}` }, credentials: 'include' })
+    apiFetch('/api/admin/settings')
       .then(r => r.json())
       .then(d => { if (d && typeof d === 'object' && !d.message) setS(d) })
       .finally(() => setLoading(false))
@@ -46,10 +47,9 @@ export default function AdminSettingsPage() {
   const handleSave = async () => {
     setSaving(true)
     try {
-      const res = await fetch('/api/admin/settings', {
+      const res = await apiFetch('/api/admin/settings', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ settings: s }),
       })
       const json = await res.json().catch(() => ({}))
@@ -68,10 +68,7 @@ export default function AdminSettingsPage() {
 
   return (
     <div className="space-y-6 max-w-6xl animate-page-reveal">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground text-sm mt-1">Manage your store configuration and preferences.</p>
-      </div>
+      <AdminPageHeader title="Settings" description="Manage your store configuration and preferences." />
 
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Sidebar tabs */}
@@ -80,6 +77,7 @@ export default function AdminSettingsPage() {
             <button
               key={id}
               onClick={() => setActiveTab(id)}
+              aria-current={activeTab === id ? 'page' : undefined}
               className={`shrink-0 lg:w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium transition-colors text-left ${
                 activeTab === id
                   ? 'bg-primary text-primary-foreground'

@@ -38,30 +38,85 @@ export function isApiError(e: unknown): e is ApiError {
 
 // ─── Token refresh ────────────────────────────────────────────────────────────
 
-let refreshPromise: Promise<string | null> | null = null
+type RefreshResult = 'refreshed' | 'rejected' | 'unavailable'
 
-async function refreshAccessToken(): Promise<string | null> {
+let refreshPromise: Promise<RefreshResult> | null = null
+
+async function refreshAccessToken(): Promise<RefreshResult> {
   // Dedupe concurrent refresh calls
   if (refreshPromise) return refreshPromise
 
   refreshPromise = (async () => {
-    try {
-      const res = await fetch(`${BASE_URL}/auth/refresh`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'x-requested-with': 'XMLHttpRequest' },
-      })
-      if (!res.ok) return null
-      // Server sets new httpOnly cookies automatically; no client-side token storage needed
-      return 'cookie'
-    } catch {
-      return null
-    } finally {
-      refreshPromise = null
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const res = await fetch(`${BASE_URL}/auth/refresh`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'x-requested-with': 'XMLHttpRequest' },
+        })
+        if (res.ok) return 'refreshed'
+        if (res.status === 401 || res.status === 403) return 'rejected'
+      } catch {
+        // A brief network failure should not destroy a valid local session.
+      }
+
+      if (attempt === 0) await new Promise(resolve => setTimeout(resolve, 300))
     }
-  })()
+
+    return 'unavailable'
+  })().finally(() => {
+    refreshPromise = null
+  })
 
   return refreshPromise
+}
+
+/**
+ * Fetch wrapper for admin screens that still need the native Response object.
+ * It applies the same cookie refresh and logout rules as the typed API client.
+ */
+export async function apiFetch(
+  input: RequestInfo | URL,
+  init: RequestInit = {},
+  authRetry = false,
+  transientRetry = false,
+): Promise<Response> {
+  const headers = new Headers(init.headers)
+  if (headers.get('authorization') === 'Bearer null') headers.delete('authorization')
+  headers.set('x-requested-with', 'XMLHttpRequest')
+
+  const response = await fetch(input, {
+    ...init,
+    headers,
+    credentials: 'include',
+  })
+
+  const method = (init.method ?? 'GET').toUpperCase()
+  if (method === 'GET' && response.status >= 500 && response.status <= 504 && !transientRetry) {
+    await new Promise(resolve => setTimeout(resolve, 500))
+    return apiFetch(input, init, authRetry, true)
+  }
+
+  if (response.status !== 401 || authRetry) return response
+
+  const inputPath = typeof input === 'string' ? input : input.toString()
+  const isAuthEndpoint = ['/auth/login', '/auth/register', '/auth/refresh', '/auth/logout']
+    .some(endpoint => inputPath.includes(endpoint))
+  if (isAuthEndpoint) return response
+
+  const refreshResult = await refreshAccessToken()
+  if (refreshResult === 'refreshed') return apiFetch(input, init, true)
+
+  if (refreshResult === 'rejected') {
+    clearToken()
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('vg:unauthorized'))
+    return response
+  }
+
+  throw {
+    message: 'Your session could not be checked. Please retry in a moment.',
+    status: 503,
+  } as ApiError
 }
 
 // ─── Core request ─────────────────────────────────────────────────────────────
@@ -86,9 +141,9 @@ function getErrorMessage(value: unknown, fallback: string): string {
 
 async function request<T>(
   path: string,
-  options: RequestInit & { params?: Params; _retry?: boolean } = {}
+  options: RequestInit & { params?: Params; _retry?: boolean; _transientRetry?: boolean } = {}
 ): Promise<T> {
-  const { params, _retry, ...init } = options
+  const { params, _retry, _transientRetry, ...init } = options
 
   let url = `${BASE_URL}${path}`
   if (params) {
@@ -129,18 +184,30 @@ async function request<T>(
     clearTimeout(timeoutId)
   }
 
+  const method = (init.method ?? 'GET').toUpperCase()
+  if (method === 'GET' && res.status >= 500 && res.status <= 504 && !_transientRetry) {
+    await new Promise(resolve => setTimeout(resolve, 500))
+    return request<T>(path, { ...options, _transientRetry: true })
+  }
+
   // Handle 401 with automatic token refresh (only retry once)
   if (res.status === 401 && !_retry) {
     const isAuthEndpoint = ['/auth/login', '/auth/register', '/auth/refresh', '/auth/logout'].some(endpoint => path.includes(endpoint))
     if (!isAuthEndpoint) {
-      const newToken = await refreshAccessToken()
-      if (newToken) {
+      const refreshResult = await refreshAccessToken()
+      if (refreshResult === 'refreshed') {
         // Retry the original request with new token
         return request<T>(path, { ...options, _retry: true })
       }
-      // Refresh failed — clear everything
-      clearToken()
-      if (typeof window !== 'undefined') window.dispatchEvent(new Event('vg:unauthorized'))
+      if (refreshResult === 'rejected') {
+        clearToken()
+        if (typeof window !== 'undefined') window.dispatchEvent(new Event('vg:unauthorized'))
+      } else {
+        throw {
+          message: 'Your session could not be checked. Please retry in a moment.',
+          status: 503,
+        } as ApiError
+      }
     }
     let errData: ApiEnvelope<unknown> = {}
     try { errData = await res.json() } catch {}

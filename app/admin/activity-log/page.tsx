@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react'
 import { Activity, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { getToken } from '@/lib/api-client'
+import { apiFetch, getToken } from '@/lib/api-client'
 import { toast } from 'sonner'
+import { AdminPageHeader } from '@/components/admin/admin-controls'
 
 interface ActivityEntry {
   id: string
@@ -24,7 +25,7 @@ export default function ActivityLogPage() {
   const load = async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/admin/activity-log', {
+      const res = await apiFetch('/api/admin/activity-log', {
         headers: { Authorization: `Bearer ${getToken()}` },
         credentials: 'include',
       })
@@ -41,15 +42,11 @@ export default function ActivityLogPage() {
 
   return (
     <div className="space-y-6 animate-page-reveal">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Activity Log</h1>
-          <p className="text-sm text-muted-foreground">Track admin actions and system events</p>
-        </div>
+      <AdminPageHeader title="Activity Log" description="Track admin actions and system events." actions={
         <Button variant="outline" size="sm" className="gap-1.5" onClick={load}>
           <RefreshCw className="w-3.5 h-3.5" /> Refresh
         </Button>
-      </div>
+      } />
 
       {loading ? (
         <div className="flex items-center justify-center min-h-[300px]">

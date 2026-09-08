@@ -13,9 +13,11 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { toast } from 'sonner'
-import { getToken } from '@/lib/api-client'
+import { apiFetch, getToken } from '@/lib/api-client'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
+import { useAdminConfirm } from '@/components/admin/admin-confirm-provider'
+import { AdminPageHeader } from '@/components/admin/admin-controls'
 
 interface Review {
   id: string
@@ -39,6 +41,7 @@ interface Review {
 }
 
 export default function AdminReviewsPage() {
+  const confirmAction = useAdminConfirm()
   const [reviews, setReviews] = useState<Review[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('all')
@@ -52,13 +55,13 @@ export default function AdminReviewsPage() {
 
   const loadReviews = async () => {
     try {
-      const res = await fetch('/api/admin/reviews', {
+      const res = await apiFetch('/api/admin/reviews', {
         headers: { Authorization: `Bearer ${getToken()}` },
         credentials: 'include',
       })
       const data = await res.json()
       setReviews(Array.isArray(data) ? data : data.data ?? [])
-    } catch (err) {
+    } catch {
       toast.error('Failed to load reviews')
     } finally {
       setLoading(false)
@@ -67,7 +70,7 @@ export default function AdminReviewsPage() {
 
   const toggleActive = async (id: string, isActive: boolean) => {
     try {
-      const res = await fetch(`/api/admin/reviews/${id}`, {
+      const res = await apiFetch(`/api/admin/reviews/${id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -83,16 +86,22 @@ export default function AdminReviewsPage() {
       } else {
         toast.error('Failed to update review')
       }
-    } catch (err) {
+    } catch {
       toast.error('Failed to update review')
     }
   }
 
   const deleteReview = async (id: string) => {
-    if (!confirm('Delete this review permanently?')) return
+    const confirmed = await confirmAction({
+      title: 'Delete review?',
+      description: 'This review and any admin reply will be permanently removed.',
+      confirmLabel: 'Delete review',
+      tone: 'destructive',
+    })
+    if (!confirmed) return
 
     try {
-      const res = await fetch(`/api/admin/reviews/${id}`, {
+      const res = await apiFetch(`/api/admin/reviews/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${getToken()}` },
         credentials: 'include',
@@ -104,7 +113,7 @@ export default function AdminReviewsPage() {
       } else {
         toast.error('Failed to delete review')
       }
-    } catch (err) {
+    } catch {
       toast.error('Failed to delete review')
     }
   }
@@ -112,7 +121,7 @@ export default function AdminReviewsPage() {
   const submitReply = async (id: string) => {
     if (!replyText.trim()) return
     try {
-      const res = await fetch(`/api/admin/reviews/${id}`, {
+      const res = await apiFetch(`/api/admin/reviews/${id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -159,10 +168,7 @@ export default function AdminReviewsPage() {
 
   return (
     <div className="space-y-6 animate-page-reveal">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Reviews</h1>
-        <p className="text-muted-foreground text-sm mt-1">Moderate and approve customer reviews</p>
-      </div>
+      <AdminPageHeader title="Reviews" description="Moderate, reply to, and publish customer reviews." />
 
       {/* Filters */}
       <div className="flex gap-3">

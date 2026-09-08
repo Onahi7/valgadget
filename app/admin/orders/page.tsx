@@ -2,15 +2,16 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Search, ChevronDown, Download, Eye, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, Download, Eye, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import { getToken } from '@/lib/api-client'
+import { apiFetch } from '@/lib/api-client'
 import { useDebounce } from '@/hooks/use-debounce'
 import { toast } from 'sonner'
 import { ORDER_STATUS_COLORS, PAYMENT_STATUS_COLORS } from '@/lib/constants/admin-status-colors'
+import { AdminPageHeader, AdminSelect } from '@/components/admin/admin-controls'
 
 const STATUS_OPTIONS = ['all', 'pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded']
 
@@ -48,10 +49,7 @@ export default function AdminOrdersPage() {
     const params = new URLSearchParams({ page: String(p), limit: String(PAGE_SIZE) })
     if (statusFilter !== 'all') params.set('status', statusFilter)
     if (debouncedSearch) params.set('search', debouncedSearch)
-    fetch(`/api/admin/orders?${params}`, {
-      headers: { Authorization: `Bearer ${getToken()}` },
-      credentials: 'include',
-    })
+    apiFetch(`/api/admin/orders?${params}`)
       .then(async r => {
         if (!r.ok) throw new Error(`Request failed (${r.status})`)
         return r.json()
@@ -83,11 +81,7 @@ export default function AdminOrdersPage() {
   return (
     <div className="space-y-6 animate-page-reveal">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Orders</h1>
-          <p className="text-sm text-muted-foreground">{total} orders · {formatNaira(revenue)} revenue</p>
-        </div>
+      <AdminPageHeader title="Orders" description={`${total} orders · ${formatNaira(revenue)} revenue`} actions={
         <Button variant="outline" size="sm" className="gap-2 w-full sm:w-auto" onClick={() => {
           const params = new URLSearchParams()
           if (statusFilter !== 'all') params.set('status', statusFilter)
@@ -96,7 +90,7 @@ export default function AdminOrdersPage() {
         }}>
           <Download className="w-4 h-4" /> Export CSV
         </Button>
-      </div>
+      } />
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -106,6 +100,8 @@ export default function AdminOrdersPage() {
             <button
               key={status}
               onClick={() => setStatus(statusFilter === status ? 'all' : status)}
+              aria-pressed={statusFilter === status}
+              aria-label={`Filter orders by ${status} status`}
               className={cn(
                 'bg-card border border-border rounded-lg px-3 py-2.5 text-center transition-all hover:border-primary/40',
                 statusFilter === status && 'border-primary ring-1 ring-primary/20'
@@ -124,16 +120,14 @@ export default function AdminOrdersPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input placeholder="Search by reference or customer..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
         </div>
-        <div className="relative">
-          <select
+        <AdminSelect
             value={statusFilter}
             onChange={e => setStatus(e.target.value)}
-            className="appearance-none bg-card border border-border rounded-md pl-3 pr-8 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label="Filter orders by status"
+            containerClassName="w-full sm:w-48"
           >
             {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s === 'all' ? 'All Statuses' : s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
-          </select>
-          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-        </div>
+        </AdminSelect>
       </div>
 
       {/* Table */}

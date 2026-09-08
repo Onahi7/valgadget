@@ -13,12 +13,15 @@ import { categoryService, type Category } from '@/lib/services/category.service'
 import { useDebounce } from '@/hooks/use-debounce'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import { AdminIconButton, AdminPageHeader, AdminSelect } from '@/components/admin/admin-controls'
+import { useAdminConfirm } from '@/components/admin/admin-confirm-provider'
 
 function getDisplayImage(product: Product) {
   return product.displayImage ?? product.images?.find(src => src?.startsWith('/') || src?.includes('ik.imagekit.io')) ?? null
 }
 
 export default function AdminProductsPage() {
+  const confirmAction = useAdminConfirm()
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [activeFilter, setActiveFilter] = useState<string>('all')
@@ -35,7 +38,9 @@ export default function AdminProductsPage() {
   const debouncedSearch = useDebounce(search, 300)
 
   useEffect(() => {
-    categoryService.getFlat().then(r => { if (Array.isArray(r)) setCategories(r as any[]) })
+    categoryService.getAdminAll()
+      .then(r => { if (Array.isArray(r)) setCategories(r as any[]) })
+      .catch(() => setCategories([]))
   }, [])
 
   useEffect(() => {
@@ -50,8 +55,8 @@ export default function AdminProductsPage() {
       .then(r => {
         const res = r as any
         if (res?.data) setProducts(res.data)
-        if (res?.totalPages) setTotalPages(res.totalPages)
-        if (res?.total) setTotal(res.total)
+        setTotalPages(res?.totalPages ?? 1)
+        setTotal(res?.total ?? 0)
       })
       .catch(() => toast.error('Failed to load products'))
       .finally(() => setLoading(false))
@@ -59,9 +64,16 @@ export default function AdminProductsPage() {
 
   const filtered = products
   const parentCategoryIds = new Set(categories.filter(c => !c.parentId).map(c => c.id))
+  const categoryNameById = new Map(categories.map(category => [category.id, category.name]))
 
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Delete "${name}"? This cannot be undone.`)) return
+    const confirmed = await confirmAction({
+      title: 'Delete product?',
+      description: `“${name}” will be permanently removed from the catalog. This cannot be undone.`,
+      confirmLabel: 'Delete product',
+      tone: 'destructive',
+    })
+    if (!confirmed) return
     try {
       await productService.delete(id)
       setProducts(prev => prev.filter(p => p.id !== id))
@@ -93,7 +105,13 @@ export default function AdminProductsPage() {
     if (!bulkAction || selected.size === 0) return
     const ids = [...selected]
     if (bulkAction === 'delete') {
-      if (!confirm(`Delete ${ids.length} products? This cannot be undone.`)) return
+      const confirmed = await confirmAction({
+        title: `Delete ${ids.length} products?`,
+        description: 'The selected products will be permanently removed from the catalog. This cannot be undone.',
+        confirmLabel: 'Delete products',
+        tone: 'destructive',
+      })
+      if (!confirmed) return
       let ok = 0
       for (const id of ids) {
         try { await productService.delete(id); ok++ } catch {}
@@ -119,10 +137,11 @@ export default function AdminProductsPage() {
 
   return (
     <div className="space-y-6 animate-page-reveal">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-tight">Products</h1>
-        <p className="text-sm text-muted-foreground">{total} products</p>
-      </div>
+      <AdminPageHeader title="Products" description={`${total} products`} actions={
+        <Button asChild className="w-full gap-2 sm:w-auto">
+          <Link href="/admin/products/new"><Plus className="h-4 w-4" /> Add Product</Link>
+        </Button>
+      } />
 
       {/* Toolbar */}
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
@@ -130,26 +149,29 @@ export default function AdminProductsPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input placeholder="Search products..." value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} className="pl-9" />
         </div>
-        <select
+        <AdminSelect
           value={categoryFilter}
           onChange={e => { setCategoryFilter(e.target.value); setPage(1) }}
-          className="appearance-none bg-card border border-border rounded-md px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label="Filter products by category"
+          containerClassName="w-full sm:w-52"
         >
           <option value="all">All Categories</option>
-          {categories.map(c => <option key={c.id} value={c.id}>{c.parentId ? `-- ${c.name}` : c.name}</option>)}
-        </select>
-        <select
+          {categories.map(c => (
+            <option key={c.id} value={c.id}>
+              {c.parentId ? `${categoryNameById.get(c.parentId) ?? 'Other'} / ${c.name}` : c.name}
+            </option>
+          ))}
+        </AdminSelect>
+        <AdminSelect
           value={activeFilter}
           onChange={e => { setActiveFilter(e.target.value); setPage(1) }}
-          className="appearance-none bg-card border border-border rounded-md px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label="Filter products by status"
+          containerClassName="w-full sm:w-44"
         >
           <option value="all">All Statuses</option>
           <option value="active">Active Only</option>
           <option value="inactive">Inactive Only</option>
-        </select>
-        <Button asChild className="shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 gap-2">
-          <Link href="/admin/products/new"><Plus className="w-4 h-4" /> Add Product</Link>
-        </Button>
+        </AdminSelect>
       </div>
 
       {/* Stats row (scoped to the current page of results) */}
@@ -170,20 +192,22 @@ export default function AdminProductsPage() {
       {selected.size > 0 && (
         <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-lg px-4 py-2.5">
           <span className="text-sm font-medium">{selected.size} selected</span>
-          <select
+          <AdminSelect
             value={bulkAction}
             onChange={e => setBulkAction(e.target.value)}
-            className="appearance-none bg-card border border-border rounded-md px-3 py-1.5 text-sm"
+            aria-label="Choose bulk action"
+            containerClassName="w-44"
+            className="h-9"
           >
             <option value="">Bulk Actions</option>
             <option value="activate">Activate</option>
             <option value="deactivate">Deactivate</option>
             <option value="delete">Delete</option>
-          </select>
+          </AdminSelect>
           <Button size="sm" onClick={executeBulk} disabled={!bulkAction}>Apply</Button>
-          <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
+          <AdminIconButton size="sm" label="Clear product selection" onClick={() => setSelected(new Set())}>
             <X className="w-4 h-4" />
-          </Button>
+          </AdminIconButton>
         </div>
       )}
 
@@ -209,6 +233,7 @@ export default function AdminProductsPage() {
                   <th className="text-left px-3 py-3 font-medium w-10">
                     <input
                       type="checkbox"
+                      aria-label="Select all products on this page"
                       checked={products.length > 0 && selected.size === products.length}
                       onChange={toggleSelectAll}
                       className="rounded border-border"
@@ -231,6 +256,7 @@ export default function AdminProductsPage() {
                     <td className="px-3 py-3">
                       <input
                         type="checkbox"
+                        aria-label={`Select ${p.name}`}
                         checked={selected.has(p.id)}
                         onChange={() => toggleSelect(p.id)}
                         className="rounded border-border"
@@ -268,10 +294,16 @@ export default function AdminProductsPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
-                        {p.featured && <Badge className="text-[10px] bg-primary/10 text-primary border-primary/20 border">Featured</Badge>}
-                        {p.isNew && <Badge className="text-[10px] bg-green-100 text-green-700 border-green-200 border">New</Badge>}
-                        {!displayImage && <Badge className="text-[10px] bg-amber-100 text-amber-700 border-amber-200 border">Needs image</Badge>}
-                        {!p.isActive && <Badge className="text-[10px] bg-muted text-muted-foreground border">Inactive</Badge>}
+                        <Badge className={cn('border text-[10px]', p.isActive ? 'border-green-200 bg-green-100 text-green-700' : 'bg-muted text-muted-foreground')}>
+                          {p.isActive ? 'Active' : 'Inactive'}
+                        </Badge>
+                        {!displayImage ? (
+                          <Badge className="border border-amber-200 bg-amber-100 text-[10px] text-amber-700">Needs image</Badge>
+                        ) : p.featured ? (
+                          <Badge className="border border-primary/20 bg-primary/10 text-[10px] text-primary">Featured</Badge>
+                        ) : p.isNew ? (
+                          <Badge className="border border-blue-200 bg-blue-50 text-[10px] text-blue-700">New</Badge>
+                        ) : null}
                       </div>
                     </td>
                     <td className="px-4 py-3">

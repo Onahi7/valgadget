@@ -1,5 +1,6 @@
 # Dependencies
 node_modules/
+.pnpm-store/
 
 # Next.js
 .next/
@@ -33,6 +34,8 @@ Thumbs.db
 *.zip
 *.tar.gz
 *.bak
+artifacts/
+design-qa.md
 
 # Replit (if not deploying on Replit)
 .replit

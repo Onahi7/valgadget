@@ -36,7 +36,9 @@ export default function NewProductPage() {
   })
 
   useEffect(() => {
-    categoryService.getAdminAll().then(r => { if (Array.isArray(r)) setCategories(r as any[]) })
+    categoryService.getAdminAll()
+      .then(r => { if (Array.isArray(r)) setCategories(r) })
+      .catch(() => toast.error('Categories could not load. Reload this page before creating a product.'))
   }, [])
 
   const set = (field: string, value: string | boolean) =>
@@ -134,7 +136,13 @@ export default function NewProductPage() {
         croppedBlobs.forEach(({ blob, name }) => {
           formData.append('images', new File([blob], name, { type: 'image/webp' }))
         })
-        await productService.uploadImages(res.id, formData)
+        try {
+          await productService.uploadImages(res.id, formData)
+        } catch {
+          toast.error('Product saved, but the pictures did not upload. Add them on the edit page; do not create the product again.')
+          router.push(`/admin/products/${res.id}/edit`)
+          return
+        }
         toast.success(`"${form.name}" created with ${croppedBlobs.length} image(s).`)
       } else {
         toast.success(`"${form.name}" created.`)

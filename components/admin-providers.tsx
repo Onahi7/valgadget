@@ -1,7 +1,7 @@
 'use client'
 
 import { AuthProvider } from '@/contexts/auth-context'
-import { ThemeProvider } from '@/components/theme-provider'
+import { AdminConfirmProvider } from '@/components/admin/admin-confirm-provider'
 
 /**
  * Minimal providers for the admin dashboard.
@@ -9,10 +9,8 @@ import { ThemeProvider } from '@/components/theme-provider'
  */
 export function AdminProviders({ children }: { children: React.ReactNode }) {
   return (
-    <ThemeProvider attribute="class" defaultTheme="light" disableTransitionOnChange>
-      <AuthProvider>
-        {children}
-      </AuthProvider>
-    </ThemeProvider>
+    <AuthProvider>
+      <AdminConfirmProvider>{children}</AdminConfirmProvider>
+    </AuthProvider>
   )
 }

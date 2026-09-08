@@ -12,8 +12,11 @@ import type { Raffle } from '@/lib/services/raffle.service'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { RAFFLE_STATUS_COLORS } from '@/lib/constants/admin-status-colors'
+import { useAdminConfirm } from '@/components/admin/admin-confirm-provider'
+import { AdminPageHeader } from '@/components/admin/admin-controls'
 
 export default function AdminRafflesPage() {
+  const confirmAction = useAdminConfirm()
   const [raffles, setRaffles] = useState<Raffle[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -26,7 +29,12 @@ export default function AdminRafflesPage() {
   }, [])
 
   const triggerDraw = async (id: string, title: string) => {
-    if (!confirm(`Draw a winner for "${title}"? This result is final.`)) return
+    const confirmed = await confirmAction({
+      title: 'Draw a raffle winner?',
+      description: `A winner will be selected for “${title}”. The result is final.`,
+      confirmLabel: 'Draw winner',
+    })
+    if (!confirmed) return
     try {
       const data = await raffleService.draw(id)
       setRaffles(prev => prev.map(r => r.id === id ? { ...r, status: 'completed', winner: data.winner } : r))
@@ -35,7 +43,13 @@ export default function AdminRafflesPage() {
   }
 
   const cancelRaffle = async (id: string, title: string) => {
-    if (!confirm(`Cancel "${title}"?`)) return
+    const confirmed = await confirmAction({
+      title: 'Cancel raffle?',
+      description: `“${title}” will be cancelled and can no longer accept entries.`,
+      confirmLabel: 'Cancel raffle',
+      tone: 'destructive',
+    })
+    if (!confirmed) return
     try {
       await raffleService.cancel(id)
       setRaffles(prev => prev.map(r => r.id === id ? { ...r, status: 'cancelled' } : r))
@@ -47,15 +61,11 @@ export default function AdminRafflesPage() {
 
   return (
     <div className="space-y-6 animate-page-reveal">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Raffles</h1>
-          <p className="text-sm text-muted-foreground">{raffles.length} raffles · ₦{totalRevenue.toLocaleString()} revenue</p>
-        </div>
+      <AdminPageHeader title="Raffles" description={`${raffles.length} raffles · ₦${totalRevenue.toLocaleString()} revenue`} actions={
         <Button className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90" size="sm" asChild>
           <Link href="/admin/raffles/new"><Plus className="w-4 h-4" /> New Raffle</Link>
         </Button>
-      </div>
+      } />
 
       {/* Stats */}
       <div className="grid grid-cols-4 gap-3">

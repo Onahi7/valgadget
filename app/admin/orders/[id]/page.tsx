@@ -11,9 +11,11 @@ import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
 import type { OrderStatus, PaymentStatus } from '@/lib/services/order.service'
 import { cn } from '@/lib/utils'
-import { getToken } from '@/lib/api-client'
+import { apiFetch, getToken } from '@/lib/api-client'
 import { toast } from 'sonner'
 import { ORDER_STATUS_COLORS, PAYMENT_STATUS_COLORS } from '@/lib/constants/admin-status-colors'
+import { AdminSelect } from '@/components/admin/admin-controls'
+import { useAdminConfirm } from '@/components/admin/admin-confirm-provider'
 
 const PAYMENT_OPTIONS: PaymentStatus[] = ['unpaid', 'pending', 'pending_verification', 'paid', 'failed']
 
@@ -30,6 +32,7 @@ function formatNaira(value: number) {
 }
 
 export default function AdminOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const confirmAction = useAdminConfirm()
   const { id } = use(params)
   const [order, setOrder] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -44,7 +47,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
   const [manualRefundConfirmed, setManualRefundConfirmed] = useState(false)
 
   useEffect(() => {
-    fetch(`/api/admin/orders/${id}`, {
+    apiFetch(`/api/admin/orders/${id}`, {
       headers: { Authorization: `Bearer ${getToken()}` },
       credentials: 'include',
     })
@@ -63,7 +66,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
   }, [id])
 
   const patchOrder = async (payload: Record<string, unknown>, successMessage: string) => {
-    const res = await fetch(`/api/admin/orders/${id}/notes`, {
+    const res = await apiFetch(`/api/admin/orders/${id}/notes`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
       credentials: 'include',
@@ -87,7 +90,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
   }
 
   const updateStatus = async (status: OrderStatus) => {
-    const res = await fetch(`/api/admin/orders/${id}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` }, credentials: 'include', body: JSON.stringify({ status }) })
+    const res = await apiFetch(`/api/admin/orders/${id}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` }, credentials: 'include', body: JSON.stringify({ status }) })
     const json = await res.json().catch(() => ({}))
     if (!res.ok) return toast.error(json.message ?? 'Failed to update status')
     setOrder(json)
@@ -100,7 +103,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
       return
     }
     setSavingMeta(true)
-    const res = await fetch(`/api/admin/orders/${id}/tracking`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` }, credentials: 'include', body: JSON.stringify({ trackingNumber: tracking.trim(), trackingUrl: trackingUrl.trim() || undefined, notifyCustomer }) })
+    const res = await apiFetch(`/api/admin/orders/${id}/tracking`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` }, credentials: 'include', body: JSON.stringify({ trackingNumber: tracking.trim(), trackingUrl: trackingUrl.trim() || undefined, notifyCustomer }) })
     const json = await res.json().catch(() => ({}))
     if (res.ok) { setOrder(json); toast.success(notifyCustomer ? 'Tracking saved and customer notified' : 'Tracking saved') }
     else toast.error(json.message ?? 'Failed to save tracking')
@@ -110,8 +113,15 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
   const savePayment = async () => {
     setSavingMeta(true)
     const isNewConfirmation = paymentStatus === 'paid' && order.paymentStatus !== 'paid'
-    if (isNewConfirmation && !confirm(`Confirm payment of ${formatNaira(Number(order.total))} for ${order.reference}? This will notify the customer.`)) { setSavingMeta(false); return }
-    const res = await fetch(`/api/admin/orders/${id}/payment-status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` }, credentials: 'include', body: JSON.stringify({ paymentStatus, paymentRef: paymentRef.trim() || null, confirmed: isNewConfirmation }) })
+    if (isNewConfirmation) {
+      const confirmed = await confirmAction({
+        title: 'Confirm customer payment?',
+        description: `${formatNaira(Number(order.total))} for ${order.reference} will be marked as paid and the customer will be notified.`,
+        confirmLabel: 'Confirm payment',
+      })
+      if (!confirmed) { setSavingMeta(false); return }
+    }
+    const res = await apiFetch(`/api/admin/orders/${id}/payment-status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` }, credentials: 'include', body: JSON.stringify({ paymentStatus, paymentRef: paymentRef.trim() || null, confirmed: isNewConfirmation }) })
     const json = await res.json().catch(() => ({}))
     if (res.ok) { setOrder(json); toast.success(isNewConfirmation ? 'Payment confirmed and customer notified' : 'Payment details updated') }
     else toast.error(json.message ?? 'Failed to update payment')
@@ -120,9 +130,15 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
 
   const refundOrder = async () => {
     if (refundReason.trim().length < 5) return toast.error('Enter a clear refund reason')
-    if (!confirm(`Refund the full ${formatNaira(Number(order.total))} for ${order.reference}? This action cannot be undone here.`)) return
+    const confirmed = await confirmAction({
+      title: 'Issue full refund?',
+      description: `${formatNaira(Number(order.total))} for ${order.reference} will be refunded. This cannot be undone from the admin panel.`,
+      confirmLabel: 'Issue refund',
+      tone: 'destructive',
+    })
+    if (!confirmed) return
     setSavingMeta(true)
-    const res = await fetch('/api/admin/payments/refund', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` }, credentials: 'include', body: JSON.stringify({ orderId: id, reason: refundReason.trim(), manualConfirmed: manualRefundConfirmed }) })
+    const res = await apiFetch('/api/admin/payments/refund', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` }, credentials: 'include', body: JSON.stringify({ orderId: id, reason: refundReason.trim(), manualConfirmed: manualRefundConfirmed }) })
     const json = await res.json().catch(() => ({}))
     if (res.ok) { setOrder(json); setPaymentStatus('refunded'); toast.success(json.refundStatus === 'pending' ? 'Refund submitted to Paystack' : 'Refund recorded and customer notified') }
     else toast.error(json.message ?? 'Refund failed; no refund was recorded')
@@ -273,18 +289,18 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
                 <span className="font-medium capitalize">{String(order.paymentMethod ?? '').replace('_', ' ')}</span>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Payment Status</label>
-                <select
+                <label htmlFor="payment-status" className="text-sm font-medium">Payment Status</label>
+                <AdminSelect
+                  id="payment-status"
                   value={paymentStatus}
                   onChange={event => setPaymentStatus(event.target.value as PaymentStatus)}
-                  className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   {PAYMENT_OPTIONS.map(option => (
                     <option key={option} value={option}>
                       {option.replace('_', ' ')}
                     </option>
                   ))}
-                </select>
+                </AdminSelect>
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Payment Reference</label>

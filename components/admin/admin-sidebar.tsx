@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, ShoppingBag, ShoppingCart, Users, Tag, Ticket,
-  Share2, Settings, ChevronRight, TrendingUp, MessageCircle, Truck,
+  Share2, Settings, ChevronRight, Store, MessageCircle, Truck,
   Star, Percent, Activity, Mail,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -59,7 +59,7 @@ export function AdminNavLinks({ onNavigate }: { onNavigate?: () => void }) {
     <>
       {NAV_GROUPS.map(group => (
         <div key={group.label}>
-          <p className="px-2 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 font-mono">
+          <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/45">
             {group.label}
           </p>
           <div className="flex flex-col gap-0.5">
@@ -71,16 +71,17 @@ export function AdminNavLinks({ onNavigate }: { onNavigate?: () => void }) {
                   href={item.href}
                   onClick={onNavigate}
                   className={cn(
-                    'group relative flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors',
+                    'group relative flex min-h-10 items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:ring-3 focus-visible:ring-ring/20',
                     active
-                      ? 'bg-[#edf3ed] text-primary'
-                      : 'text-muted-foreground hover:bg-[#f3f5f3] hover:text-foreground'
+                      ? 'bg-white/12 text-white shadow-sm'
+                      : 'text-white/68 hover:bg-white/8 hover:text-white'
                   )}
+                  aria-current={active ? 'page' : undefined}
                 >
-                  {active && <span className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-primary" />}
+                  {active && <span className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-tangerine" />}
                   <item.icon className="h-4 w-4 shrink-0" strokeWidth={active ? 2.25 : 1.8} />
                   <span className="flex-1">{item.label}</span>
-                  {active && <ChevronRight className="h-3.5 w-3.5 opacity-50" />}
+                  {active && <ChevronRight className="h-3.5 w-3.5 text-tangerine" />}
                 </Link>
               )
             })}
@@ -93,28 +94,31 @@ export function AdminNavLinks({ onNavigate }: { onNavigate?: () => void }) {
 
 export function AdminSidebar() {
   return (
-    <aside className="hidden h-full w-60 shrink-0 flex-col overflow-y-auto border-r border-[#e3e7e3] bg-white md:flex">
+    <aside className="hidden h-full w-64 shrink-0 flex-col overflow-y-auto border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
       {/* Brand */}
-      <div className="flex h-16 items-center gap-3 border-b border-[#e9ece9] px-5">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden">
-          <Image src="/logo.png" alt="Val Gadgets" width={96} height={96} className="h-full w-full scale-[1.9] object-contain" priority />
+      <div className="flex h-[72px] items-center gap-3 border-b border-white/10 px-5">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white">
+          <Image src="/logo.png" alt="Val Gadgets" width={112} height={112} className="h-full w-full scale-[2.15] object-contain" priority />
         </div>
-        <span className="h-4 w-px bg-border" />
-        <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground">Admin</p>
+        <span className="h-4 w-px bg-white/20" />
+        <div>
+          <p className="text-sm font-semibold text-white">Admin</p>
+          <p className="text-[11px] text-white/55">Store operations</p>
+        </div>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-4" aria-label="Admin navigation">
+      <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-4" aria-label="Admin navigation">
         <AdminNavLinks />
       </nav>
 
       {/* Bottom */}
-      <div className="space-y-1 border-t border-[#e9ece9] px-3 py-3">
+      <div className="space-y-1 border-t border-white/10 px-3 py-3">
         <Link
           href="/"
-          className="flex items-center gap-2.5 px-3 py-2 rounded-md text-xs text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+          className="flex min-h-10 items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-white/68 transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-3 focus-visible:ring-tangerine/30"
         >
-          <TrendingUp className="w-3.5 h-3.5" />
+          <Store className="h-4 w-4" />
           View Storefront
         </Link>
       </div>

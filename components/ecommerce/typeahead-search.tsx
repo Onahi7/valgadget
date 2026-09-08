@@ -8,13 +8,16 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { formatPrice } from '@/lib/utils'
 import { cn } from '@/lib/utils'
+import { isCatalogImage } from '@/lib/catalog-images'
 
 interface ProductHit {
   id: string
   name: string
   slug: string
   price: number
-  image: string
+  image?: string
+  images?: string[]
+  displayImage?: string | null
   category?: { name: string; slug: string }
 }
 
@@ -103,8 +106,8 @@ export function TypeaheadSearch({
   }, [])
 
   const allResults = [
-    ...results.products.map(p => ({ type: 'product' as const, ...p })),
     ...results.categories.map(c => ({ type: 'category' as const, ...c })),
+    ...results.products.map(p => ({ type: 'product' as const, ...p })),
   ]
 
   const handleSelect = (idx: number) => {
@@ -147,9 +150,9 @@ export function TypeaheadSearch({
   const hasResults = results.products.length > 0 || results.categories.length > 0
 
   return (
-    <div ref={wrapRef} className={`relative ${className}`}>
+    <div ref={wrapRef} className={`relative text-foreground ${className}`}>
       <form onSubmit={handleSubmit}>
-        <div className="flex w-full rounded-full border-2 border-primary overflow-hidden shadow-sm bg-background">
+        <div className="flex w-full rounded-lg border border-border overflow-hidden bg-white">
           <div className="relative flex-1">
             <Input
               value={query}
@@ -159,6 +162,7 @@ export function TypeaheadSearch({
               placeholder={placeholder}
               className={`border-0 ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none pl-4 text-sm bg-background ${inputClassName}`}
               autoComplete="off"
+              aria-label="Search products and categories"
             />
           </div>
           <button
@@ -215,6 +219,7 @@ export function TypeaheadSearch({
                   </p>
                   {results.products.map(prod => {
                     const idx = results.categories.length + results.products.indexOf(prod)
+                    const imageSrc = [prod.displayImage, prod.image, ...(prod.images ?? [])].find(isCatalogImage) ?? '/placeholder-product.svg'
                     return (
                       <button
                         key={prod.id}
@@ -226,7 +231,7 @@ export function TypeaheadSearch({
                         )}
                       >
                         <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md border border-border bg-white">
-                          <Image src={prod.image} alt={prod.name} fill sizes="40px" className="object-contain p-1" unoptimized />
+                          <Image src={imageSrc} alt={prod.name} fill sizes="40px" className="object-contain p-1" unoptimized />
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="line-clamp-1 font-medium">{prod.name}</p>

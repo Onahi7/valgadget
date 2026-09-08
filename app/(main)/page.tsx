@@ -10,6 +10,8 @@ import { db } from '@/lib/server/db'
 import { categories, products, raffles } from '@/lib/server/schema'
 import { getProducts } from '@/lib/server/product-helpers'
 import type { Product } from '@/lib/services/product.service'
+import { withCategoryDisplayImages } from '@/lib/server/category-images'
+import { FALLBACK_CATEGORIES, FALLBACK_PRODUCTS } from '@/lib/storefront-fallback'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,7 +23,7 @@ function isStorefrontProduct(product: Product) {
 async function getHomeData() {
   const activeProducts = eq(products.isActive, true)
 
-  const [categoryRows, featuredRows, catalogRows, newestRows, raffleRows] = await Promise.all([
+  const [categoryResult, featuredResult, catalogResult, newestResult, raffleResult] = await Promise.allSettled([
     db
       .select({
         id: categories.id,
@@ -63,24 +65,44 @@ async function getHomeData() {
       .limit(3),
   ])
 
-  const catalog = catalogRows.filter(isStorefrontProduct)
-  const featured = featuredRows.filter(isStorefrontProduct).slice(0, 4)
-  const newest = newestRows.filter(isStorefrontProduct).slice(0, 4)
+  const categoryRows = categoryResult.status === 'fulfilled' ? categoryResult.value : FALLBACK_CATEGORIES
+  const featuredRows = featuredResult.status === 'fulfilled' ? featuredResult.value : FALLBACK_PRODUCTS
+  const catalogRows = catalogResult.status === 'fulfilled' ? catalogResult.value : FALLBACK_PRODUCTS
+  const newestRows = newestResult.status === 'fulfilled' ? newestResult.value : FALLBACK_PRODUCTS
+  const raffleRows = raffleResult.status === 'fulfilled' ? raffleResult.value : []
 
-  const categoryIcons: CategoryIcon[] = categoryRows
-    .filter(category => !category.parentId && category.productCount > 0)
-    .slice(0, 8)
+  const catalog = catalogRows.filter(isStorefrontProduct)
+  const featured = featuredRows.filter(isStorefrontProduct).slice(0, 6)
+  const newest = newestRows.filter(isStorefrontProduct).slice(0, 6)
+
+  const displayCategories = await withCategoryDisplayImages(categoryRows).catch(() => categoryRows.map(category => ({
+    ...category,
+    displayImage: category.image ?? null,
+    imageStatus: category.image ? 'ready' as const : 'needs_image' as const,
+  })))
+  const categoryIcons: CategoryIcon[] = displayCategories
+    .filter(category => !category.parentId)
     .map(category => ({
       slug: category.slug,
       name: category.name,
       href: `/categories/${category.slug}`,
+      available: category.productCount > 0,
+      image: category.displayImage,
     }))
 
-  const featuredProducts = featured.length > 0 ? featured : catalog.slice(0, 4)
-  const latestProducts = newest.length > 0 ? newest : catalog.slice(4, 8)
+  const featuredProducts = featured.length > 0 ? featured : catalog.slice(0, 6)
+  const latestProducts = newest.length > 0 ? newest : catalog.slice(6, 12)
   const hotDeals = catalog
     .filter(product => product.comparePrice && product.comparePrice > product.price)
     .slice(0, 10)
+  const merchandisingPool = Array.from(new Map([...catalog, ...featuredProducts, ...latestProducts].map(product => [product.id, product])).values())
+  const heroPatterns = [/iphone 15 pro max/i, /jbl charge 5/i, /apple watch series/i, /rechargeable.*fan/i, /hp monitor/i, /redmi pad/i, /soundcore boom/i]
+  const curatedHero = heroPatterns
+    .map(pattern => merchandisingPool.find(product => product.stock > 0 && pattern.test(product.name)))
+    .filter((product): product is Product => Boolean(product))
+  const dealProducts = hotDeals.length > 0
+    ? hotDeals
+    : Array.from(new Map([...curatedHero, ...featuredProducts].map(product => [product.id, product])).values()).slice(0, 10)
 
   const categoryById = new Map(categoryRows.map(category => [category.id, category]))
   const productsByCategory = new Map<string, Product[]>()
@@ -136,7 +158,7 @@ async function getHomeData() {
     categoryShelves,
     brands,
     featured: featuredProducts,
-    hotDeals,
+    hotDeals: dealProducts,
     newest: latestProducts,
     raffles: homeRaffles,
   }
@@ -150,10 +172,10 @@ export default async function HomePage() {
   return (
     <div className="animate-page-reveal bg-background">
       <Hero />
-      <CategoryIconGrid title="Shop what you need" categories={categoryIcons} />
-      <ProductShelf title="Latest arrivals" href="/shop?sort=newest" products={newest} columns={4} className="bg-muted" />
-      <ProductShelf title="Featured picks" href="/shop?sort=popular" products={featured} columns={4} className="bg-background" />
       <HotDealsCarousel products={hotDeals} />
+      <CategoryIconGrid title="Shop by category" categories={categoryIcons} />
+      <ProductShelf title="Latest arrivals" href="/shop?sort=newest" products={newest} columns={6} compact className="bg-[#F5F6F5]" />
+      <ProductShelf title="Featured picks" href="/shop?sort=popular" products={featured} columns={6} compact className="bg-background" />
 
       {categoryShelves.slice(0, 3).map((shelf, index) => (
         <ProductShelf
@@ -167,17 +189,6 @@ export default async function HomePage() {
       ))}
 
       <RaffleStrip raffles={activeRaffles} />
-
-      {categoryShelves.slice(3).map((shelf, index) => (
-        <ProductShelf
-          key={shelf.slug}
-          title={shelf.title}
-          href={shelf.href}
-          products={shelf.products}
-          columns={4}
-          className={shelfBackgrounds[(index + 1) % shelfBackgrounds.length]}
-        />
-      ))}
 
       <BrandLogos brands={brands} />
 

@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { db } from '@/lib/server/db'
+import { db, withDbRetry } from '@/lib/server/db'
 import { refreshTokens, users } from '@/lib/server/schema'
 import { signToken, hashRefreshToken, getRefreshTokenCookieOptions, generateRefreshToken, apiOk, apiError } from '@/lib/server/auth-helpers'
 import { eq, and, gt, lt } from 'drizzle-orm'
@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
     db.delete(refreshTokens).where(lt(refreshTokens.expiresAt, now)).catch(() => {})
 
     // Find valid refresh token
-    const [stored] = await db.select({
+    const [stored] = await withDbRetry(() => db.select({
       id: refreshTokens.id,
       userId: refreshTokens.userId,
       expiresAt: refreshTokens.expiresAt,
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
         eq(refreshTokens.tokenHash, tokenHash),
         gt(refreshTokens.expiresAt, now)
       ))
-      .limit(1)
+      .limit(1))
 
     if (!stored) {
       // Invalid or expired — clear cookie
@@ -37,14 +37,14 @@ export async function POST(req: NextRequest) {
     }
 
     // Get user
-    const [user] = await db.select({
+    const [user] = await withDbRetry(() => db.select({
       id: users.id, name: users.name, email: users.email, role: users.role,
       avatar: users.avatar, phone: users.phone, isVerified: users.isVerified,
       affiliateCode: users.affiliateCode, createdAt: users.createdAt, updatedAt: users.updatedAt,
     })
       .from(users)
       .where(eq(users.id, stored.userId))
-      .limit(1)
+      .limit(1))
 
     if (!user) {
       const res = apiError('User not found.', 401)
@@ -53,15 +53,16 @@ export async function POST(req: NextRequest) {
       return res
     }
 
-    // Rotate refresh token (invalidate old, issue new)
-    await db.delete(refreshTokens).where(eq(refreshTokens.id, stored.id))
-
     const newRefresh = generateRefreshToken()
-    await db.insert(refreshTokens).values({
-      userId: user.id,
-      tokenHash: newRefresh.hash,
-      expiresAt: newRefresh.expiresAt,
-    })
+    // Rotate atomically so a transient insert failure cannot strand the user.
+    await withDbRetry(() => db.transaction(async tx => {
+      await tx.delete(refreshTokens).where(eq(refreshTokens.id, stored.id))
+      await tx.insert(refreshTokens).values({
+        userId: user.id,
+        tokenHash: newRefresh.hash,
+        expiresAt: newRefresh.expiresAt,
+      })
+    }))
 
     // Issue new access token
     const accessToken = await signToken({ sub: user.id, email: user.email, role: user.role, name: user.name })
@@ -76,8 +77,7 @@ export async function POST(req: NextRequest) {
     })
     res.cookies.set('vg_refresh', newRefresh.raw, getRefreshTokenCookieOptions())
     return res
-  } catch (err) {
-    console.error('[refresh]', err)
+  } catch {
     return apiError('Token refresh failed.', 500)
   }
 }

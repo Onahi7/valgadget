@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { MessageCircle, X, Send, ChevronDown, Loader2, Bot } from 'lucide-react'
+import { MessageCircle, X, Send, ChevronDown, Loader2, Bot, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAuth } from '@/contexts/auth-context'
 import { cn } from '@/lib/utils'
+import { apiFetch } from '@/lib/api-client'
 
 interface ChatMessage {
   id: string
@@ -18,6 +19,7 @@ interface ChatMessage {
 }
 
 const POLL_INTERVAL = 5000 // poll every 5s for new messages
+const CHAT_SESSION_KEY = 'vg_chat_session'
 
 export function ChatWidget() {
   const { user } = useAuth()
@@ -29,6 +31,7 @@ export function ChatWidget() {
   const [starting, setStarting] = useState(false)
   const [unread, setUnread] = useState(0)
   const [guestAccessToken, setGuestAccessToken] = useState('')
+  const [error, setError] = useState('')
 
   // Guest info form
   const [guestName, setGuestName] = useState('')
@@ -41,6 +44,19 @@ export function ChatWidget() {
 
   const scrollToBottom = () => bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
 
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem(CHAT_SESSION_KEY) ?? 'null') as { sessionId?: string; guestAccessToken?: string } | null
+      if (stored?.sessionId) {
+        setSessionId(stored.sessionId)
+        setGuestAccessToken(stored.guestAccessToken ?? '')
+        setShowForm(false)
+      }
+    } catch {
+      localStorage.removeItem(CHAT_SESSION_KEY)
+    }
+  }, [])
+
   // Auto-fill for logged in users
   useEffect(() => {
     if (user) {
@@ -52,8 +68,18 @@ export function ChatWidget() {
 
   const fetchMessages = useCallback(async (sid: string) => {
     try {
-      const res = await fetch(`/api/chat/${sid}/messages${guestAccessToken ? `?accessToken=${encodeURIComponent(guestAccessToken)}` : ''}`)
+      const headers = guestAccessToken ? { 'x-chat-access-token': guestAccessToken } : undefined
+      const res = await apiFetch(`/api/chat/${sid}/messages`, { headers })
       const json = await res.json()
+      if (!res.ok) {
+        if (res.status === 403 || res.status === 404) {
+          localStorage.removeItem(CHAT_SESSION_KEY)
+          setSessionId(null)
+          setGuestAccessToken('')
+          setShowForm(!user)
+        }
+        throw new Error(json.message ?? 'Unable to load messages')
+      }
       const list = Array.isArray(json) ? json : json.data
       if (Array.isArray(list)) {
         setMessages(prev => {
@@ -63,9 +89,12 @@ export function ChatWidget() {
           }
           return newMsgs
         })
+        setError('')
       }
-    } catch { /* silent */ }
-  }, [guestAccessToken, open])
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Unable to load messages')
+    }
+  }, [guestAccessToken, open, user])
 
   // Poll for new messages when session is open
   useEffect(() => {
@@ -83,14 +112,11 @@ export function ChatWidget() {
   const startSession = async () => {
     if (!user && (!guestEmail.trim() || !guestName.trim())) return
     setStarting(true)
+    setError('')
     try {
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-      const token = localStorage.getItem('vg_token')
-      if (token) headers['Authorization'] = `Bearer ${token}`
-
-      const res = await fetch('/api/chat', {
+      const res = await apiFetch('/api/chat', {
         method: 'POST',
-        headers,
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           subject: subject.trim() || 'General enquiry',
           guestName: guestName.trim() || user?.name,
@@ -98,16 +124,24 @@ export function ChatWidget() {
         }),
       })
       const json = await res.json()
+      if (!res.ok) throw new Error(json.message ?? 'Unable to start chat')
       const session = json.data ?? json
       if (session.id) {
         setSessionId(session.id)
         setGuestAccessToken(session.guestAccessToken ?? '')
         setShowForm(false)
+        localStorage.setItem(CHAT_SESSION_KEY, JSON.stringify({
+          sessionId: session.id,
+          guestAccessToken: session.guestAccessToken ?? '',
+        }))
         // Send welcome context message
         setTimeout(() => sendMessage("Hello! I'd like to ask about your products.", session.id, session.guestAccessToken ?? ''), 300)
       }
-    } catch { /* ignore */ }
-    setStarting(false)
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Unable to start chat')
+    } finally {
+      setStarting(false)
+    }
   }
 
   const sendMessage = async (text?: string, sid?: string, accessToken?: string) => {
@@ -116,24 +150,28 @@ export function ChatWidget() {
     if (!content || !activeSession) return
     if (!text) setInput('')
     setSending(true)
+    setError('')
 
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-    const token = localStorage.getItem('vg_token')
-    if (token) headers['Authorization'] = `Bearer ${token}`
     const chatToken = accessToken ?? guestAccessToken
     if (chatToken) headers['x-chat-access-token'] = chatToken
 
     try {
-      const res = await fetch(`/api/chat/${activeSession}/messages`, {
+      const res = await apiFetch(`/api/chat/${activeSession}/messages`, {
         method: 'POST',
         headers,
         body: JSON.stringify({ content, senderName: user?.name ?? guestName }),
       })
       const json = await res.json()
+      if (!res.ok) throw new Error(json.message ?? 'Unable to send message')
       if (json.id || json.data) setMessages(prev => [...prev, json.data ?? json])
       setTimeout(scrollToBottom, 50)
-    } catch { /* ignore */ }
-    setSending(false)
+    } catch (requestError) {
+      if (!text) setInput(content)
+      setError(requestError instanceof Error ? requestError.message : 'Unable to send message')
+    } finally {
+      setSending(false)
+    }
   }
 
   const handleKey = (e: React.KeyboardEvent) => {
@@ -146,7 +184,7 @@ export function ChatWidget() {
       <button
         onClick={() => setOpen(o => !o)}
         className="fixed bottom-[5.25rem] right-3 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-all hover:scale-105 hover:bg-primary/90 active:scale-95 md:bottom-6 md:right-6 md:h-14 md:w-14"
-        aria-label="Open chat"
+        aria-label={open ? 'Close chat' : 'Open chat'}
       >
         {open ? <X className="w-6 h-6" /> : <MessageCircle className="w-6 h-6" />}
         {unread > 0 && !open && (
@@ -170,13 +208,19 @@ export function ChatWidget() {
             <p className="font-semibold text-sm leading-none">ValGadget Support</p>
             <p className="text-xs text-primary-foreground/70 mt-0.5">We typically reply within minutes</p>
           </div>
-          <button onClick={() => setOpen(false)} className="p-1 hover:bg-primary-foreground/10 rounded-lg transition-colors">
+          <button onClick={() => setOpen(false)} className="p-1 hover:bg-primary-foreground/10 rounded-lg transition-colors" aria-label="Minimize chat">
             <ChevronDown className="w-4 h-4" />
           </button>
         </div>
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[260px] max-h-[380px]">
+          {error ? (
+            <div className="flex items-start gap-2 rounded-lg border border-destructive/25 bg-destructive/5 px-3 py-2 text-xs text-destructive" role="alert">
+              <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <span>{error}</span>
+            </div>
+          ) : null}
           {/* Guest form */}
           {showForm && !user && (
             <div className="space-y-3">
@@ -255,7 +299,7 @@ export function ChatWidget() {
               className="h-9 text-sm flex-1"
               disabled={sending}
             />
-            <Button size="icon" className="w-9 h-9 shrink-0" onClick={() => sendMessage()} disabled={sending || !input.trim()}>
+            <Button size="icon" aria-label="Send message" className="w-9 h-9 shrink-0" onClick={() => sendMessage()} disabled={sending || !input.trim()}>
               {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </Button>
           </div>

@@ -23,7 +23,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { toast } from 'sonner'
-import { getToken } from '@/lib/api-client'
+import { apiFetch, getToken } from '@/lib/api-client'
+import { useAdminConfirm } from '@/components/admin/admin-confirm-provider'
+import { AdminPageHeader } from '@/components/admin/admin-controls'
 
 interface Coupon {
   id: string
@@ -40,6 +42,7 @@ interface Coupon {
 }
 
 export default function CouponsPage() {
+  const confirmAction = useAdminConfirm()
   const [coupons, setCoupons] = useState<Coupon[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -63,13 +66,13 @@ export default function CouponsPage() {
 
   const loadCoupons = async () => {
     try {
-      const res = await fetch('/api/admin/coupons', {
+      const res = await apiFetch('/api/admin/coupons', {
         headers: { Authorization: `Bearer ${getToken()}` },
         credentials: 'include',
       })
       const data = await res.json()
       setCoupons(Array.isArray(data) ? data : data.data ?? [])
-    } catch (err) {
+    } catch {
       toast.error('Failed to load coupons')
     } finally {
       setLoading(false)
@@ -94,7 +97,7 @@ export default function CouponsPage() {
         ? `/api/admin/coupons/${editingCoupon.id}`
         : '/api/admin/coupons'
       
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method: editingCoupon ? 'PATCH' : 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -114,16 +117,22 @@ export default function CouponsPage() {
       } else {
         toast.error(data.message || 'Failed to save coupon')
       }
-    } catch (err) {
+    } catch {
       toast.error('Failed to save coupon')
     }
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this coupon?')) return
+    const confirmed = await confirmAction({
+      title: 'Delete coupon?',
+      description: 'Customers will no longer be able to apply this coupon. This action cannot be undone.',
+      confirmLabel: 'Delete coupon',
+      tone: 'destructive',
+    })
+    if (!confirmed) return
 
     try {
-      const res = await fetch(`/api/admin/coupons/${id}`, {
+      const res = await apiFetch(`/api/admin/coupons/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${getToken()}` },
         credentials: 'include',
@@ -135,14 +144,14 @@ export default function CouponsPage() {
       } else {
         toast.error('Failed to delete coupon')
       }
-    } catch (err) {
+    } catch {
       toast.error('Failed to delete coupon')
     }
   }
 
   const toggleActive = async (coupon: Coupon) => {
     try {
-      const res = await fetch(`/api/admin/coupons/${coupon.id}`, {
+      const res = await apiFetch(`/api/admin/coupons/${coupon.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
         credentials: 'include',
@@ -204,11 +213,7 @@ export default function CouponsPage() {
 
   return (
     <div className="space-y-6 animate-page-reveal">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Coupons</h1>
-          <p className="text-muted-foreground text-sm mt-1">Manage discount codes and promotions</p>
-        </div>
+      <AdminPageHeader title="Coupons" description="Manage discount codes and promotions." actions={
         <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm() }}>
           <DialogTrigger asChild>
             <Button>
@@ -318,7 +323,7 @@ export default function CouponsPage() {
             </form>
           </DialogContent>
         </Dialog>
-      </div>
+      } />
 
       {coupons.length === 0 ? (
         <div className="text-center py-12 bg-card border rounded-lg">

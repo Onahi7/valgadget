@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
-import { ArrowDown, ArrowUp, Check, Loader2, Pencil, Plus, Trash2, Upload, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, Check, Loader2, Pencil, Plus, Search, Trash2, Upload, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -12,6 +12,8 @@ import { categoryService } from '@/lib/services/category.service'
 import type { Category, CreateCategoryPayload } from '@/lib/services/category.service'
 import { toast } from 'sonner'
 import { isApiError } from '@/lib/api-client'
+import { AdminIconButton, AdminPageHeader, AdminSelect } from '@/components/admin/admin-controls'
+import { useAdminConfirm } from '@/components/admin/admin-confirm-provider'
 
 type CategoryForm = {
   name: string
@@ -50,6 +52,7 @@ function toPayload(form: CategoryForm): CreateCategoryPayload {
 }
 
 export default function AdminCategoriesPage() {
+  const confirmAction = useAdminConfirm()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
@@ -60,6 +63,8 @@ export default function AdminCategoriesPage() {
   const [editorOpen, setEditorOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<CategoryForm>(emptyForm)
+  const [search, setSearch] = useState('')
+  const [viewFilter, setViewFilter] = useState('all')
 
   const loadCategories = async () => {
     setLoading(true)
@@ -86,6 +91,22 @@ export default function AdminCategoriesPage() {
     () => new Map(categories.map(category => [category.id, category.name])),
     [categories]
   )
+
+  const visibleCategories = useMemo(() => {
+    const query = search.trim().toLowerCase()
+    return categories.filter(category => {
+      const matchesSearch = !query || [category.name, category.description, category.slug]
+        .some(value => value?.toLowerCase().includes(query))
+      const hasProducts = (category.productCount ?? 0) > 0
+      const matchesView = viewFilter === 'all'
+        || (viewFilter === 'parents' && !category.parentId)
+        || (viewFilter === 'children' && Boolean(category.parentId))
+        || (viewFilter === 'visible' && category.isActive && hasProducts)
+        || (viewFilter === 'waiting' && category.isActive && !hasProducts)
+        || (viewFilter === 'inactive' && !category.isActive)
+      return matchesSearch && matchesView
+    })
+  }, [categories, search, viewFilter])
 
   const openCreate = () => {
     setEditingId(null)
@@ -186,7 +207,13 @@ export default function AdminCategoriesPage() {
   }
 
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Delete "${name}"?`)) return
+    const confirmed = await confirmAction({
+      title: 'Delete category?',
+      description: `“${name}” will be removed. Products assigned to it may need a new category.`,
+      confirmLabel: 'Delete category',
+      tone: 'destructive',
+    })
+    if (!confirmed) return
     try {
       await categoryService.delete(id)
       setCategories(prev => prev.filter(category => category.id !== id))
@@ -235,15 +262,11 @@ export default function AdminCategoriesPage() {
         label="Category Image"
       />
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Categories</h1>
-          <p className="text-sm text-muted-foreground">{categories.length} categories and subcategories, including inactive ones</p>
-        </div>
-        <Button size="sm" className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90" onClick={openCreate}>
+      <AdminPageHeader title="Categories" description={`${categories.length} categories and subcategories`} actions={
+        <Button className="gap-2" onClick={openCreate}>
           <Plus className="h-4 w-4" /> Add Category
         </Button>
-      </div>
+      } />
 
       {editorOpen && (
         <div className="rounded-lg border border-primary/20 bg-card p-5">
@@ -252,22 +275,22 @@ export default function AdminCategoriesPage() {
               <h2 className="font-semibold">{editingId ? 'Edit Category' : 'New Category'}</h2>
               <p className="text-sm text-muted-foreground">Manage name, hierarchy, visibility, and media fields in one place.</p>
             </div>
-            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={closeEditor}>
+            <AdminIconButton size="sm" label="Close category editor" onClick={closeEditor}>
               <X className="h-4 w-4" />
-            </Button>
+            </AdminIconButton>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Name</label>
-              <Input value={form.name} onChange={event => setForm(prev => ({ ...prev, name: event.target.value }))} placeholder="Category name" />
+              <label htmlFor="category-name" className="text-sm font-medium">Name</label>
+              <Input id="category-name" value={form.name} onChange={event => setForm(prev => ({ ...prev, name: event.target.value }))} placeholder="Category name" />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Parent Category</label>
-              <select
+              <label htmlFor="category-parent" className="text-sm font-medium">Parent Category</label>
+              <AdminSelect
+                id="category-parent"
                 value={form.parentId}
                 onChange={event => setForm(prev => ({ ...prev, parentId: event.target.value }))}
-                className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <option value="">No parent</option>
                 {categories
@@ -277,12 +300,13 @@ export default function AdminCategoriesPage() {
                       {category.name}
                     </option>
                   ))}
-              </select>
+              </AdminSelect>
               <p className="text-xs text-muted-foreground">Choose “No parent” for a main category, or choose a main category to create a subcategory.</p>
             </div>
             <div className="space-y-2 md:col-span-2">
-              <label className="text-sm font-medium">Description</label>
+              <label htmlFor="category-description" className="text-sm font-medium">Description</label>
               <Textarea
+                id="category-description"
                 value={form.description}
                 onChange={event => setForm(prev => ({ ...prev, description: event.target.value }))}
                 placeholder="Short internal description for this category"
@@ -290,9 +314,9 @@ export default function AdminCategoriesPage() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Image URL</label>
+              <label htmlFor="category-image" className="text-sm font-medium">Category image</label>
               <div className="flex gap-2">
-                <Input value={form.image} onChange={event => setForm(prev => ({ ...prev, image: event.target.value }))} placeholder="/catalog/categories/monitors.jpg" />
+                <Input id="category-image" value={form.image} onChange={event => setForm(prev => ({ ...prev, image: event.target.value }))} placeholder="Paste an image URL or upload a file" />
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -311,7 +335,7 @@ export default function AdminCategoriesPage() {
                   Upload
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground">Uploads are cropped to 1200x675 WebP so category cards fit cleanly.</p>
+              <p className="text-xs text-muted-foreground">Recommended: upload a landscape image. It will be cropped to 1200×675 WebP.</p>
               {form.image && !form.image.includes('source.unsplash.com') && (
                 <div className="relative aspect-video overflow-hidden rounded-md border border-border bg-muted">
                   <Image src={form.image} alt={form.name || 'Category preview'} fill className="object-cover" unoptimized />
@@ -334,27 +358,24 @@ export default function AdminCategoriesPage() {
               )}
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Icon</label>
-              <Input value={form.icon} onChange={event => setForm(prev => ({ ...prev, icon: event.target.value }))} placeholder="monitor-smartphone" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Sort Order</label>
+              <label htmlFor="category-sort" className="text-sm font-medium">Sort Order</label>
               <Input
+                id="category-sort"
                 type="number"
                 value={form.sortOrder}
                 onChange={event => setForm(prev => ({ ...prev, sortOrder: Number(event.target.value) }))}
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Status</label>
-              <select
+              <label htmlFor="category-status" className="text-sm font-medium">Status</label>
+              <AdminSelect
+                id="category-status"
                 value={form.isActive ? 'active' : 'inactive'}
                 onChange={event => setForm(prev => ({ ...prev, isActive: event.target.value === 'active' }))}
-                className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
-              </select>
+              </AdminSelect>
             </div>
           </div>
 
@@ -366,6 +387,33 @@ export default function AdminCategoriesPage() {
           </div>
         </div>
       )}
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative w-full sm:max-w-sm">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={event => setSearch(event.target.value)}
+            placeholder="Search categories..."
+            aria-label="Search categories"
+            className="pl-9"
+          />
+        </div>
+        <AdminSelect
+          value={viewFilter}
+          onChange={event => setViewFilter(event.target.value)}
+          aria-label="Filter categories"
+          containerClassName="w-full sm:w-48"
+        >
+          <option value="all">All categories</option>
+          <option value="parents">Main categories</option>
+          <option value="children">Subcategories</option>
+          <option value="visible">Visible on storefront</option>
+          <option value="waiting">Waiting for products</option>
+          <option value="inactive">Inactive</option>
+        </AdminSelect>
+        <span className="text-sm text-muted-foreground sm:ml-auto">{visibleCategories.length} shown</span>
+      </div>
 
       <div className="overflow-hidden rounded-lg border border-border bg-card">
         <div className="overflow-x-auto">
@@ -387,7 +435,10 @@ export default function AdminCategoriesPage() {
                 <tr>
                   <td colSpan={8} className="py-12 text-center text-sm text-muted-foreground">Loading categories...</td>
                 </tr>
-              ) : categories.map((category, index) => {
+              ) : visibleCategories.length === 0 ? (
+                <tr><td colSpan={8} className="py-12 text-center text-sm text-muted-foreground">No categories match these filters.</td></tr>
+              ) : visibleCategories.map(category => {
+                const index = categories.findIndex(item => item.id === category.id)
                 const displayImage = getDisplayImage(category)
                 const hasStorefrontProducts = (category.productCount ?? 0) > 0
 
@@ -415,12 +466,12 @@ export default function AdminCategoriesPage() {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
                       <span className="min-w-8 text-xs text-muted-foreground">{category.sortOrder ?? 0}</span>
-                      <Button size="icon" variant="ghost" className="h-7 w-7" disabled={index === 0} onClick={() => moveCategory(index, -1)}>
+                      <AdminIconButton size="sm" label={`Move ${category.name} up`} disabled={index === 0} onClick={() => moveCategory(index, -1)}>
                         <ArrowUp className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button size="icon" variant="ghost" className="h-7 w-7" disabled={index === categories.length - 1} onClick={() => moveCategory(index, 1)}>
+                      </AdminIconButton>
+                      <AdminIconButton size="sm" label={`Move ${category.name} down`} disabled={index === categories.length - 1} onClick={() => moveCategory(index, 1)}>
                         <ArrowDown className="h-3.5 w-3.5" />
-                      </Button>
+                      </AdminIconButton>
                     </div>
                   </td>
                   <td className="px-4 py-3">
@@ -434,12 +485,12 @@ export default function AdminCategoriesPage() {
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(category)}>
+                      <AdminIconButton size="sm" label={`Edit ${category.name}`} onClick={() => openEdit(category)}>
                         <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(category.id, category.name)}>
+                      </AdminIconButton>
+                      <AdminIconButton size="sm" label={`Delete ${category.name}`} className="hover:bg-destructive/10 hover:text-destructive" onClick={() => handleDelete(category.id, category.name)}>
                         <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                      </AdminIconButton>
                     </div>
                   </td>
                 </tr>

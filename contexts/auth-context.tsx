@@ -1,7 +1,7 @@
 'use client'
 
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react'
-import { clearToken } from '@/lib/api-client'
+import { clearToken, isApiError } from '@/lib/api-client'
 import { authService, type User } from '@/lib/services/auth.service'
 
 interface AuthContextValue {
@@ -17,6 +17,27 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
+
+function getCachedUser(): User | null {
+  if (typeof window === 'undefined') return null
+
+  try {
+    const value = JSON.parse(localStorage.getItem('vg_user') ?? 'null') as Partial<User> | null
+    if (
+      value
+      && typeof value.id === 'string'
+      && typeof value.email === 'string'
+      && typeof value.name === 'string'
+      && ['customer', 'affiliate', 'admin'].includes(value.role ?? '')
+    ) {
+      return value as User
+    }
+  } catch {
+    localStorage.removeItem('vg_user')
+  }
+
+  return null
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -34,17 +55,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const refreshUser = useCallback(async () => {
+    const cachedUser = getCachedUser()
+    if (cachedUser) {
+      // The signed httpOnly cookie remains the security boundary. The cache only
+      // avoids a blank/redirecting UI while a cold database connection wakes up.
+      setUser(cachedUser)
+      setIsLoading(false)
+    }
+
     try {
       const me = await authService.me()
       setUser(me)
       localStorage.setItem('vg_user', JSON.stringify(me))
-    } catch {
-      clearToken()
-      setUser(null)
+    } catch (error) {
+      // Only an explicit authentication rejection should discard the session.
+      // Timeouts and temporary database/network errors must not log the user out.
+      if (isApiError(error) && error.status === 401) {
+        clearToken()
+        setUser(null)
+      } else if (!cachedUser) {
+        setUser(null)
+      }
     } finally {
       setIsLoading(false)
     }
-  }, [logout])
+  }, [])
 
   useEffect(() => {
     refreshUser()

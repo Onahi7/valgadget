@@ -16,7 +16,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <AdminProviders>
       <ProtectedRoute requiredRole="admin">
-        <div className="flex h-screen overflow-hidden bg-[#f6f7f6]">
+        <div className="admin-shell flex h-screen overflow-hidden bg-background">
           <AdminSidebar />
           <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
             <AdminHeader />

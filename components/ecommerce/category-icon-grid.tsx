@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import {
   ArrowRight,
   BatteryCharging,
@@ -19,6 +20,8 @@ export interface CategoryIcon {
   slug: string
   name: string
   href: string
+  available?: boolean
+  image?: string | null
 }
 
 interface CategoryIconGridProps {
@@ -47,7 +50,7 @@ function getCategoryIcon(category: CategoryIcon) {
   )?.[1] ?? Package
 }
 
-/** Compact icon navigation that stays scannable without competing with products. */
+/** Dense marketplace category rail modelled on familiar Nigerian ecommerce patterns. */
 export function CategoryIconGrid({
   title = 'Shop by Categories',
   categories,
@@ -56,35 +59,40 @@ export function CategoryIconGrid({
   if (categories.length === 0) return null
 
   return (
-    <section className={`bg-background py-10 sm:py-12 ${className}`}>
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="mb-6 flex items-end justify-between gap-4">
+    <section id="departments" className={`scroll-mt-36 bg-[#F5F6F5] py-3 ${className}`}>
+      <div className="mx-auto max-w-[1440px] px-3 sm:px-6 lg:px-8">
+        <div className="mb-3 flex items-end justify-between gap-4">
           <div>
-            <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.18em] text-primary">
-              Quick shop
-            </p>
-            <h2 className="text-2xl font-bold sm:text-3xl">{title}</h2>
+            <h2 className="text-xl font-bold sm:text-2xl">{title}</h2>
           </div>
           <Link
             href="/categories"
-            className="hidden shrink-0 items-center gap-1.5 text-sm font-semibold text-slate-teal transition-colors hover:text-primary sm:inline-flex"
+            className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold text-primary transition-colors hover:underline sm:text-sm"
           >
             View all <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
 
-        <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:flex-wrap sm:justify-center sm:overflow-visible sm:px-0">
-          {categories.slice(0, 8).map(category => {
+        <div className="-mx-3 flex snap-x gap-2.5 overflow-x-auto px-3 pb-2 sm:mx-0 sm:px-0" tabIndex={0} role="region" aria-label="Shop departments; scroll for more">
+          {[...categories].sort((a, b) => Number(b.available !== false) - Number(a.available !== false)).map(category => {
             const Icon = getCategoryIcon(category)
+
+            if (category.available === false) return (
+              <div key={category.slug} aria-disabled="true" className="flex h-32 w-28 shrink-0 snap-start flex-col items-center rounded-md border border-dashed border-border bg-white px-2 py-3 text-center text-muted-foreground sm:w-36">
+                <span className="mb-2 grid h-16 w-full place-items-center bg-muted"><Icon aria-hidden="true" className="h-7 w-7" strokeWidth={1.5} /></span>
+                <span className="text-xs font-semibold sm:text-sm">{category.name}</span>
+                <span className="mt-1 text-[10px] uppercase">Coming soon</span>
+              </div>
+            )
 
             return (
               <Link
                 key={category.slug}
                 href={category.href}
-                className="group flex min-w-[112px] snap-start flex-col items-center rounded-2xl border border-border bg-white px-3 py-4 text-center transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md sm:w-36 sm:min-w-0"
+                className="group flex h-32 w-28 shrink-0 snap-start flex-col items-center rounded-md border border-border bg-white px-2 py-3 text-center transition-colors hover:border-primary sm:w-36"
               >
-                <span className="mb-3 grid h-12 w-12 place-items-center rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
-                  <Icon aria-hidden="true" className="h-6 w-6" strokeWidth={1.8} />
+                <span className="relative mb-2 grid h-16 w-full place-items-center overflow-hidden bg-white text-primary">
+                  {category.image ? <Image src={category.image} alt="" fill sizes="144px" className="object-contain p-1 transition-transform group-hover:scale-105" unoptimized /> : <Icon aria-hidden="true" className="h-7 w-7" strokeWidth={1.5} />}
                 </span>
                 <span className="line-clamp-2 text-xs font-semibold leading-4 text-foreground sm:text-sm">
                   {category.name}

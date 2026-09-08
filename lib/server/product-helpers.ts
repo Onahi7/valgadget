@@ -2,6 +2,7 @@ import { and, asc, desc, eq } from 'drizzle-orm'
 import { db } from '@/lib/server/db'
 import { categories, products } from '@/lib/server/schema'
 import type { Product } from '@/lib/services/product.service'
+import { isCatalogImage } from '@/lib/catalog-images'
 
 /**
  * Shared Drizzle select object for product queries.
@@ -35,8 +36,7 @@ export const productSelection = {
 
 /** Only allow local paths and ImageKit URLs. External hotlinks are blocked. */
 export function isDisplayableImage(src?: string | null): boolean {
-  if (!src) return false
-  return src.startsWith('/') || src.includes('ik.imagekit.io')
+  return isCatalogImage(src)
 }
 
 /** Return usable images, falling back to the placeholder SVG. */

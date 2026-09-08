@@ -7,15 +7,17 @@ import { ArrowLeft, Mail, Phone, Shield, ShoppingBag, Trash2, ShieldCheck, Shiel
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { getToken } from '@/lib/api-client'
+import { apiFetch, getToken } from '@/lib/api-client'
 import { cn } from '@/lib/utils'
 import { ORDER_STATUS_COLORS } from '@/lib/constants/admin-status-colors'
 import { toast } from 'sonner'
+import { useAdminConfirm } from '@/components/admin/admin-confirm-provider'
 
 type Customer = { id: string; name: string; email: string; phone?: string; role: string; isVerified: boolean; createdAt: string; orders: number; spent: number }
 type Order = { id: string; reference: string; total: number; status: string; createdAt: string }
 
 export default function AdminCustomerDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const confirmAction = useAdminConfirm()
   const { id } = use(params)
   const router = useRouter()
   const [customer, setCustomer]       = useState<Customer | null>(null)
@@ -25,8 +27,8 @@ export default function AdminCustomerDetailPage({ params }: { params: Promise<{ 
   useEffect(() => {
     const headers = { Authorization: `Bearer ${getToken()}` }
     Promise.all([
-      fetch(`/api/admin/users/${id}`, { headers, credentials: 'include' }).then(r => r.json()),
-      fetch(`/api/admin/orders?userId=${id}&limit=20`, { headers, credentials: 'include' }).then(r => r.json()),
+      apiFetch(`/api/admin/users/${id}`, { headers, credentials: 'include' }).then(r => r.json()),
+      apiFetch(`/api/admin/orders?userId=${id}&limit=20`, { headers, credentials: 'include' }).then(r => r.json()),
     ]).then(([userRes, ordersRes]) => {
       if (userRes.id || userRes.data) setCustomer(userRes.data ?? userRes)
       if (Array.isArray(ordersRes.data)) setOrders(ordersRes.data)
@@ -36,7 +38,7 @@ export default function AdminCustomerDetailPage({ params }: { params: Promise<{ 
   const updateRole = async (role: string) => {
     if (!customer) return
     try {
-      const res = await fetch(`/api/admin/users/${id}`, {
+      const res = await apiFetch(`/api/admin/users/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
         credentials: 'include',
@@ -57,7 +59,7 @@ export default function AdminCustomerDetailPage({ params }: { params: Promise<{ 
   const toggleVerified = async () => {
     if (!customer) return
     try {
-      const res = await fetch(`/api/admin/users/${id}`, {
+      const res = await apiFetch(`/api/admin/users/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
         credentials: 'include',
@@ -75,9 +77,16 @@ export default function AdminCustomerDetailPage({ params }: { params: Promise<{ 
   }
 
   const deleteUser = async () => {
-    if (!customer || !confirm(`Delete "${customer.name}"? This cannot be undone.`)) return
+    if (!customer) return
+    const confirmed = await confirmAction({
+      title: 'Delete customer?',
+      description: `“${customer.name}” and their account access will be permanently removed. This cannot be undone.`,
+      confirmLabel: 'Delete customer',
+      tone: 'destructive',
+    })
+    if (!confirmed) return
     try {
-      const res = await fetch(`/api/admin/users/${id}`, {
+      const res = await apiFetch(`/api/admin/users/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${getToken()}` },
         credentials: 'include',

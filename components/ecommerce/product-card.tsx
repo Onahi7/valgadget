@@ -13,21 +13,24 @@ import { toast } from 'sonner'
 import type { Product } from '@/lib/services/product.service'
 import { FulfillmentBadge } from '@/components/ecommerce/fulfillment-badge'
 import { toCartItem, toWishlistItem } from '@/lib/cart-helpers'
+import { isCatalogImage } from '@/lib/catalog-images'
 
 interface ProductCardProps {
   product: Product
   className?: string
   priority?: boolean
+  compact?: boolean
 }
 
-export function ProductCard({ product, className, priority = false }: ProductCardProps) {
+export function ProductCard({ product, className, priority = false, compact = false }: ProductCardProps) {
   const { addToCart } = useCart()
   const { toggle, has } = useWishlist()
   const isWishlisted = has(product.id)
   const discount = product.comparePrice
     ? Math.round(((product.comparePrice - product.price) / product.comparePrice) * 100)
     : null
-  const validImages = product.images.filter(src => src?.startsWith('/') || src?.includes('ik.imagekit.io'))
+  const [failedImages, setFailedImages] = useState<string[]>([])
+  const validImages = product.images.filter(src => isCatalogImage(src) && !failedImages.includes(src))
   const imageSrc = validImages[0] ?? '/placeholder-product.svg'
   const hoverImage = validImages[1] ?? null
   const [adding, setAdding] = useState(false)
@@ -105,15 +108,17 @@ export function ProductCard({ product, className, priority = false }: ProductCar
       {/* Image with hover swap */}
       <Link
         href={`/products/${product.slug}`}
-        className="relative block aspect-square w-full overflow-hidden bg-white"
+        className={cn('relative block w-full overflow-hidden bg-white', compact ? 'h-28 sm:h-32' : 'aspect-square')}
       >
         <Image
           src={imageSrc}
+          onError={() => setFailedImages(current => current.includes(imageSrc) ? current : [...current, imageSrc])}
           alt={product.name}
           fill
           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
           className={cn(
-            'object-contain p-3 transition-all duration-500 sm:p-4',
+            'object-contain transition-all duration-500',
+            compact ? 'p-2 sm:p-3' : 'p-3 sm:p-4',
             hoverImage ? 'group-hover:opacity-0' : 'group-hover:scale-[1.03]'
           )}
           priority={priority}
@@ -122,30 +127,31 @@ export function ProductCard({ product, className, priority = false }: ProductCar
         {hoverImage && (
           <Image
             src={hoverImage}
+            onError={() => setFailedImages(current => current.includes(hoverImage) ? current : [...current, hoverImage])}
             alt={product.name}
             fill
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-            className="object-contain p-3 opacity-0 transition-all duration-500 group-hover:scale-[1.03] group-hover:opacity-100 sm:p-4"
+            className={cn('object-contain opacity-0 transition-all duration-500 group-hover:scale-[1.03] group-hover:opacity-100', compact ? 'p-2 sm:p-3' : 'p-3 sm:p-4')}
             unoptimized
           />
         )}
       </Link>
 
       {/* Content */}
-      <div className="flex min-w-0 flex-1 flex-col p-3 sm:p-4">
-        {product.brand && (
+      <div className={cn('flex min-w-0 flex-1 flex-col', compact ? 'p-2.5 sm:p-3' : 'p-3 sm:p-4')}>
+        {product.brand && !compact && (
           <p className="line-clamp-1 text-[10px] text-muted-foreground sm:text-[11px]">
             {product.brand}
           </p>
         )}
         <Link href={`/products/${product.slug}`} className="mt-1 block">
-          <h3 className="line-clamp-2 min-h-[2.5rem] text-sm font-medium leading-snug text-foreground transition-colors group-hover:text-primary sm:min-h-[2.625rem] sm:text-[15px]">
+          <h3 className={cn('line-clamp-2 font-medium leading-snug text-foreground transition-colors group-hover:text-primary', compact ? 'min-h-9 text-xs sm:text-[13px]' : 'min-h-[2.5rem] text-sm sm:min-h-[2.625rem] sm:text-[15px]')}>
             {product.name}
           </h3>
         </Link>
 
         {/* Rating + Fulfillment row */}
-        <div className="mt-2 flex items-center justify-between gap-2">
+        <div className={cn('mt-2 items-center justify-between gap-2', compact ? 'hidden' : 'flex')}>
           {product.reviewCount > 0 ? (
             <div className="flex items-center gap-1.5">
               <div className="flex items-center gap-0.5" aria-label={`Rating: ${product.rating} out of 5`}>
@@ -168,9 +174,9 @@ export function ProductCard({ product, className, priority = false }: ProductCar
         </div>
 
         {/* Price + Add to cart */}
-        <div className="mt-auto flex flex-col gap-2 pt-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className={cn('mt-auto gap-2 pt-3', compact ? 'block' : 'flex flex-col sm:flex-row sm:items-end sm:justify-between')}>
           <div className="min-w-0">
-            <span className="block break-words text-base font-bold leading-tight tracking-tight text-tangerine sm:text-lg">
+            <span className={cn('block break-words font-bold leading-tight tracking-tight text-tangerine', compact ? 'text-sm sm:text-base' : 'text-base sm:text-lg')}>
               ₦{product.price.toLocaleString('en-NG')}
             </span>
             {product.comparePrice && (
@@ -179,7 +185,7 @@ export function ProductCard({ product, className, priority = false }: ProductCar
               </span>
             )}
           </div>
-          <Button
+          {!compact && <Button
             size="sm"
             onClick={handleAddToCart}
             disabled={product.stock <= 0 || adding}
@@ -203,7 +209,7 @@ export function ProductCard({ product, className, priority = false }: ProductCar
                 Add
               </>
             )}
-          </Button>
+          </Button>}
         </div>
       </div>
     </article>

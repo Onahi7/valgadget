@@ -1,6 +1,7 @@
 import { db } from '@/lib/server/db'
 import { products } from '@/lib/server/schema'
 import { desc, eq } from 'drizzle-orm'
+import { isCatalogImage } from '@/lib/catalog-images'
 
 type CategoryImageRow = {
   id: string
@@ -14,7 +15,7 @@ type ProductImageRow = {
 }
 
 function usableImage(src?: string | null) {
-  return Boolean(src && !src.includes('source.unsplash.com'))
+  return isCatalogImage(src)
 }
 
 function firstUsableProductImage(product?: ProductImageRow) {
@@ -39,9 +40,10 @@ export async function withCategoryDisplayImages<T extends CategoryImageRow>(cate
   return categoriesList.map(category => {
     const categoryImage = usableImage(category.image) ? category.image! : null
     const childIds = childIdsByParent.get(category.id) ?? []
-    const productImage = firstUsableProductImage(productRows.find(product =>
-      product.categoryId === category.id || childIds.includes(product.categoryId ?? '')
-    ))
+    const productImage = productRows
+      .filter(product => product.categoryId === category.id || childIds.includes(product.categoryId ?? ''))
+      .map(firstUsableProductImage)
+      .find(Boolean) ?? null
     const displayImage = categoryImage ?? productImage
 
     return {
