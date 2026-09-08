@@ -18,6 +18,7 @@ import { CategorySelect } from '@/components/admin/category-select'
 import { ConditionSelect, getConditionFromTags, updateConditionInTags } from '@/components/admin/condition-select'
 import { getSpecTemplateForCategory } from '@/lib/product-spec-templates'
 import { VariantEditor, serializeVariantDrafts, variantToDraft, type ProductVariantDraft } from '@/components/admin/variant-editor'
+import { getCategoryLineage } from '@/lib/category-hierarchy'
 
 function isTrustedImage(url: string) {
   return !url.includes('source.unsplash.com')
@@ -93,13 +94,18 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     () => getSpecTemplateForCategory(selectedCategory, categories),
     [categories, selectedCategory],
   )
-  const isIphoneCategory = Boolean(selectedCategory?.slug.includes('iphone') || selectedCategory?.name.toLowerCase().includes('iphone'))
+  const selectedCategoryLineage = useMemo(
+    () => selectedCategory ? getCategoryLineage(categories, selectedCategory.id) : [],
+    [categories, selectedCategory],
+  )
+  const isIphoneCategory = selectedCategoryLineage.some(category => category.slug.includes('iphone') || category.name.toLowerCase().includes('iphone'))
   const variantAttributes = isIphoneCategory ? ['Storage', 'Color', 'SIM'] : ['Color']
 
   const handleCategoryChange = (categoryId: string) => {
     set('categoryId', categoryId)
     const category = categories.find(item => item.id === categoryId)
-    if (category?.slug === 'iphones-uk-used') setCondition('uk-used')
+    if (category?.slug.includes('uk-used')) setCondition('uk-used')
+    if (category?.slug.includes('brand-new')) setCondition('brand-new')
   }
 
   const handleSubmit = async (e: React.FormEvent) => {

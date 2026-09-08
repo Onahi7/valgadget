@@ -6,7 +6,6 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import {
   ChevronDown,
-  ChevronRight,
   Heart,
   LayoutDashboard,
   LogOut,
@@ -32,6 +31,7 @@ import { useCart } from '@/contexts/cart-context'
 import { useWishlist } from '@/contexts/wishlist-context'
 import { useCategoryNavigation } from '@/hooks/use-category-navigation'
 import { categoryIsAvailable } from '@/lib/category-navigation'
+import { CategoryTreeMenu } from '@/components/ecommerce/category-tree-menu'
 import { cn } from '@/lib/utils'
 
 const SECONDARY_LINKS = [
@@ -47,12 +47,10 @@ export function Header() {
   const { count: wishlistCount } = useWishlist()
   const { openCart } = useCartDrawer()
   const [categoriesOpen, setCategoriesOpen] = useState(false)
-  const [expandedCategoryId, setExpandedCategoryId] = useState<string | null>(null)
   const { groups: categoryGroups } = useCategoryNavigation()
 
   useEffect(() => {
     setCategoriesOpen(false)
-    setExpandedCategoryId(null)
   }, [pathname])
 
   const activeCategories = categoryGroups.filter(({ parent }) => categoryIsAvailable(parent))
@@ -128,62 +126,12 @@ export function Header() {
                 <SheetDescription className="sr-only">Choose a category, then select a subcategory.</SheetDescription>
               </SheetHeader>
               <nav className="max-h-[calc(100vh-76px)] overflow-y-auto py-2">
-                {categoryGroups.map(({ parent, children }) => {
-                  const available = categoryIsAvailable(parent)
-                  const expanded = expandedCategoryId === parent.id
-
-                  if (!available) {
-                    return (
-                      <div key={parent.id} className="flex cursor-not-allowed items-center justify-between px-5 py-3 text-sm text-muted-foreground" aria-disabled="true">
-                        <span>{parent.name}</span>
-                        <span className="text-[10px] font-bold uppercase tracking-wide">Coming soon</span>
-                      </div>
-                    )
-                  }
-
-                  if (children.length === 0) {
-                    return (
-                      <Link key={parent.id} href={`/categories/${parent.slug}`} className="flex items-center justify-between px-5 py-3 text-sm font-semibold hover:bg-muted hover:text-primary">
-                        <span>{parent.name}</span>
-                        <ChevronRight className="h-4 w-4" aria-hidden="true" />
-                      </Link>
-                    )
-                  }
-
-                  return (
-                    <div key={parent.id} className="border-b border-border/70 last:border-0">
-                      <button
-                        type="button"
-                        onClick={() => setExpandedCategoryId(current => current === parent.id ? null : parent.id)}
-                        className="flex w-full items-center justify-between px-5 py-3 text-left text-sm font-semibold hover:bg-muted hover:text-primary"
-                        aria-expanded={expanded}
-                        aria-controls={`desktop-category-${parent.id}`}
-                      >
-                        <span>{parent.name}</span>
-                        <ChevronDown className={cn('h-4 w-4 transition-transform', expanded && 'rotate-180')} aria-hidden="true" />
-                      </button>
-                      {expanded ? (
-                        <div id={`desktop-category-${parent.id}`} className="bg-[#F7FAF8] px-3 pb-3">
-                          <Link href={`/categories/${parent.slug}`} className="flex items-center justify-between rounded-md px-3 py-2.5 text-xs font-bold text-primary hover:bg-white">
-                            Shop all {parent.name}
-                            <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
-                          </Link>
-                          {children.map(child => categoryIsAvailable(child) ? (
-                            <Link key={child.id} href={`/categories/${child.slug}`} className="flex items-center justify-between rounded-md px-3 py-2.5 text-sm text-foreground hover:bg-white hover:text-primary">
-                              {child.name}
-                              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
-                            </Link>
-                          ) : (
-                            <div key={child.id} className="flex items-center justify-between px-3 py-2.5 text-sm text-muted-foreground" aria-disabled="true">
-                              {child.name}
-                              <span className="text-[10px] font-bold uppercase">Soon</span>
-                            </div>
-                          ))}
-                        </div>
-                      ) : null}
-                    </div>
-                  )
-                })}
+                <CategoryTreeMenu
+                  nodes={categoryGroups.map(group => group.parent)}
+                  pathname={pathname}
+                  idPrefix="desktop-category"
+                  variant="desktop"
+                />
               </nav>
             </SheetContent>
           </Sheet>

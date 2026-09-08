@@ -3,11 +3,11 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { ChevronDown, ChevronRight, Grid3X3, Home, ShoppingCart, Ticket, User, X } from 'lucide-react'
+import { Grid3X3, Home, ShoppingCart, Ticket, User, X } from 'lucide-react'
 import { useCart } from '@/contexts/cart-context'
 import { useCartDrawer } from '@/contexts/cart-drawer-context'
 import { useCategoryNavigation } from '@/hooks/use-category-navigation'
-import { categoryIsAvailable } from '@/lib/category-navigation'
+import { CategoryTreeMenu } from '@/components/ecommerce/category-tree-menu'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 
@@ -17,7 +17,6 @@ export function MobileBottomNav() {
   const { openCart } = useCartDrawer()
   const { groups: categoryGroups } = useCategoryNavigation()
   const [categoriesOpen, setCategoriesOpen] = useState(false)
-  const [expandedCategoryId, setExpandedCategoryId] = useState<string | null>(null)
 
   useEffect(() => {
     setCategoriesOpen(false)
@@ -25,11 +24,6 @@ export function MobileBottomNav() {
 
   useEffect(() => {
     if (!categoriesOpen) return
-
-    const currentGroup = categoryGroups.find(({ parent, children }) =>
-      pathname === `/categories/${parent.slug}` || children.some(child => pathname === `/categories/${child.slug}`)
-    )
-    if (currentGroup) setExpandedCategoryId(currentGroup.parent.id)
 
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -42,7 +36,7 @@ export function MobileBottomNav() {
       document.body.style.overflow = previousOverflow
       window.removeEventListener('keydown', closeOnEscape)
     }
-  }, [categoriesOpen, categoryGroups, pathname])
+  }, [categoriesOpen])
 
   return (
     <>
@@ -78,90 +72,12 @@ export function MobileBottomNav() {
           </header>
 
           <nav className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-2" aria-label="Categories and subcategories">
-            {categoryGroups.map(({ parent, children }) => {
-              const available = categoryIsAvailable(parent)
-              const expanded = expandedCategoryId === parent.id
-              const categoryActive = pathname === `/categories/${parent.slug}` || children.some(child => pathname === `/categories/${child.slug}`)
-
-              if (!available) {
-                return (
-                  <div key={parent.id} className="flex min-h-12 items-center justify-between rounded-lg px-3 py-2.5 text-sm text-muted-foreground" aria-disabled="true">
-                    <span>{parent.name}</span>
-                    <span className="text-[10px] font-bold uppercase tracking-wide">Coming soon</span>
-                  </div>
-                )
-              }
-
-              if (children.length === 0) {
-                return (
-                  <Link
-                    key={parent.id}
-                    href={`/categories/${parent.slug}`}
-                    className={cn(
-                      'flex min-h-12 items-center justify-between rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors hover:bg-muted',
-                      categoryActive && 'bg-[#EDF5EF] text-primary',
-                    )}
-                  >
-                    <span>{parent.name}</span>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                  </Link>
-                )
-              }
-
-              return (
-                <div key={parent.id} className="border-b border-border/70 py-0.5 last:border-0">
-                  <button
-                    type="button"
-                    onClick={() => setExpandedCategoryId(current => current === parent.id ? null : parent.id)}
-                    className={cn(
-                      'flex min-h-12 w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm font-semibold transition-colors hover:bg-muted',
-                      categoryActive && 'text-primary',
-                      expanded && 'bg-[#EDF5EF] text-primary',
-                    )}
-                    aria-expanded={expanded}
-                    aria-controls={`mobile-category-${parent.id}`}
-                  >
-                    <span>
-                      <span className="block">{parent.name}</span>
-                      <span className="mt-0.5 block text-[11px] font-normal text-muted-foreground">
-                        {children.length} {children.length === 1 ? 'subcategory' : 'subcategories'}
-                      </span>
-                    </span>
-                    <ChevronDown className={cn('h-4 w-4 transition-transform', expanded && 'rotate-180')} aria-hidden="true" />
-                  </button>
-
-                  {expanded ? (
-                    <div id={`mobile-category-${parent.id}`} className="mb-2 ml-3 border-l-2 border-[#DCE4DE] pl-2">
-                      <Link
-                        href={`/categories/${parent.slug}`}
-                        className="flex min-h-11 items-center justify-between rounded-md px-3 py-2 text-sm font-bold text-primary hover:bg-muted"
-                      >
-                        Shop all {parent.name}
-                        <ChevronRight className="h-4 w-4" aria-hidden="true" />
-                      </Link>
-                      {children.map(child => categoryIsAvailable(child) ? (
-                        <Link
-                          key={child.id}
-                          href={`/categories/${child.slug}`}
-                          className={cn(
-                            'flex min-h-11 items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted hover:text-primary',
-                            pathname === `/categories/${child.slug}` && 'bg-muted font-semibold text-primary',
-                          )}
-                        >
-                          <span>{child.name}</span>
-                          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
-                        </Link>
-                      ) : (
-                        <div key={child.id} className="flex min-h-11 items-center justify-between px-3 py-2 text-sm text-muted-foreground" aria-disabled="true">
-                          <span>{child.name}</span>
-                          <span className="text-[10px] font-bold uppercase">Soon</span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-              )
-            })}
+            <CategoryTreeMenu
+              nodes={categoryGroups.map(group => group.parent)}
+              pathname={pathname}
+              idPrefix="mobile-category"
+              variant="mobile"
+            />
           </nav>
 
           <div className="border-t border-border bg-[#FAFAF7] p-3">

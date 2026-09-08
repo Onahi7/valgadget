@@ -2,7 +2,8 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
 import { categories } from '@/lib/server/schema'
 import { requireAuth, apiOk, apiError } from '@/lib/server/auth-helpers'
-import { and, eq, ne } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
+import { getCategoryDescendantSet } from '@/lib/category-hierarchy'
 
 export async function PUT(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await requireAuth(req, ['admin'])
@@ -29,19 +30,18 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
 
       if (normalizedParentId) {
         const [parent] = await db
-          .select({ id: categories.id, parentId: categories.parentId })
+          .select({ id: categories.id })
           .from(categories)
           .where(eq(categories.id, normalizedParentId))
           .limit(1)
         if (!parent) return apiError('Parent category not found.', 404)
-        if (parent.parentId) return apiError('Subcategories can only belong to a main category.')
 
-        const [child] = await db
-          .select({ id: categories.id })
+        const hierarchy = await db
+          .select({ id: categories.id, name: categories.name, parentId: categories.parentId })
           .from(categories)
-          .where(and(eq(categories.parentId, id), ne(categories.id, id)))
-          .limit(1)
-        if (child) return apiError('Move or remove this category’s subcategories before making it a subcategory.')
+        if (getCategoryDescendantSet(hierarchy, id).has(normalizedParentId)) {
+          return apiError('A category cannot be moved inside one of its own subcategories.')
+        }
       }
     }
 

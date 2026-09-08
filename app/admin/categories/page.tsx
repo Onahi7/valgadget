@@ -14,6 +14,7 @@ import { toast } from 'sonner'
 import { isApiError } from '@/lib/api-client'
 import { AdminIconButton, AdminPageHeader, AdminSelect } from '@/components/admin/admin-controls'
 import { useAdminConfirm } from '@/components/admin/admin-confirm-provider'
+import { buildCategoryTree, flattenCategoryTree, getCategoryDescendantSet } from '@/lib/category-hierarchy'
 
 type CategoryForm = {
   name: string
@@ -45,7 +46,7 @@ function toPayload(form: CategoryForm): CreateCategoryPayload {
     description: form.description.trim() || undefined,
     image: form.image.trim() || undefined,
     icon: form.icon.trim() || undefined,
-    parentId: form.parentId || undefined,
+    parentId: form.parentId || null,
     isActive: form.isActive,
     sortOrder: Number.isFinite(form.sortOrder) ? form.sortOrder : 0,
   }
@@ -91,6 +92,20 @@ export default function AdminCategoriesPage() {
     () => new Map(categories.map(category => [category.id, category.name])),
     [categories]
   )
+  const hierarchyRows = useMemo(
+    () => flattenCategoryTree(buildCategoryTree(categories)),
+    [categories],
+  )
+  const hierarchyById = useMemo(
+    () => new Map(hierarchyRows.map(category => [category.id, category])),
+    [hierarchyRows],
+  )
+  const unavailableParentIds = useMemo(() => {
+    if (!editingId) return new Set<string>()
+    const ids = getCategoryDescendantSet(categories, editingId)
+    ids.add(editingId)
+    return ids
+  }, [categories, editingId])
 
   const visibleCategories = useMemo(() => {
     const query = search.trim().toLowerCase()
@@ -262,7 +277,7 @@ export default function AdminCategoriesPage() {
         label="Category Image"
       />
 
-      <AdminPageHeader title="Categories" description={`${categories.length} categories and subcategories`} actions={
+      <AdminPageHeader title="Categories" description={`${categories.length} categories across ${Math.max(0, ...hierarchyRows.map(category => category.depth + 1))} hierarchy levels`} actions={
         <Button className="gap-2" onClick={openCreate}>
           <Plus className="h-4 w-4" /> Add Category
         </Button>
@@ -293,15 +308,15 @@ export default function AdminCategoriesPage() {
                 onChange={event => setForm(prev => ({ ...prev, parentId: event.target.value }))}
               >
                 <option value="">No parent</option>
-                {categories
-                  .filter(category => !category.parentId && category.id !== editingId)
+                {hierarchyRows
+                  .filter(category => !unavailableParentIds.has(category.id))
                   .map(category => (
                     <option key={category.id} value={category.id}>
-                      {category.name}
+                      {`${'— '.repeat(category.depth)}${category.path.join(' / ')}`}
                     </option>
                   ))}
               </AdminSelect>
-              <p className="text-xs text-muted-foreground">Choose “No parent” for a main category, or choose a main category to create a subcategory.</p>
+              <p className="text-xs text-muted-foreground">Choose any category to create the next level. Example: Phones → Samsung → UK Used.</p>
             </div>
             <div className="space-y-2 md:col-span-2">
               <label htmlFor="category-description" className="text-sm font-medium">Description</label>
@@ -406,8 +421,8 @@ export default function AdminCategoriesPage() {
           containerClassName="w-full sm:w-48"
         >
           <option value="all">All categories</option>
-          <option value="parents">Main categories</option>
-          <option value="children">Subcategories</option>
+          <option value="parents">Top-level categories</option>
+          <option value="children">Nested categories</option>
           <option value="visible">Visible on storefront</option>
           <option value="waiting">Waiting for products</option>
           <option value="inactive">Inactive</option>
@@ -455,7 +470,12 @@ export default function AdminCategoriesPage() {
                   </td>
                   <td className="px-5 py-3">
                     <div className="space-y-1">
-                      <p className="font-medium">{category.parentId ? `— ${category.name}` : category.name}</p>
+                      <p className="font-medium" style={{ paddingLeft: `${(hierarchyById.get(category.id)?.depth ?? 0) * 14}px` }}>
+                        {category.name}
+                      </p>
+                      {(hierarchyById.get(category.id)?.path.length ?? 0) > 1 ? (
+                        <p className="text-xs text-muted-foreground">{hierarchyById.get(category.id)?.path.join(' / ')}</p>
+                      ) : null}
                       {category.description && <p className="line-clamp-2 text-xs text-muted-foreground">{category.description}</p>}
                       {!displayImage && <Badge className="border border-amber-200 bg-amber-100 text-[10px] text-amber-700">Needs image</Badge>}
                     </div>

@@ -3,6 +3,7 @@ import { db } from '@/lib/server/db'
 import { products, categories } from '@/lib/server/schema'
 import { apiOk } from '@/lib/server/auth-helpers'
 import { eq, ilike, gte, lte, and, asc, desc, sql, type SQL, inArray } from 'drizzle-orm'
+import { getDescendantCategoryIds } from '@/lib/category-hierarchy'
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
@@ -21,15 +22,12 @@ export async function GET(request: NextRequest) {
   const conditions: SQL[] = [eq(products.isActive, true)]
 
   if (category) {
-    const [cat] = await db.select({ id: categories.id })
+    const categoryRows = await db.select({ id: categories.id, name: categories.name, slug: categories.slug, parentId: categories.parentId })
       .from(categories)
-      .where(eq(categories.slug, category))
-      .limit(1)
+      .where(eq(categories.isActive, true))
+    const cat = categoryRows.find(item => item.slug === category)
     if (cat?.id) {
-      const children = await db.select({ id: categories.id })
-        .from(categories)
-        .where(eq(categories.parentId, cat.id))
-      const categoryIds = [cat.id, ...children.map(c => c.id)]
+      const categoryIds = getDescendantCategoryIds(categoryRows, cat.id)
       conditions.push(inArray(products.categoryId, categoryIds))
     } else {
       conditions.push(eq(products.categoryId, category))

@@ -3,6 +3,7 @@ import { categories } from '@/lib/server/schema'
 import { apiOk } from '@/lib/server/auth-helpers'
 import { eq, sql, asc } from 'drizzle-orm'
 import { withCategoryDisplayImages } from '@/lib/server/category-images'
+import { withDescendantProductCounts } from '@/lib/category-hierarchy'
 
 export async function GET() {
   const data = await db.select({
@@ -16,17 +17,12 @@ export async function GET() {
     isActive: categories.isActive,
     sortOrder: categories.sortOrder,
     productCount: sql<number>`(
-      SELECT count(*)::int
-      FROM products p
-      WHERE p.is_active = true
-        AND (
-          p.category_id = categories.id
-          OR p.category_id IN (SELECT c2.id FROM categories c2 WHERE c2.parent_id = categories.id)
-        )
+      select count(*)::int from products p
+      where p.is_active = true and p.category_id = categories.id
     )`,
   }).from(categories)
     .where(eq(categories.isActive, true))
     .orderBy(asc(categories.sortOrder), asc(categories.name))
 
-  return apiOk(await withCategoryDisplayImages(data))
+  return apiOk(await withCategoryDisplayImages(withDescendantProductCounts(data)))
 }

@@ -96,6 +96,26 @@ const templates: Record<string, ProductSpecTemplate> = {
     name: 'Smartphones & tablets',
     labels: ['Brand', 'Model', 'RAM', 'Storage', 'Display', 'Camera', 'Battery', 'Network'],
   },
+  phones: {
+    name: 'Phones',
+    labels: ['Brand', 'Model', 'RAM', 'Storage', 'Display', 'Camera', 'Battery', 'Network'],
+  },
+  iphones: {
+    name: 'iPhones',
+    labels: ['Brand', 'Model', 'Storage', 'Condition', 'SIM', 'Battery Health', 'Color', 'Network'],
+  },
+  'samsung-phones': {
+    name: 'Samsung phones',
+    labels: ['Brand', 'Model', 'RAM', 'Storage', 'Display', 'Camera', 'Battery', 'Network'],
+  },
+  'google-pixel': {
+    name: 'Google Pixel phones',
+    labels: ['Brand', 'Model', 'RAM', 'Storage', 'Display', 'Camera', 'Battery', 'Network'],
+  },
+  'android-phones': {
+    name: 'Android phones',
+    labels: ['Brand', 'Model', 'RAM', 'Storage', 'Display', 'Camera', 'Battery', 'Network'],
+  },
   'android-phones-tablets': {
     name: 'Android phones & tablets',
     labels: ['Brand', 'Model', 'RAM', 'Storage', 'Display', 'Camera', 'Battery', 'Network'],
@@ -212,7 +232,15 @@ export function getSpecTemplateForCategory(
 ): ProductSpecTemplate {
   if (!category) return defaultTemplate
 
-  const parent = category.parentId ? categories.find(item => item.id === category.parentId) : undefined
-  return templates[category.slug] ?? (parent ? templates[parent.slug] : undefined) ?? defaultTemplate
-}
+  const byId = new Map(categories.map(item => [item.id, item]))
+  const visited = new Set<string>()
+  let current: CategoryLike | undefined = category
+  while (current && !visited.has(current.id)) {
+    visited.add(current.id)
+    const template = templates[current.slug]
+    if (template) return template
+    current = current.parentId ? byId.get(current.parentId) : undefined
+  }
 
+  return defaultTemplate
+}

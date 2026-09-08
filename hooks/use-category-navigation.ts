@@ -1,18 +1,21 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { buildCategoryGroups, FALLBACK_NAV_CATEGORIES, type CategoryGroup } from '@/lib/category-navigation'
+import { buildCategoryGroups, type CategoryGroup } from '@/lib/category-navigation'
 import { categoryService, type Category } from '@/lib/services/category.service'
 
 let categoryRequest: Promise<Category[]> | null = null
 
 function loadCategories() {
-  categoryRequest ??= categoryService.getFlat().catch(() => FALLBACK_NAV_CATEGORIES)
+  categoryRequest ??= categoryService.getFlat().catch(() => {
+    categoryRequest = null
+    return []
+  })
   return categoryRequest
 }
 
 export function useCategoryNavigation() {
-  const [groups, setGroups] = useState<CategoryGroup[]>(() => buildCategoryGroups(FALLBACK_NAV_CATEGORIES))
+  const [groups, setGroups] = useState<CategoryGroup[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {

@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/server/db'
 import { products, categories, productVariants } from '@/lib/server/schema'
 import { requireAuth, apiOk, apiError } from '@/lib/server/auth-helpers'
-import { eq, desc, sql, and, type SQL } from 'drizzle-orm'
+import { eq, desc, sql, and, inArray, type SQL } from 'drizzle-orm'
 import {
   createAdminProductSchema,
   nullableValue,
@@ -12,6 +12,7 @@ import {
   validationErrors,
   withConditionTag,
 } from '@/lib/server/admin-product'
+import { getDescendantCategoryIds } from '@/lib/category-hierarchy'
 
 // GET /api/admin/products — list with pagination
 export async function GET(req: NextRequest) {
@@ -29,7 +30,12 @@ export async function GET(req: NextRequest) {
   if (search) {
     conditions.push(sql`(${products.name} ilike ${`%${search}%`} or ${products.sku} ilike ${`%${search}%`})`)
   }
-  if (category) conditions.push(eq(products.categoryId, category))
+  if (category) {
+    const categoryRows = await db
+      .select({ id: categories.id, name: categories.name, parentId: categories.parentId })
+      .from(categories)
+    conditions.push(inArray(products.categoryId, getDescendantCategoryIds(categoryRows, category)))
+  }
   if (active === 'true') conditions.push(eq(products.isActive, true))
   if (active === 'false') conditions.push(eq(products.isActive, false))
 

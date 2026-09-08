@@ -12,6 +12,7 @@ import { getProducts } from '@/lib/server/product-helpers'
 import type { Product } from '@/lib/services/product.service'
 import { withCategoryDisplayImages } from '@/lib/server/category-images'
 import { FALLBACK_CATEGORIES, FALLBACK_PRODUCTS } from '@/lib/storefront-fallback'
+import { withDescendantProductCounts } from '@/lib/category-hierarchy'
 
 export const dynamic = 'force-dynamic'
 
@@ -31,15 +32,7 @@ async function getHomeData() {
         slug: categories.slug,
         image: categories.image,
         parentId: categories.parentId,
-        productCount: sql<number>`(
-          SELECT count(*)::int
-          FROM products p
-          WHERE p.is_active = true
-            AND (
-              p.category_id = categories.id
-              OR p.category_id IN (SELECT c2.id FROM categories c2 WHERE c2.parent_id = categories.id)
-            )
-        )`,
+        productCount: sql<number>`(select count(*)::int from products p where p.is_active = true and p.category_id = categories.id)`,
       })
       .from(categories)
       .where(eq(categories.isActive, true))
@@ -65,7 +58,7 @@ async function getHomeData() {
       .limit(3),
   ])
 
-  const categoryRows = categoryResult.status === 'fulfilled' ? categoryResult.value : FALLBACK_CATEGORIES
+  const categoryRows = withDescendantProductCounts(categoryResult.status === 'fulfilled' ? categoryResult.value : FALLBACK_CATEGORIES)
   const featuredRows = featuredResult.status === 'fulfilled' ? featuredResult.value : FALLBACK_PRODUCTS
   const catalogRows = catalogResult.status === 'fulfilled' ? catalogResult.value : FALLBACK_PRODUCTS
   const newestRows = newestResult.status === 'fulfilled' ? newestResult.value : FALLBACK_PRODUCTS

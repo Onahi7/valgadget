@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Plus, Search, Pencil, Trash2, Star, Package, ChevronLeft, ChevronRight, X } from 'lucide-react'
@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { AdminIconButton, AdminPageHeader, AdminSelect } from '@/components/admin/admin-controls'
 import { useAdminConfirm } from '@/components/admin/admin-confirm-provider'
+import { buildCategoryTree, flattenCategoryTree } from '@/lib/category-hierarchy'
 
 function getDisplayImage(product: Product) {
   return product.displayImage ?? product.images?.find(src => src?.startsWith('/') || src?.includes('ik.imagekit.io')) ?? null
@@ -63,8 +64,14 @@ export default function AdminProductsPage() {
   }, [debouncedSearch, categoryFilter, activeFilter, page])
 
   const filtered = products
-  const parentCategoryIds = new Set(categories.filter(c => !c.parentId).map(c => c.id))
-  const categoryNameById = new Map(categories.map(category => [category.id, category.name]))
+  const categoryOptions = useMemo(
+    () => flattenCategoryTree(buildCategoryTree(categories)),
+    [categories],
+  )
+  const nestedCategoryIds = useMemo(
+    () => new Set(categoryOptions.filter(category => category.depth > 0).map(category => category.id)),
+    [categoryOptions],
+  )
 
   const handleDelete = async (id: string, name: string) => {
     const confirmed = await confirmAction({
@@ -156,9 +163,9 @@ export default function AdminProductsPage() {
           containerClassName="w-full sm:w-52"
         >
           <option value="all">All Categories</option>
-          {categories.map(c => (
+          {categoryOptions.map(c => (
             <option key={c.id} value={c.id}>
-              {c.parentId ? `${categoryNameById.get(c.parentId) ?? 'Other'} / ${c.name}` : c.name}
+              {c.path.join(' / ')}
             </option>
           ))}
         </AdminSelect>
@@ -278,7 +285,7 @@ export default function AdminProductsPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
-                      <span className={cn(p.categoryId && !parentCategoryIds.has(p.categoryId) && 'text-foreground')}>
+                      <span className={cn(p.categoryId && nestedCategoryIds.has(p.categoryId) && 'text-foreground')}>
                         {p.category?.name ?? '-'}
                       </span>
                     </td>

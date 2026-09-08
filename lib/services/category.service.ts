@@ -12,7 +12,7 @@ export interface Category {
   imageStatus?: 'ready' | 'needs_image'
   icon?: string
   productCount?: number
-  parentId?: string
+  parentId?: string | null
   parent?: { id: string; name: string; slug: string }
   children?: Category[]
   isActive: boolean
@@ -26,7 +26,7 @@ export interface CreateCategoryPayload {
   description?: string
   image?: string
   icon?: string
-  parentId?: string
+  parentId?: string | null
   isActive?: boolean
   sortOrder?: number
 }

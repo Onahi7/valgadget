@@ -17,6 +17,7 @@ import { categoryService, type Category } from '@/lib/services/category.service'
 import { getSpecTemplateForCategory } from '@/lib/product-spec-templates'
 import { toast } from 'sonner'
 import type { ApiError } from '@/lib/api-client'
+import { getCategoryLineage } from '@/lib/category-hierarchy'
 
 export default function NewProductPage() {
   const router = useRouter()
@@ -52,13 +53,18 @@ export default function NewProductPage() {
     () => getSpecTemplateForCategory(selectedCategory, categories),
     [categories, selectedCategory],
   )
-  const isIphoneCategory = Boolean(selectedCategory?.slug.includes('iphone') || selectedCategory?.name.toLowerCase().includes('iphone'))
+  const selectedCategoryLineage = useMemo(
+    () => selectedCategory ? getCategoryLineage(categories, selectedCategory.id) : [],
+    [categories, selectedCategory],
+  )
+  const isIphoneCategory = selectedCategoryLineage.some(category => category.slug.includes('iphone') || category.name.toLowerCase().includes('iphone'))
   const variantAttributes = isIphoneCategory ? ['Storage', 'Color', 'SIM'] : ['Color']
 
   const handleCategoryChange = (categoryId: string) => {
     set('categoryId', categoryId)
     const category = categories.find(item => item.id === categoryId)
-    if (category?.slug === 'iphones-uk-used') setCondition('uk-used')
+    if (category?.slug.includes('uk-used')) setCondition('uk-used')
+    if (category?.slug.includes('brand-new')) setCondition('brand-new')
   }
 
   const handleImagePick = (e: React.ChangeEvent<HTMLInputElement>) => {

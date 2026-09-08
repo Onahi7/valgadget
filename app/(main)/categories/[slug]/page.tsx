@@ -5,6 +5,7 @@ import { categories } from '@/lib/server/schema'
 import { and, asc, eq, sql } from 'drizzle-orm'
 import { CategoryDetailClient } from './category-detail-client'
 import { withCategoryDisplayImages } from '@/lib/server/category-images'
+import { withDescendantProductCounts } from '@/lib/category-hierarchy'
 
 interface PageProps {
   params: Promise<{ slug: string }>
@@ -27,19 +28,7 @@ const getCategory = cache(async (slug: string) => {
       updatedAt: categories.updatedAt,
     })
     .from(categories)
-    .where(and(
-      eq(categories.slug, slug),
-      eq(categories.isActive, true),
-      sql`exists (
-        select 1
-        from products p
-        where p.is_active = true
-          and (
-            p.category_id = ${categories.id}
-            or p.category_id in (select c2.id from categories c2 where c2.parent_id = ${categories.id} and c2.is_active = true)
-          )
-      )`,
-    ))
+    .where(and(eq(categories.slug, slug), eq(categories.isActive, true)))
     .limit(1)
 
   if (!category) return null
@@ -66,18 +55,15 @@ async function getSubcategories(parentId: string) {
       name: categories.name,
       slug: categories.slug,
       image: categories.image,
-      productCount: sql<number>`(
-        select count(*)::int from products p
-        where p.is_active = true and p.category_id = ${categories.id}
-      )`,
+      parentId: categories.parentId,
+      isActive: categories.isActive,
+      sortOrder: categories.sortOrder,
+      productCount: sql<number>`(select count(*)::int from products p where p.is_active = true and p.category_id = categories.id)`,
     })
     .from(categories)
-    .where(and(
-      eq(categories.parentId, parentId),
-      eq(categories.isActive, true),
-    ))
+    .where(eq(categories.isActive, true))
     .orderBy(asc(categories.sortOrder))
-  return withCategoryDisplayImages(rows)
+  return withCategoryDisplayImages(withDescendantProductCounts(rows).filter(category => category.parentId === parentId))
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {

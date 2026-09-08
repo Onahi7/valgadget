@@ -4,6 +4,7 @@ import { categories } from '@/lib/server/schema'
 import { requireAuth, apiOk, apiError } from '@/lib/server/auth-helpers'
 import { desc, sql, eq } from 'drizzle-orm'
 import { withCategoryDisplayImages } from '@/lib/server/category-images'
+import { withDescendantProductCounts } from '@/lib/category-hierarchy'
 
 export async function GET(req: NextRequest) {
   const auth = await requireAuth(req, ['admin'])
@@ -22,16 +23,11 @@ export async function GET(req: NextRequest) {
     createdAt: categories.createdAt,
     updatedAt: categories.updatedAt,
     productCount: sql<number>`(
-      select count(*)::int
-      from products p
-      where p.is_active = true
-        and (
-          p.category_id = ${categories.id}
-          or p.category_id in (select c2.id from categories c2 where c2.parent_id = ${categories.id})
-        )
+      select count(*)::int from products p
+      where p.is_active = true and p.category_id = categories.id
     )`,
   }).from(categories).orderBy(desc(categories.sortOrder), desc(categories.createdAt))
-  return apiOk(await withCategoryDisplayImages(data))
+  return apiOk(await withCategoryDisplayImages(withDescendantProductCounts(data)))
 }
 
 export async function POST(req: NextRequest) {
@@ -52,7 +48,6 @@ export async function POST(req: NextRequest) {
         .where(eq(categories.id, normalizedParentId))
         .limit(1)
       if (!parent) return apiError('Parent category not found.', 404)
-      if (parent.parentId) return apiError('Subcategories can only belong to a main category.')
     }
 
     let slug = normalizedName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')

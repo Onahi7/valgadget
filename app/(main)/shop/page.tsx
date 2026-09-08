@@ -7,6 +7,7 @@ import { CategoryIconGrid, type CategoryIcon } from '@/components/ecommerce/cate
 import { db } from '@/lib/server/db'
 import { categories, products } from '@/lib/server/schema'
 import { getProducts } from '@/lib/server/product-helpers'
+import { getDescendantCategoryIds, withDescendantProductCounts } from '@/lib/category-hierarchy'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,15 +29,7 @@ async function getShopData() {
         sortOrder: categories.sortOrder,
         createdAt: categories.createdAt,
         updatedAt: categories.updatedAt,
-        productCount: sql<number>`(
-          SELECT count(*)::int
-          FROM products p
-          WHERE p.is_active = true
-            AND (
-              p.category_id = categories.id
-              OR p.category_id IN (SELECT c2.id FROM categories c2 WHERE c2.parent_id = categories.id)
-            )
-        )`,
+        productCount: sql<number>`(select count(*)::int from products p where p.is_active = true and p.category_id = categories.id)`,
       })
       .from(categories)
       .where(eq(categories.isActive, true))
@@ -47,8 +40,10 @@ async function getShopData() {
     getProducts({ where: activeProducts, orderBy: desc(products.rating), limit: 8 }),
   ])
 
+  const categoryRowsWithTotals = withDescendantProductCounts(categoryRows)
+
   // Category icon grid: pick top-level categories with images
-  const categoryIcons: CategoryIcon[] = categoryRows
+  const categoryIcons: CategoryIcon[] = categoryRowsWithTotals
     .filter(c => !c.parentId && c.image && c.productCount > 0)
     .slice(0, 12)
     .map(c => ({
@@ -60,14 +55,10 @@ async function getShopData() {
 
   // Get category sections with products (Tech Direct pattern)
   const categorySections = await Promise.all(
-    categoryRows
+    categoryRowsWithTotals
       .filter(c => !c.parentId && c.productCount > 0)
       .map(async cat => {
-        const children = await db
-          .select({ id: categories.id })
-          .from(categories)
-          .where(eq(categories.parentId, cat.id))
-        const categoryIds = [cat.id, ...children.map(c => c.id)]
+        const categoryIds = getDescendantCategoryIds(categoryRowsWithTotals, cat.id)
 
         const prods = await getProducts({
           where: and(activeProducts, inArray(products.categoryId, categoryIds)),
@@ -84,7 +75,7 @@ async function getShopData() {
   )
 
   // Get subcategory banner cards
-  const subcategoryBanners = categoryRows
+  const subcategoryBanners = categoryRowsWithTotals
     .filter(category => category.parentId && category.image && category.productCount > 0)
     .slice(0, 3)
     .map(category => ({ label: category.name, slug: category.slug, image: category.image! }))

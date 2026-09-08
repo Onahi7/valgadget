@@ -1,5 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Keep the Node WebSocket implementation out of Next's server bundle.
+  // Bundling `ws` turns its optional `bufferutil` require into a truthy stub,
+  // which crashes Neon connections with `bufferUtil.mask is not a function`.
+  serverExternalPackages: ['ws'],
   images: {
     unoptimized: true,
   },

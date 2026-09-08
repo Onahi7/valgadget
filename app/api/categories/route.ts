@@ -3,6 +3,7 @@ import { categories } from '@/lib/server/schema'
 import { apiOk } from '@/lib/server/auth-helpers'
 import { eq, asc, sql } from 'drizzle-orm'
 import { withCategoryDisplayImages } from '@/lib/server/category-images'
+import { buildCategoryTree, withDescendantProductCounts } from '@/lib/category-hierarchy'
 
 export async function GET() {
   const data = await db.select({
@@ -12,35 +13,16 @@ export async function GET() {
     isActive: categories.isActive, sortOrder: categories.sortOrder,
     createdAt: categories.createdAt, updatedAt: categories.updatedAt,
     productCount: sql<number>`(
-      select count(*) from products
-      where products.is_active = true
-      and (
-        products.category_id = categories.id
-        or products.category_id in (select c2.id from categories c2 where c2.parent_id = categories.id)
-      )
-    )::int`,
+      select count(*)::int from products p
+      where p.is_active = true and p.category_id = categories.id
+    )`,
   })
     .from(categories)
     .where(eq(categories.isActive, true))
     .orderBy(asc(categories.sortOrder), asc(categories.name))
 
-  const withImages = await withCategoryDisplayImages(data)
-  const ids = new Set(withImages.map(category => category.id))
-  const childrenByParent = new Map<string, typeof withImages>()
-
-  for (const category of withImages) {
-    if (!category.parentId || !ids.has(category.parentId)) continue
-    const children = childrenByParent.get(category.parentId) ?? []
-    children.push(category)
-    childrenByParent.set(category.parentId, children)
-  }
-
-  const tree = withImages
-    .filter(category => !category.parentId || !ids.has(category.parentId))
-    .map(category => ({
-      ...category,
-      children: childrenByParent.get(category.id) ?? [],
-    }))
+  const withImages = await withCategoryDisplayImages(withDescendantProductCounts(data))
+  const tree = buildCategoryTree(withImages)
 
   return apiOk(tree)
 }
