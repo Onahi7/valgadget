@@ -16,6 +16,7 @@ interface SubcategorySummary {
   slug: string
   image?: string | null
   displayImage?: string | null
+  productCount?: number
 }
 
 interface CategoryDetailClientProps {
@@ -104,12 +105,10 @@ export function CategoryDetailClient({ slug, initialCategory, subcategories }: C
         {/* Subcategory cards (Tech Direct pattern) */}
         {subcategories.length > 0 ? (
           <div className="mb-10 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {subcategories.map(sub => (
-              <Link
-                key={sub.id}
-                href={`/categories/${sub.slug}`}
-                className="group flex items-center gap-3 rounded-lg border border-border bg-card p-3 transition-shadow hover:shadow-md"
-              >
+            {subcategories.map(sub => {
+              const available = (sub.productCount ?? 0) > 0
+              const content = (
+                <>
                 {sub.displayImage || sub.image ? (
                   <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md bg-muted">
                     <Image
@@ -127,12 +126,23 @@ export function CategoryDetailClient({ slug, initialCategory, subcategories }: C
                 <div className="min-w-0 flex-1">
                   <p className="line-clamp-1 text-sm font-medium text-foreground">{sub.name}</p>
                   <p className="mt-0.5 inline-flex items-center text-xs text-muted-foreground group-hover:text-foreground">
-                    Browse
-                    <ArrowRight className="ml-1 h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+                    {available ? 'Browse' : 'Coming soon'}
+                    {available ? <ArrowRight className="ml-1 h-3 w-3 transition-transform group-hover:translate-x-0.5" aria-hidden="true" /> : null}
                   </p>
                 </div>
-              </Link>
-            ))}
+                </>
+              )
+
+              return available ? (
+                <Link key={sub.id} href={`/categories/${sub.slug}`} className="group flex items-center gap-3 rounded-lg border border-border bg-card p-3 transition-shadow hover:shadow-md">
+                  {content}
+                </Link>
+              ) : (
+                <div key={sub.id} aria-disabled="true" className="flex items-center gap-3 rounded-lg border border-dashed border-border bg-muted/40 p-3 opacity-65">
+                  {content}
+                </div>
+              )
+            })}
           </div>
         ) : null}
 

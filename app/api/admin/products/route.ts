@@ -7,6 +7,7 @@ import {
   createAdminProductSchema,
   nullableValue,
   postgresErrorCode,
+  resolveProductStock,
   slugifyProductName,
   validationErrors,
   withConditionTag,
@@ -86,7 +87,7 @@ export async function POST(req: NextRequest) {
     }
 
     const slug = `${slugifyProductName(input.name)}-${Date.now().toString(36)}`
-    const variantStock = input.variants.filter(variant => variant.isActive).reduce((sum, variant) => sum + variant.stock, 0)
+    const resolvedStock = resolveProductStock(input.stock, input.variants) ?? 0
 
     const product = await db.transaction(async tx => {
       const [created] = await tx.insert(products).values({
@@ -99,7 +100,7 @@ export async function POST(req: NextRequest) {
         comparePrice: input.comparePrice ? String(input.comparePrice) : null,
         cost: input.cost !== undefined && input.cost !== null ? String(input.cost) : null,
         categoryId: nullableValue(input.categoryId),
-        stock: input.variants.length > 0 ? variantStock : input.stock,
+        stock: resolvedStock,
         lowStockThreshold: input.lowStockThreshold,
         sku: input.sku,
         barcode: nullableValue(input.barcode),

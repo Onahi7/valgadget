@@ -59,7 +59,7 @@ export function CategoryIconGrid({
   if (categories.length === 0) return null
 
   return (
-    <section id="departments" className={`scroll-mt-36 bg-[#F5F6F5] py-3 ${className}`}>
+    <section id="categories" className={`scroll-mt-36 bg-[#F5F6F5] py-3 ${className}`}>
       <div className="mx-auto max-w-[1440px] px-3 sm:px-6 lg:px-8">
         <div className="mb-3 flex items-end justify-between gap-4">
           <div>
@@ -73,7 +73,7 @@ export function CategoryIconGrid({
           </Link>
         </div>
 
-        <div className="-mx-3 flex snap-x gap-2.5 overflow-x-auto px-3 pb-2 sm:mx-0 sm:px-0" tabIndex={0} role="region" aria-label="Shop departments; scroll for more">
+        <div className="-mx-3 flex snap-x gap-2.5 overflow-x-auto px-3 pb-2 sm:mx-0 sm:px-0" tabIndex={0} role="region" aria-label="Shop categories; scroll for more">
           {[...categories].sort((a, b) => Number(b.available !== false) - Number(a.available !== false)).map(category => {
             const Icon = getCategoryIcon(category)
 

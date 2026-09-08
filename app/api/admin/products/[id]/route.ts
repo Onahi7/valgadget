@@ -7,6 +7,7 @@ import {
   nullableValue,
   normalizeProductCondition,
   postgresErrorCode,
+  resolveProductStock,
   updateAdminProductSchema,
   validationErrors,
   withConditionTag,
@@ -100,7 +101,7 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
 
     const condition = input.condition ?? normalizeProductCondition(existing.condition)
     const tags = withConditionTag(input.tags ?? existing.tags, condition)
-    const variantStock = input.variants?.filter(variant => variant.isActive).reduce((sum, variant) => sum + variant.stock, 0)
+    const resolvedStock = resolveProductStock(input.stock, input.variants)
 
     const updated = await db.transaction(async tx => {
       const [saved] = await tx.update(products).set({
@@ -112,9 +113,7 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
         ...(input.comparePrice !== undefined && { comparePrice: input.comparePrice ? String(input.comparePrice) : null }),
         ...(input.cost !== undefined && { cost: input.cost !== null ? String(input.cost) : null }),
         ...(input.categoryId !== undefined && { categoryId: nullableValue(input.categoryId) }),
-        ...(input.variants !== undefined
-          ? { stock: variantStock ?? 0 }
-          : input.stock !== undefined ? { stock: input.stock } : {}),
+        ...(resolvedStock !== undefined && { stock: resolvedStock }),
         ...(input.lowStockThreshold !== undefined && { lowStockThreshold: input.lowStockThreshold }),
         ...(input.sku !== undefined && { sku: input.sku }),
         ...(input.barcode !== undefined && { barcode: nullableValue(input.barcode) }),

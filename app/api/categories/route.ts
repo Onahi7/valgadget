@@ -1,7 +1,7 @@
 import { db } from '@/lib/server/db'
 import { categories } from '@/lib/server/schema'
 import { apiOk } from '@/lib/server/auth-helpers'
-import { and, eq, asc, sql } from 'drizzle-orm'
+import { eq, asc, sql } from 'drizzle-orm'
 import { withCategoryDisplayImages } from '@/lib/server/category-images'
 
 export async function GET() {
@@ -21,19 +21,26 @@ export async function GET() {
     )::int`,
   })
     .from(categories)
-    .where(and(
-      eq(categories.isActive, true),
-      sql`exists (
-        select 1
-        from products p
-        where p.is_active = true
-          and (
-            p.category_id = ${categories.id}
-            or p.category_id in (select c2.id from categories c2 where c2.parent_id = ${categories.id} and c2.is_active = true)
-          )
-      )`,
-    ))
+    .where(eq(categories.isActive, true))
     .orderBy(asc(categories.sortOrder), asc(categories.name))
 
-  return apiOk(await withCategoryDisplayImages(data))
+  const withImages = await withCategoryDisplayImages(data)
+  const ids = new Set(withImages.map(category => category.id))
+  const childrenByParent = new Map<string, typeof withImages>()
+
+  for (const category of withImages) {
+    if (!category.parentId || !ids.has(category.parentId)) continue
+    const children = childrenByParent.get(category.parentId) ?? []
+    children.push(category)
+    childrenByParent.set(category.parentId, children)
+  }
+
+  const tree = withImages
+    .filter(category => !category.parentId || !ids.has(category.parentId))
+    .map(category => ({
+      ...category,
+      children: childrenByParent.get(category.id) ?? [],
+    }))
+
+  return apiOk(tree)
 }

@@ -137,6 +137,19 @@ export function withConditionTag(tags: string[], condition: typeof PRODUCT_CONDI
   return condition === 'brand-new' ? next : [...next, condition]
 }
 
+export function resolveProductStock(
+  stock: number | undefined,
+  variants: Array<{ stock: number; isActive: boolean }> | undefined,
+) {
+  if (variants && variants.length > 0) {
+    return variants.reduce((total, variant) => (
+      variant.isActive ? total + variant.stock : total
+    ), 0)
+  }
+
+  return stock
+}
+
 export function postgresErrorCode(error: unknown): string | undefined {
   if (!error || typeof error !== 'object') return undefined
   if ('code' in error && typeof error.code === 'string') return error.code

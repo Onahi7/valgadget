@@ -66,12 +66,15 @@ async function getSubcategories(parentId: string) {
       name: categories.name,
       slug: categories.slug,
       image: categories.image,
+      productCount: sql<number>`(
+        select count(*)::int from products p
+        where p.is_active = true and p.category_id = ${categories.id}
+      )`,
     })
     .from(categories)
     .where(and(
       eq(categories.parentId, parentId),
       eq(categories.isActive, true),
-      sql`exists (select 1 from products p where p.is_active = true and p.category_id = ${categories.id})`,
     ))
     .orderBy(asc(categories.sortOrder))
   return withCategoryDisplayImages(rows)
